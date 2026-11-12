@@ -45,6 +45,28 @@ The checked-in draft passes the first command but **must fail** `--require-propo
 
 File paths must be relative to the manifest directory and end in `.json`. The loader refuses path traversal, absolute paths, symlink redirects, duplicated local paths, malformed/unexpected fields, digest mismatches, invalid statuses and files larger than 1 MiB. Maximum: 64 batches, each subject to the existing grant validator limits. It validates hashes **before** arithmetic and cross-file PR duplicate checks.
 
+## Optional directory inventory verification
+
+A manifest hash check validates only the entries listed by the author. To detect **JSON batch files omitted from that manifest within a known folder**, the CLI now supports `--inventory-dir`:
+
+```bash
+# Future review: keep only proposed grant batch JSON files inside `review-batches/`.
+# Keep the manifest and tokenomics JSON in the parent directory.
+node scripts/check-grant-manifest.mjs path/to/manifest.json \
+  --require-proposal \
+  --inventory-dir review-batches
+```
+
+The folder is resolved relative to the manifest location. Every regular `.json` file **directly in that directory** must be included in the hashed manifest, and every manifest-listed batch must reside in that same folder. The verifier fails on unlisted batch files, missing files, symlinked directories and paths that leave the manifest directory. Subdirectories are **not recursively scanned**. Keep all proposal batch files in one dedicated, flat directory and put the tokenomics file outside it. Paths through symlinks are not allowed.
+
+For a local smoke test of the inventory checker:
+
+```bash
+npm run test:grant-inventory
+```
+
+This is an **opt-in** directory check; omitting `--inventory-dir` explicitly reports that the inventory was not checked. For final reviews, use the strict option and separately verify that the selected folder represents the complete intended proposal scope.
+
 ## Boundaries and remaining risks
 
 - **Completeness cannot be proved by the manifest itself.** An author could omit a batch entirely. Governance must separately confirm that the list is the agreed canonical set, e.g. by reviewing its committed Git revision and inventory.
@@ -57,4 +79,4 @@ File paths must be relative to the manifest directory and end in `.json`. The lo
 
 ## Validation gates
 
-The 18 Node tests in `test/node/grant-manifest.test.mjs` cover default and synthetic proposals, tampered file hashes, unsafe file paths, duplicate references, Symlink denial, cross-batch over-allocation and CLI authorization disclaimers. Run `npm run test:grant-manifest` and `npm run test:offline` in a clean repository checkout and document actual test output before merge. Solidity compilation and audit are separate, still mandatory before an onchain trial.
+The 18 Node tests in `test/node/grant-manifest.test.mjs` cover default and synthetic proposals, tampered file hashes, unsafe file paths, duplicate references, Symlink denial, cross-batch over-allocation and CLI authorization disclaimers. Run `npm run test:grant-manifest`, `npm run test:grant-inventory` and `npm run test:offline` in a clean repository checkout and document actual test output before merge. Solidity compilation and audit are separate, still mandatory before an onchain trial.
