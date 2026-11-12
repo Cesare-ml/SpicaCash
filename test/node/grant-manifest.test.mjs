@@ -3,11 +3,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync,writeFileSync,readFileSync,rmSync,symlinkSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {join,resolve} from 'node:path';
+import {join,resolve,dirname} from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {spawnSync} from 'node:child_process';
 import {loadGrantManifest,sha256Hex} from '../../scripts/grant-manifest-core.mjs';
 
-const root=resolve(import.meta.dirname,'../..');
+const root=resolve(dirname(fileURLToPath(import.meta.url)),'../..');
 const cli=join(root,'scripts/check-grant-manifest.mjs');
 const draft=JSON.parse(readFileSync(join(root,'config/contributor-grants.draft.json'),'utf8'));
 function temp(t){const dir=mkdtempSync(join(tmpdir(),'spica-manifest-'));t.after(()=>rmSync(dir,{recursive:true,force:true}));return dir;}
