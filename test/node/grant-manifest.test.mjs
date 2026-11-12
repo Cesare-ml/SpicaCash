@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,writeFileSync,readFileSync,rmSync,symlinkSync} from 'node:fs';
+import {mkdtempSync,writeFileSync,readFileSync,rmSync,symlinkSync,mkdirSync,renameSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve,dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -108,4 +108,38 @@ test('invalid digest and missing files are rejected',t=>{
 });
 test('CLI unknown flags rejected without executing anything',t=>{
  const r=run(fixture(t).path,'--broadcast');assert.equal(r.status,2);assert.match(r.stderr,/Usage:/);
+});
+
+function groupedProposal(t) {
+  const f=proposal(t);
+  mkdirSync(join(f.dir,'review-batches'));
+  for (const entry of f.data.batches) {
+    const original=entry.path;
+    renameSync(join(f.dir,original),join(f.dir,'review-batches',original));
+    entry.path='review-batches/'+original;
+  }
+  save(f.dir,f.data);
+  return f;
+}
+test('strict directory inventory confirms every hashed batch in scope',t=>{
+  const f=groupedProposal(t);
+  const r=run(f.path,'--require-proposal','--inventory-dir','review-batches');
+  assert.equal(r.status,0,r.stderr);
+  assert.match(r.stdout,/Scoped inventory checked: 2 JSON files/);
+});
+test('strict inventory rejects unlisted batch even when other hashes match',t=>{
+  const f=groupedProposal(t);
+  writeFileSync(join(f.dir,'review-batches','forgotten.json'),'{}\n');
+  const r=run(f.path,'--require-proposal','--inventory-dir','review-batches');
+  assert.equal(r.status,1,r.stdout);
+  assert.match(r.stderr,/unlisted JSON batch file/);
+});
+test('strict inventory rejects missing folder and missing option argument',t=>{
+  const f=groupedProposal(t);
+  const badDir=run(f.path,'--require-proposal','--inventory-dir','no-such-folder');
+  assert.equal(badDir.status,1);
+  assert.match(badDir.stderr,/inventoryDirectory/);
+  const missingArg=run(f.path,'--inventory-dir');
+  assert.equal(missingArg.status,2);
+  assert.match(missingArg.stderr,/Usage:/);
 });
