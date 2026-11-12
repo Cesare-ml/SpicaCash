@@ -60,6 +60,10 @@ A multisignature treasury is the preferred approach, but addresses and signer id
 - No unilateral backdoor minting, arbitrary contract upgrades, or implicit SPICA-to-credits exchange rate.
 - Publicly documented authorized operations only after legal and external security reviews.
 
+## Contributor grant research
+
+The proposed [contribution grant ledger and reference vesting tests](CONTRIBUTOR_GRANTS_AND_VESTING.md) are an optional additional draft workstream. A structurally valid grant record does not prove the claimed GitHub PR was merged, identify real reviewers, authorize any award, or select a real vesting schedule.
+
 ## Release gates
 
 | Gate | Requirement | Status |
