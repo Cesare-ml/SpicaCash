@@ -19,10 +19,21 @@
 
 Why not pick Polygon by default? Polygon PoS has a separate validator/security model and is not an Ethereum rollup. It remains a viable low-fee EVM network, but the first choice should prioritize rollup security and the project's open-source/community ethos.
 
+## Experimental ERC-20 prototype
+
+The initial Solidity implementation, unit/fuzz test suite and guarded Arbitrum Sepolia helper are in a draft development branch, **not released or deployed**.
+
+- [Prototype and local instructions](docs/PROTOTYPE.md)
+- Contract: `src/SpicaCash.sol` (simple fixed supply, no owner or privileged minting)
+- Testing: Foundry + `@openzeppelin/contracts@5.4.0`
+- License: MIT for code; VirgoStars marks and identity are not licensed for impersonation (see [NOTICE](NOTICE))
+
+The initial supply is not chosen and no on-chain address has been assigned. Do not treat any `SPICA` token shown elsewhere as official.
+
 ## Roadmap
 
 1. Agree on the security model, token economics and legal requirements; check name/ticker collisions.
-2. Implement minimal ERC-20 prototype and unit/invariant tests in a non-production branch.
+2. Review minimal ERC-20 prototype and unit/fuzz tests; add stateful invariants and complete offline validation.
 3. Publish governance, vesting and distribution rules; obtain external security review.
 4. Run a public testnet pilot with no real economic value.
 5. Decide whether and when a compliant mainnet launch makes sense.
@@ -40,4 +51,4 @@ Never commit mnemonic phrases, private keys, seed phrases or provider secrets. N
 
 ## License
 
-License selection is pending. No license is granted merely by publishing a repository; contributions are not invited until a clear project license and contribution policy are added.
+The prototype code and repository documentation are under the [MIT License](LICENSE). Third-party OpenZeppelin code uses its own MIT license. **VirgoStars branding and official token identity are not part of the software license.** See [NOTICE](NOTICE).
