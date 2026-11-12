@@ -45,6 +45,10 @@ The proposed amounts and temporary IDs used in tests are **not** authorized SPIC
 - **No deployment authorization:** the CLI has no address, private key or signer input, and never broadcasts a transaction.
 - **No AI credit conversion:** SpicaCash remains independent of the initial VirgoStars AI credit product.
 
+## Optional pinned manifest
+
+The [SHA-256-pinned manifest](GRANT_MANIFEST_INTEGRITY.md) provides an explicit versioned file list and digest verification **before** performing this arithmetic. The manifest cannot prove that a contributor batch was intentionally omitted or that a GitHub PR is genuine. Run `npm run check:grant-manifest` for the committed, empty draft.
+
 ## Human review gates
 
 1. Agree a canonical, versioned proposal manifest including every batch in scope; define immutable public evidence for acceptance/eligibility.
