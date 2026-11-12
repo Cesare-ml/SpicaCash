@@ -4,9 +4,14 @@
   "private": true,
   "description": "Experimental SpicaCash ERC-20 contracts (no production token deployed)",
   "scripts": {
-    "build": "forge build",
+    "build": "forge build && node scripts/check-abi.mjs",
+    "check:abi": "node scripts/check-abi.mjs",
     "test": "forge test -vv",
-    "test:fuzz": "forge test --match-test testFuzz -vv"
+    "test:fuzz": "forge test --match-test testFuzz -vv",
+    "test:invariant": "forge test --match-test invariant_ -vv",
+    "test:abi-guard": "node --test test/node/abi-check.test.mjs",
+    "test:deploy-guard": "bash test/shell/deploy-guard.test.sh",
+    "test:offline": "npm run test:abi-guard && npm run test:deploy-guard"
   },
   "dependencies": {
     "@openzeppelin/contracts": "5.4.0"
