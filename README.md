@@ -29,8 +29,10 @@ Why not pick Polygon by default? Polygon PoS has a separate validator/security m
 
 ## Documentation
 
-- [Network evaluation](docs/NETWORK_EVALUATION.md) — research, trade-offs and references (forthcoming).
-- [Token design](docs/TOKEN_DESIGN.md) — pending decisions and security checklist (forthcoming).
+- [Network evaluation](docs/NETWORK_EVALUATION.md) — research, trade-offs and references.
+- [Token design](docs/TOKEN_DESIGN.md) — pending decisions and security checklist.
+
+- [Developer/AI agent guide](AGENTS.md) — safe contributor workflow.
 
 ## Security
 
