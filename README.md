@@ -62,6 +62,13 @@ The [offline grant batch reconciler](docs/GRANT_BATCH_RECONCILIATION.md) catches
 - `npm run check:grant-batches` — check the default **empty draft** only
 - `npm run test:grant-batches` — run synthetic cross-batch regression tests
 
+## Hashed grant proposal manifest (review-only)
+
+The [SHA-256 manifest integrity check](docs/GRANT_MANIFEST_INTEGRITY.md) detects modified batch files and requires a versioned, explicit list of the proposal files being reconciled. It **cannot prove** that no batch was intentionally omitted, that any GitHub contribution is eligible, or that token issuance is authorized.
+
+- `npm run check:grant-manifest` — validate the committed empty draft and its exact checksum
+- `npm run test:grant-manifest` — run synthetic integrity and safety tests
+
 ## Roadmap
 
 1. Agree on the security model, token economics and legal requirements; check name/ticker collisions.
