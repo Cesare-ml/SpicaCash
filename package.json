@@ -15,7 +15,8 @@
     "check:tokenomics": "node scripts/validate-tokenomics.mjs config/tokenomics.draft.json",
     "test:tokenomics": "node --test test/node/tokenomics.test.mjs",
     "check:grants": "node scripts/validate-contributor-grants.mjs config/contributor-grants.draft.json",
-    "test:grants": "node --test test/node/contributor-grants.test.mjs"
+    "test:grants": "node --test test/node/contributor-grants.test.mjs",
+    "test:vesting": "forge test --match-contract SpicaVestingTest -vv"
   },
   "dependencies": {
     "@openzeppelin/contracts": "5.4.0"
