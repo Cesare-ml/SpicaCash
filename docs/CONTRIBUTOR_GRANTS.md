@@ -44,6 +44,10 @@ Run with Node 20 or newer, without installing dependencies:
 
 The second command **must fail**, because the default document is only a draft. A complete **synthetic** test proposal is constructed inside the test suite. The CLI prints a non-authorization warning even for a structurally valid proposal.
 
+## Batch aggregation
+
+The [grant batch reconciler](GRANT_BATCH_RECONCILIATION.md) checks multiple hypothetical proposal files against a shared contributor budget and detects duplicate grant IDs and GitHub PR references **across supplied files**. It does not verify external evidence or detect omitted files.
+
 ## Human and governance gates before any real reward
 
 1. Decide whether grants should exist at all; document eligible public work and exclude automated self-approval.
