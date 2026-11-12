@@ -23,7 +23,7 @@ Status: **open design**. Nothing here authorizes a mint, sale, exchange listing,
 - **Treasury:** multisignature-controlled allocation with independently published address, rules and onchain vesting for any team allocation; no private keys in repositories.
 - **Distributions:** no onchain rewards system in v0. Design a separate, reviewed allocation process based on accepted contributions with abuse prevention before considering payouts.
 
-The initial code milestone should be a minimal, configurable ERC-20 **prototype** only, with unit and invariant tests and a testnet-only deploy script. Do not hard-code a final supply or a recipient address before approval.
+A minimal, configurable ERC-20 **prototype**, unit/fuzz tests and an Arbitrum Sepolia-only guarded deployment helper have been added on a draft branch. Stateful invariants, dependency installation, Solidity compilation, actual test execution and any deployment remain unverified/pending. Do not hard-code a final supply or recipient address before approval.
 
 ## Decisions not made yet
 
@@ -31,7 +31,7 @@ The initial code milestone should be a minimal, configurable ERC-20 **prototype*
 2. Decide fixed supply and units (none selected so far).
 3. Define audited allocation percentages: treasury, ecosystem/community, contributors, future liquidity, and team.
 4. Determine vesting / lockups / transparency and emergency governance model.
-5. Choose a software license that protects attribution requirements while remaining suitable for smart-contract use.
+5. Review the MIT software license proposed in the prototype branch; trademark and logo permissions remain separate, and any VirgoStars attribution in applications must be implemented at the UI/product layer.
 6. Define eligible uses, token holder rights (if any), transfer restrictions (if any), and compliance perimeter.
 7. Decide whether any public offering or exchange-admission process is appropriate.
 8. Define independent audit and multisig signers, deployment rehearsal and upgrade response procedures.
