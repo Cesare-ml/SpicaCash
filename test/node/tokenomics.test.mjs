@@ -101,6 +101,78 @@ reject('rejects incorrect token metadata',
   (p) => { p.token.name = 'ImposterToken'; },
   'token.name');
 
+// A draft cannot quietly contain economic commitments and still claim "draft" status.
+function rejectDraft(name, mutate, expectedPath) {
+  test(name, () => {
+    const plan = clone(draft);
+    mutate(plan);
+    const report = validateTokenomics(plan);
+    assert.equal(report.valid, false);
+    assert.ok(report.errors.some((error) => error.includes(expectedPath)), report.errors.join('\n'));
+  });
+}
+
+rejectDraft('draft cannot select a token supply',
+  (p) => { p.token.totalSupplyBaseUnits = '1'; },
+  'token.totalSupplyBaseUnits');
+rejectDraft('draft cannot include allocation commitments',
+  (p) => { p.allocations = [syntheticProposal().allocations[0]]; },
+  'allocations');
+rejectDraft('draft cannot propose a multisig signer policy',
+  (p) => { p.treasury = syntheticProposal().treasury; },
+  'treasury.status');
+
+test('a complete proposal cannot masquerade as a draft', () => {
+  const plan = syntheticProposal();
+  plan.status = 'draft';
+  const report = validateTokenomics(plan);
+  assert.equal(report.valid, false);
+  for (const path of ['token.totalSupplyBaseUnits', 'allocations', 'treasury.status']) {
+    assert.ok(report.errors.some((error) => error.startsWith(path + ':')), report.errors.join('\n'));
+  }
+});
+
+test('draft can keep a provisional network candidate without economic commitments', () => {
+  const plan = clone(draft);
+  plan.network.candidate = 'base';
+  assert.equal(validateTokenomics(plan).valid, true);
+});
+
+test('uint256 maximum remains representable as an exact base-unit string', () => {
+  const plan = syntheticProposal();
+  const maximum = ((1n << 256n) - 1n).toString();
+  plan.token.totalSupplyBaseUnits = maximum;
+  plan.allocations = [{ ...plan.allocations[0], amountBaseUnits: maximum }];
+  const report = validateTokenomics(plan, { requireProposal: true });
+  assert.equal(report.valid, true, report.errors.join('\n'));
+});
+
+test('uint256 max plus one is rejected even though it has only 78 digits', () => {
+  const plan = syntheticProposal();
+  const over = (1n << 256n).toString();
+  plan.token.totalSupplyBaseUnits = over;
+  plan.allocations = [{ ...plan.allocations[0], amountBaseUnits: over }];
+  const report = validateTokenomics(plan, { requireProposal: true });
+  assert.equal(report.valid, false);
+  assert.ok(report.errors.some((error) => error.includes('exceeds uint256')));
+});
+
+test('excessively long supply strings are rejected without attempting BigInt conversion', () => {
+  const plan = syntheticProposal();
+  plan.token.totalSupplyBaseUnits = '9'.repeat(100_000);
+  const report = validateTokenomics(plan, { requireProposal: true });
+  assert.equal(report.valid, false);
+  assert.ok(report.errors.some((error) => error.includes('exceeds uint256')));
+});
+
+test('malformed top-level documents do not throw', () => {
+  for (const value of [null, [], 'not-an-object', 4]) {
+    const report = validateTokenomics(value);
+    assert.equal(report.valid, false);
+    assert.ok(report.errors.some((error) => error.includes('plan: expected object')));
+  }
+});
+
 test('CLI accepts draft with an explicit non-deployment disclaimer', () => {
   const result = spawnSync(process.execPath,
     [join(root, 'scripts/validate-tokenomics.mjs'), join(root, 'config/tokenomics.draft.json')],
