@@ -30,6 +30,15 @@ This is a public, pre-launch crypto-asset project. **There is no official deploy
 - In a proposal, choose vesting parameters only if reviewed; do not assume default team allocations or privileges.
 - Never add key material, personal signer identities, sensitive governance records, or user financial information to the public repository.
 
+## Contributor grants (review-only)
+
+- Read `docs/CONTRIBUTOR_GRANTS.md` before modifying grant proposals.
+- Do not assign real SPICA amounts, wallets, recipient identities, or payment entitlements: there is no approved allocation.
+- Grant proposals require a separate validated tokenomics proposal with a contributors-category allocation.
+- Canonical GitHub PR links are unverified documentary references, not proof of acceptance or unique identity. Human review remains mandatory.
+- Never implement automatic payout, token-to-credits conversion, or a vesting execution transaction in this workstream.
+- Run `npm run test:grants` and `npm run check:grants` when changing grant tooling.
+
 ## Pull request checklist
 
 - State the goal, threat-model impact, and exact files changed.

@@ -39,6 +39,16 @@ No supply, allocation percentages, wallet addresses, or final treasury signer ar
 - Independent Node tests: `npm run test:tokenomics`
 - This is **planning only**, not approval to issue, sell, distribute or trade SPICA.
 
+## Contributor grant review (offline, no payouts)
+
+The [contributor grant design](docs/CONTRIBUTOR_GRANTS.md) introduces a review-only validator for hypothetical open-source contributions. Entries reference GitHub pull requests and a separate **proposed** contributor allocation. Nothing is granted or distributed automatically; GitHub evidence is not fetched or verified by the validator.
+
+- Empty default: `config/contributor-grants.draft.json` (no beneficiaries, amounts or addresses)
+- Check draft: `npm run check:grants`
+- Run 37 deterministic tests: `npm run test:grants`
+- All offline checks: `npm run test:offline`
+- **Not** a token-for-AI-compute program; **not** usable to buy VirgoStars AI credits.
+
 ## Roadmap
 
 1. Agree on the security model, token economics and legal requirements; check name/ticker collisions.

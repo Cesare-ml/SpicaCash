@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "status": "draft",
+  "deploymentApproved": false,
+  "distributionEnabled": false,
+  "aiCreditConversionEnabled": false,
+  "tokenomicsBucketId": null,
+  "grants": []
+}

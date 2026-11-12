@@ -48,6 +48,10 @@ The validator checks that proposed allocations add up **exactly** to the total s
 
 **A numerically valid proposal is not safe, approved, legal or ready for launch.** There is deliberately no `approved` status, no address/signing/private-key field, no direct wallet transaction and no deployment API in this tooling.
 
+## Contributor allocation review (separate, offline)
+
+The [contributor grants proposal validator](CONTRIBUTOR_GRANTS.md) supports **synthetic** GitHub PR references and proposed vesting parameters. It accepts a grant proposal only alongside a complete, structurally valid tokenomics proposal and a contributors-category allocation. It cannot pay, sign or validate that a GitHub PR was accepted. The default grant draft is empty; no grant amounts are approved.
+
 ## Treasury operating policy to decide
 
 A multisignature treasury is the preferred approach, but addresses and signer identities must **not** be published here prematurely. A treasury design review should cover:
