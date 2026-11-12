@@ -30,6 +30,15 @@ This is a public, pre-launch crypto-asset project. **There is no official deploy
 - In a proposal, choose vesting parameters only if reviewed; do not assume default team allocations or privileges.
 - Never add key material, personal signer identities, sensitive governance records, or user financial information to the public repository.
 
+## Contributor grants and vesting
+
+- Read `docs/CONTRIBUTOR_GRANTS_AND_VESTING.md` before adding or changing contributor allocation records or vesting tests.
+- `config/grants.draft.json` **must** remain an empty, non-payable draft until authorized review evidence and tokenomics exist.
+- Do not infer contributor identity, merge status, independent review or accepted amount from a JSON entry. Verify actual public GitHub evidence independently before describing any grant as eligible.
+- No wallet addresses, personal details, payment credentials or automated payouts in the grant ledger.
+- The Foundry vesting tests use fictional values and OpenZeppelin's standard `VestingWallet`. Do not describe its ownership rights as non-transferable or late funding as locked from deposit time.
+- Do not create new token distribution, escrow or live vesting deploy scripts without separate explicit approval.
+
 ## Pull request checklist
 
 - State the goal, threat-model impact, and exact files changed.
