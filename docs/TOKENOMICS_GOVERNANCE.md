@@ -37,6 +37,15 @@ node --test test/node/tokenomics.test.mjs
 
 Expected behavior: The first command accepts the **empty draft** and says it is not approved for deployment. The second **intentionally fails** because the draft is incomplete. The test command exercises synthetic proposals; its numbers are NOT VirgoStars tokenomics.
 
+### Draft-versus-proposal safety boundary
+
+- A `draft` must keep `token.totalSupplyBaseUnits: null`, `allocations: []` and `treasury.status: "undecided"` with null signer fields. Changing these fields requires explicitly changing the document to `status: "proposal"` for review.
+- Either status may record `network.candidate` as provisional research. This is not a chain selection or approval.
+- A `proposal` must provide exact positive base-unit amounts, fully balancing allocations, and a proposed multisig policy. The validator does not judge whether those choices are economically fair or legally compliant.
+- Amounts must be canonical decimal integer strings within the EVM `uint256` range (at most 78 digits); oversized strings are rejected before BigInt conversion.
+- The validator cannot approve deployments, sales, distributions, or VirgoStars AI-credit conversion, even with `reviews.security` and `reviews.legal` set to `completed`. Review labels are self-reported planning metadata, **not evidence of completed audits**.
+
+
 A future review proposal uses `status: "proposal"` and supplies:
 - `token.totalSupplyBaseUnits` as an exact **integer string**, because JSON floating-point numbers can lose precision;
 - `allocations[]` with unique IDs, category, exact base-unit amount, rationale, and explicit vesting policy/months;
