@@ -20,6 +20,16 @@ This is a public, pre-launch crypto-asset project. **There is no official deploy
 - Prefer minimal and verifiable standard-contract components; no fee-on-transfer, hidden mint functions, owner blacklists or speculative marketing claims.
 - For financial/security-sensitive changes, request review; provide exact tests actually run. Never claim an audit based on self-tests.
 
+## Tokenomics-governance boundaries
+
+- Read `docs/TOKENOMICS_GOVERNANCE.md` before changing economic-plan fields.
+- The file `config/tokenomics.draft.json` intentionally contains **no** chosen supply, allocation, or multisig signers. Do not invent any without explicit human decisions.
+- The offline validator can check mathematical consistency; it **never** authorizes deployment or token distribution.
+- Do not use tokenomics JSON as input to an onchain deploy script or automated signing.
+- For changes to this schema, add tests for malformed inputs, precision, and prohibited integrations.
+- In a proposal, choose vesting parameters only if reviewed; do not assume default team allocations or privileges.
+- Never add key material, personal signer identities, sensitive governance records, or user financial information to the public repository.
+
 ## Pull request checklist
 
 - State the goal, threat-model impact, and exact files changed.
