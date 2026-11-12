@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {VestingWallet} from "@openzeppelin/contracts/finance/VestingWallet.sol";
 import {SpicaCash} from "../src/SpicaCash.sol";
 
@@ -99,7 +98,7 @@ contract SpicaVestingTest {
         uint256 elapsed = uint256(elapsedSeed) % (uint256(DURATION) + 1);
         vm.warp(uint256(START) + elapsed);
         uint256 expected = GRANT * elapsed / uint256(DURATION);
-        require(vesting.vestedAmount(address(token), block.timestamp) == expected, "curve mismatch");
+        require(vesting.vestedAmount(address(token), uint64(block.timestamp)) == expected, "curve mismatch");
         require(vesting.releasable(address(token)) == expected, "releasable mismatch");
         require(expected <= GRANT, "over-release possible");
         require(token.totalSupply() == TEST_SUPPLY, "supply changed");
