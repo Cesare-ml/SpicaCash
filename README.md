@@ -30,6 +30,15 @@ The initial Solidity implementation, unit/fuzz test suite and guarded Arbitrum S
 
 The initial supply is not chosen and no on-chain address has been assigned. Do not treat any `SPICA` token shown elsewhere as official.
 
+## Tokenomics and governance research
+
+No supply, allocation percentages, wallet addresses, or final treasury signer arrangement have been chosen. The non-deployable draft is [`config/tokenomics.draft.json`](config/tokenomics.draft.json).
+
+- [Tokenomics and treasury governance](docs/TOKENOMICS_GOVERNANCE.md)
+- Offline draft validation: `npm run check:tokenomics`
+- Independent Node tests: `npm run test:tokenomics`
+- This is **planning only**, not approval to issue, sell, distribute or trade SPICA.
+
 ## Roadmap
 
 1. Agree on the security model, token economics and legal requirements; check name/ticker collisions.
