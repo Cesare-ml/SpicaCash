@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {SpicaCash} from "../src/SpicaCash.sol";
+import {IERC20Errors} from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 
 // Simple external caller used to exercise allowance and insufficient-balance paths.
 // The tests intentionally do not depend on forge-std.
@@ -93,7 +94,14 @@ contract SpicaCashTest {
         TokenActor actor = new TokenActor();
         try actor.pull(token, address(this), RECEIVER, 1) returns (bool) {
             revert("unauthorized transferFrom succeeded");
-        } catch {}
+        } catch (bytes memory reason) {
+            require(
+                _revertSelector(reason) == IERC20Errors.ERC20InsufficientAllowance.selector,
+                "unexpected allowance error"
+            );
+        }
+        require(token.balanceOf(RECEIVER) == 0, "balance changed after failed pull");
+        require(token.totalSupply() == TEST_SUPPLY, "supply changed after failed pull");
     }
 
     function testCannotTransferMoreThanBalance() public {
@@ -101,7 +109,41 @@ contract SpicaCashTest {
         TokenActor actor = new TokenActor();
         try actor.send(token, RECEIVER, 1) returns (bool) {
             revert("insufficient balance transfer succeeded");
-        } catch {}
+        } catch (bytes memory reason) {
+            require(
+                _revertSelector(reason) == IERC20Errors.ERC20InsufficientBalance.selector,
+                "unexpected balance error"
+            );
+        }
+        require(token.balanceOf(RECEIVER) == 0, "balance changed after failed send");
+    }
+
+    function testTransferToZeroAddressReverts() public {
+        SpicaCash token = _token();
+        try token.transfer(address(0), 1) returns (bool) {
+            revert("transfer to zero succeeded");
+        } catch (bytes memory reason) {
+            require(
+                _revertSelector(reason) == IERC20Errors.ERC20InvalidReceiver.selector,
+                "unexpected receiver error"
+            );
+        }
+        require(token.totalSupply() == TEST_SUPPLY, "supply changed after rejection");
+    }
+
+    function testMaximumAllowanceIsNotConsumed() public {
+        SpicaCash token = _token();
+        TokenActor actor = new TokenActor();
+        require(token.approve(address(actor), type(uint256).max), "approve failed");
+        require(actor.pull(token, address(this), RECEIVER, 17), "first pull failed");
+        require(actor.pull(token, address(this), OTHER, 23), "second pull failed");
+        require(
+            token.allowance(address(this), address(actor)) == type(uint256).max,
+            "infinite approval unexpectedly reduced"
+        );
+        require(token.balanceOf(RECEIVER) == 17, "first receiver mismatch");
+        require(token.balanceOf(OTHER) == 23, "second receiver mismatch");
+        require(token.totalSupply() == TEST_SUPPLY, "supply changed");
     }
 
     function testFuzz_TransferConservesSupplyAndBalances(uint96 input) public {
@@ -132,7 +174,12 @@ contract SpicaCashTest {
         require(token.approve(address(actor), amount - 1), "approve failed");
         try actor.pull(token, address(this), RECEIVER, amount) returns (bool) {
             revert("overspend of allowance succeeded");
-        } catch {}
+        } catch (bytes memory reason) {
+            require(
+                _revertSelector(reason) == IERC20Errors.ERC20InsufficientAllowance.selector,
+                "unexpected fuzz allowance error"
+            );
+        }
         require(token.balanceOf(RECEIVER) == 0, "unexpected transfer");
     }
 }
