@@ -11,9 +11,12 @@
     "test:invariant": "forge test --match-test invariant_ -vv",
     "test:abi-guard": "node --test test/node/abi-check.test.mjs",
     "test:deploy-guard": "bash test/shell/deploy-guard.test.sh",
-    "test:offline": "npm run test:abi-guard && npm run test:deploy-guard && npm run test:tokenomics && npm run check:tokenomics",
+    "test:offline": "npm run test:abi-guard && npm run test:deploy-guard && npm run test:tokenomics && npm run test:grants && npm run check:tokenomics && npm run check:grants",
     "check:tokenomics": "node scripts/validate-tokenomics.mjs config/tokenomics.draft.json",
-    "test:tokenomics": "node --test test/node/tokenomics.test.mjs"
+    "test:tokenomics": "node --test test/node/tokenomics.test.mjs",
+    "check:grants": "node scripts/validate-grants.mjs config/grants.draft.json",
+    "test:grants": "node --test test/node/grants.test.mjs",
+    "test:vesting": "forge test --match-contract SpicaVestingTest -vv"
   },
   "dependencies": {
     "@openzeppelin/contracts": "5.4.0"
