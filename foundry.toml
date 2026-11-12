@@ -11,3 +11,8 @@ remappings = ["@openzeppelin/contracts/=node_modules/@openzeppelin/contracts/"]
 
 [profile.default.fuzz]
 runs = 256
+
+[profile.default.invariant]
+runs = 64
+depth = 64
+fail_on_revert = true
