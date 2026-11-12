@@ -1,0 +1,7 @@
+SpicaCash is an experimental open-source implementation associated with the VirgoStars project.
+
+The MIT software license does not grant permission to use VirgoStars names, trademarks, logos, or present an unofficial token as official. A canonical on-chain address has NOT been published.
+
+Third-party dependency: OpenZeppelin Contracts, Copyright OpenZeppelin and contributors, MIT license. See https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.4.0/LICENSE.
+
+VirgoStars AI credits and paid services are not integrated with SpicaCash in the initial release.
