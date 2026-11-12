@@ -39,6 +39,15 @@ No supply, allocation percentages, wallet addresses, or final treasury signer ar
 - Independent Node tests: `npm run test:tokenomics`
 - This is **planning only**, not approval to issue, sell, distribute or trade SPICA.
 
+## Contribution grants and linear vesting tests
+
+A **draft-only**, offline contribution-grant registry and a test harness for OpenZeppelin's standard linear `VestingWallet` are available on the grants development branch. No payments, beneficiaries, launch allocations, or real token schedules are configured.
+
+- [Grant and vesting research](docs/CONTRIBUTOR_GRANTS_AND_VESTING.md)
+- [Empty grant ledger](config/grants.draft.json)
+- `npm run test:grants` / `npm run check:grants`
+- `npm run test:vesting` (requires Foundry and dependencies)
+
 ## Roadmap
 
 1. Agree on the security model, token economics and legal requirements; check name/ticker collisions.
