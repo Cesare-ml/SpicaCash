@@ -31,4 +31,4 @@ This is a public, pre-launch crypto-asset project. **There is no official deploy
 
 ## Legal and project identity
 
-The codebase is for technical exploration, not an offer or recommendation to acquire any asset. Token issuance, public distribution, and exchange admission require a tailored review of applicable legal obligations, including MiCA where relevant. The repository license must be explicitly selected before accepting broad third-party code contributions.
+The codebase is for technical exploration, not an offer or recommendation to acquire any asset. Token issuance, public distribution, and exchange admission require a tailored review of applicable legal obligations, including MiCA where relevant. The prototype branch proposes the MIT License for source code; preserve the copyright notices. The VirgoStars brand remains distinct from the software license.
