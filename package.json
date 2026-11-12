@@ -1,0 +1,17 @@
+{
+  "name": "spicacash-contracts",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Experimental SpicaCash ERC-20 contracts (no production token deployed)",
+  "scripts": {
+    "build": "forge build",
+    "test": "forge test -vv",
+    "test:fuzz": "forge test --match-test testFuzz -vv"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "5.4.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
