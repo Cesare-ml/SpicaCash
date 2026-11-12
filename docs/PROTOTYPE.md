@@ -22,9 +22,20 @@ npm install
 forge build
 forge test -vv
 forge test --match-test testFuzz -vv
+forge test --match-test invariant_ -vv
+node scripts/check-abi.mjs
+npm run test:offline
 ```
 
-The project contains plain Solidity tests with no forge-std dependency. Unit tests check constructor errors, token metadata, transfer amount conservation, allowances and insufficient-balance/allowance reverts. Three fuzz tests cover supply conservation, delegated transfers and overspending. It does not yet contain a stateful invariant harness, formal verification or an independent audit.
+The project contains plain Solidity tests with no forge-std dependency. Unit tests check constructor errors, token metadata, transfer amount conservation, approvals (including max allowance), ERC-6093 revert selectors and zero-address transfers. Three fuzz tests cover supply conservation, delegated transfers and overspending.
+
+Stateful handler-based invariants run 64 sequences of 64 calls per invariant and reject unexpected reverts. They check constant supply and conservation of tracked holder balances across transfers and delegated transfers. This is useful automated testing, **not formal verification or an audit**.
+
+After compilation, `scripts/check-abi.mjs` rejects any new external function beyond the nine expected ERC-20 methods, unexpected payable functions, missing standard functions or changed constructor types. This only checks the ABI surface, **not implementation behavior, storage safety or network security**. Run its six independent offline tests with `npm run test:abi-guard`.
+
+`npm run test:deploy-guard` runs seven offline cases against the Sepolia deployment script with mock `forge` and `cast` executables, proving it refuses incorrect chain ID, invalid values or missing explicit authorization under those mocked conditions. Neither offline test suite sends network transactions.
+
+**Validation status (2026-11-12):** Offline deployment guard **7/7 passed** and independent ABI checker tests **6/6 passed** in a local Linux/Node 22 environment. `forge build`, Solidity unit/fuzz/invariant runs and compiled ABI inspection are **not run** here because the compiler/Foundry and npm dependency retrieval are unavailable. Do not report the smart contract as verified until the Solidity commands pass in a configured environment.
 
 **Never** run tests on a production fork with real signing credentials.
 
