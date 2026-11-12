@@ -49,6 +49,12 @@ The [contributor grant design](docs/CONTRIBUTOR_GRANTS.md) introduces a review-o
 - All offline checks: `npm run test:offline`
 - **Not** a token-for-AI-compute program; **not** usable to buy VirgoStars AI credits.
 
+## Reference vesting tests (research only)
+
+Our [OpenZeppelin VestingWallet research](docs/VESTING_REFERENCE.md) includes six Solidity tests for the standard vesting schedule, not a new deployable vesting contract. Ownership remains transferable and late deposits can unlock immediately. No real token or payments exist.
+
+Run `npm run test:vesting` on a configured Foundry machine (not yet executed here).
+
 ## Roadmap
 
 1. Agree on the security model, token economics and legal requirements; check name/ticker collisions.
