@@ -39,6 +39,14 @@ This is a public, pre-launch crypto-asset project. **There is no official deploy
 - Never implement automatic payout, token-to-credits conversion, or a vesting execution transaction in this workstream.
 - Run `npm run test:grants` and `npm run check:grants` when changing grant tooling.
 
+## Multi-batch accounting constraints
+
+- Read `docs/GRANT_BATCH_RECONCILIATION.md` before modifying batch reconciliation.
+- A successful batch check is **not** evidence of GitHub acceptance or a grant entitlement. The caller must include **all** proposal files to detect cross-file duplicate PRs and overspending.
+- Do not set real amounts or choose an allocation, signer or beneficiary without approval.
+- Do not add any payment/signing/deployment code to the offline reconciliation workflow.
+- Run `npm run test:grant-batches` and `npm run check:grant-batches` for changes.
+
 ## Pull request checklist
 
 - State the goal, threat-model impact, and exact files changed.

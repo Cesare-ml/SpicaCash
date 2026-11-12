@@ -55,6 +55,13 @@ Our [OpenZeppelin VestingWallet research](docs/VESTING_REFERENCE.md) includes si
 
 Run `npm run test:vesting` on a configured Foundry machine (not yet executed here).
 
+## Cross-batch reward proposal accounting
+
+The [offline grant batch reconciler](docs/GRANT_BATCH_RECONCILIATION.md) catches repeated PR evidence across independent proposal files and proposed totals that exceed one contributor allocation. It performs **no payment**, GitHub verification, wallet interaction or authorization.
+
+- `npm run check:grant-batches` — check the default **empty draft** only
+- `npm run test:grant-batches` — run synthetic cross-batch regression tests
+
 ## Roadmap
 
 1. Agree on the security model, token economics and legal requirements; check name/ticker collisions.

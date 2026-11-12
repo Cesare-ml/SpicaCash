@@ -11,12 +11,14 @@
     "test:invariant": "forge test --match-test invariant_ -vv",
     "test:abi-guard": "node --test test/node/abi-check.test.mjs",
     "test:deploy-guard": "bash test/shell/deploy-guard.test.sh",
-    "test:offline": "npm run test:abi-guard && npm run test:deploy-guard && npm run test:tokenomics && npm run check:tokenomics && npm run test:grants && npm run check:grants",
+    "test:offline": "npm run test:abi-guard && npm run test:deploy-guard && npm run test:tokenomics && npm run check:tokenomics && npm run test:grants && npm run check:grants && npm run test:grant-batches && npm run check:grant-batches",
     "check:tokenomics": "node scripts/validate-tokenomics.mjs config/tokenomics.draft.json",
     "test:tokenomics": "node --test test/node/tokenomics.test.mjs",
     "check:grants": "node scripts/validate-contributor-grants.mjs config/contributor-grants.draft.json",
     "test:grants": "node --test test/node/contributor-grants.test.mjs",
-    "test:vesting": "forge test --match-contract SpicaVestingTest -vv"
+    "test:vesting": "forge test --match-contract SpicaVestingTest -vv",
+    "check:grant-batches": "node scripts/check-grant-batches.mjs config/contributor-grants.draft.json",
+    "test:grant-batches": "node --test test/node/grant-batches.test.mjs"
   },
   "dependencies": {
     "@openzeppelin/contracts": "5.4.0"
