@@ -45,6 +45,48 @@ test('draft manifest CLI prints explicit non-authorization',t=>{
  const f=fixture(t),r=run(f.path);
  assert.equal(r.status,0,r.stderr);assert.match(r.stdout,/NOT approved for issuance/);
 });
+test('manifest loader exposes SHA-256 of exact raw manifest bytes',t=>{
+ const f=fixture(t),report=loadGrantManifest(f.path);
+ assert.equal(report.valid,true,report.errors.join('\n'));
+ assert.equal(report.manifestSha256,sha256Hex(readFileSync(f.path)));
+});
+test('offline CLI prints a non-authorizing manifest fingerprint',t=>{
+ const r=run(fixture(t).path);
+ assert.equal(r.status,0,r.stderr);
+ assert.match(r.stdout,/Manifest SHA-256: [a-f0-9]{64}/);
+ assert.match(r.stdout,/not a signature or authorization/);
+});
+test('matching independently supplied manifest digest is accepted',t=>{
+ const f=fixture(t),digest=sha256Hex(readFileSync(f.path));
+ const r=run(f.path,'--expected-manifest-sha256',digest);
+ assert.equal(r.status,0,r.stderr);
+ assert.match(r.stdout,/Manifest SHA-256:/);
+});
+test('mismatched manifest review digest fails even when inner hashes pass',t=>{
+ const f=fixture(t),approved=sha256Hex(readFileSync(f.path));
+ // Cosmetic reformat preserves the parsed content and all batch-file hashes.
+ writeFileSync(f.path,JSON.stringify(f.data)+'\n');
+ assert.equal(loadGrantManifest(f.path).valid,true);
+ assert.notEqual(sha256Hex(readFileSync(f.path)),approved);
+ const r=run(f.path,'--expected-manifest-sha256',approved);
+ assert.equal(r.status,1,r.stdout);
+ assert.match(r.stderr,/review snapshot digest mismatch/);
+});
+test('expected manifest digest rejects invalid casing and missing CLI values',t=>{
+ const f=fixture(t);
+ for(const args of [
+   ['--expected-manifest-sha256'],
+   ['--expected-manifest-sha256','F'.repeat(64)],
+   ['--expected-manifest-sha256','xyz']
+ ]) {
+   const r=run(f.path,...args);
+   assert.equal(r.status,2,r.stderr);
+   assert.match(r.stderr,/Usage:/);
+ }
+ const invalid=loadGrantManifest(f.path,{expectedManifestSha256:'XYZ'});
+ assert.equal(invalid.valid,false);
+ assert.match(invalid.errors.join('\n'),/expected lowercase SHA-256 digest/);
+});
 test('require-proposal rejects draft',t=>{
  const r=run(fixture(t).path,'--require-proposal');
  assert.equal(r.status,1);assert.match(r.stderr,/review proposal is required/);
