@@ -83,6 +83,12 @@ npm run test:grant-inventory
 
 This is an **opt-in** directory check; omitting `--inventory-dir` explicitly reports that the inventory was not checked. For final reviews, use the strict option and separately verify that the selected folder represents the complete intended proposal scope.
 
+## Descriptor-bound, size-limited JSON reads
+
+The manifest loader opens each local JSON file once and reads its bytes through the **opened descriptor** instead of separately trusting a size check followed by an unrestricted path-based read. It uses an upper bound of **1 MiB per file** (the manifest, every batch and tokenomics JSON), reads no more than 1 MiB + 1 byte, and rejects non-regular files, oversized data and files whose descriptor metadata or observed byte count change during the read. On platforms with `O_NOFOLLOW`, it also refuses a final-path symlink swapped in between the precheck and the open. No network access, token transfer or signing is involved.
+
+This reduces common check-to-open and file-growth risks, but is **not an atomic filesystem snapshot**. Metadata checks cannot detect every concurrent in-place rewrite, and no-follow protection is platform-dependent; upstream directories may be modified by other users. Review an immutable checkout with no concurrent writers, pin the raw manifest through a trusted independent record, and retain external human review.
+
 ## Boundaries and remaining risks
 
 - **Completeness cannot be proved by the manifest itself.** An author could omit a batch entirely. Governance must separately confirm that the list is the agreed canonical set, e.g. by reviewing its committed Git revision and inventory.
@@ -95,4 +101,4 @@ This is an **opt-in** directory check; omitting `--inventory-dir` explicitly rep
 
 ## Validation gates
 
-The 28 Node tests in `test/node/grant-manifest.test.mjs` cover default and synthetic proposals, tampered file hashes, unsafe file paths, duplicate references, Symlink denial, cross-batch over-allocation and CLI authorization disclaimers. Run `npm run test:grant-manifest`, `npm run test:grant-inventory` and `npm run test:offline` in a clean repository checkout and document actual test output before merge. Solidity compilation and audit are separate, still mandatory before an onchain trial.
+The 31 Node tests in `test/node/grant-manifest.test.mjs` cover default and synthetic proposals, tampered file hashes, unsafe file paths, duplicate references, Symlink denial, cross-batch over-allocation and CLI authorization disclaimers. Run `npm run test:grant-manifest`, `npm run test:grant-inventory` and `npm run test:offline` in a clean repository checkout and document actual test output before merge. Solidity compilation and audit are separate, still mandatory before an onchain trial.
