@@ -59,7 +59,8 @@ export function checkGrantInventory(manifestPath, inventoryDirectory, verifiedBa
 
   let discovered = [];
   try {
-    const entries = readdirSync(directory, { withFileTypes: true });
+    const entries = readdirSync(directory, { withFileTypes: true })
+      .sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
     // Fail closed on nested folders, aliases and special files. Otherwise a
     // reviewer could overlook batches hidden below a supposedly flat inventory.
     for (const entry of entries) {
@@ -77,7 +78,14 @@ export function checkGrantInventory(manifestPath, inventoryDirectory, verifiedBa
         continue;
       }
       // Non-JSON regular files (for example README.md) remain documentation.
-      if (entry.name.endsWith('.json')) discovered.push(entry.name);
+      // Mixed-case JSON suffixes must never disappear from the inventory silently.
+      if (/\.json$/i.test(entry.name)) {
+        if (!entry.name.endsWith('.json')) {
+          fail(where, 'JSON extension must be lowercase .json');
+          continue;
+        }
+        discovered.push(entry.name);
+      }
     }
   } catch (error) {
     fail('inventoryDirectory', 'cannot enumerate JSON files: ' + error.message);

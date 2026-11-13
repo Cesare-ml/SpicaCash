@@ -35,6 +35,24 @@ test('non-JSON notes are ignored', t => {
   writeFileSync(join(f.inventory, 'README.md'), 'notes');
   assert.equal(check(f).valid, true);
 });
+test('case-varied JSON extensions are rejected rather than silently skipped', t => {
+  const f = fixture(t);
+  writeFileSync(join(f.inventory, 'hidden.JSON'), '{}\n');
+  writeFileSync(join(f.inventory, 'hidden2.Json'), '{}\n');
+  const report = check(f);
+  assert.equal(report.valid, false);
+  assert.equal(report.errors.filter(e => /JSON extension must be lowercase/.test(e)).length, 2);
+});
+test('unlisted batch diagnostics are sorted deterministically', t => {
+  const f = fixture(t);
+  writeFileSync(join(f.inventory, 'z-extra.json'), '{}\n');
+  writeFileSync(join(f.inventory, 'a-extra.json'), '{}\n');
+  const errors = check(f).errors.filter(e => /unlisted JSON batch file/.test(e));
+  assert.deepEqual(errors, [
+    'inventoryDirectory/a-extra.json: unlisted JSON batch file',
+    'inventoryDirectory/z-extra.json: unlisted JSON batch file'
+  ]);
+});
 test('manifest-listed batch in a different directory is rejected', t => {
   const f = fixture(t);
   assert.match(check(f, 'batch-proposals', [{ name: 'somewhere/grant-a.json' }]).errors.join('\n'), /outside/);
