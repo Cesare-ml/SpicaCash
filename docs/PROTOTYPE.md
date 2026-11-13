@@ -18,7 +18,7 @@ The contract deliberately has **no owner, no upgradeable proxy, no admin minting
 Install Node.js (20+) and [Foundry](https://getfoundry.sh/introduction/installation), including `forge` and `cast`. For Windows, WSL2 with Linux tooling is recommended.
 
 ```bash
-npm install
+npm ci
 forge build
 forge test -vv
 forge test --match-test testFuzz -vv
@@ -38,20 +38,26 @@ After compilation, `scripts/check-abi.mjs` rejects any new external function bey
 
 **Validation status (2026-11-13):** **Complete PR #2 offline suite passed: 105/105 cases** using `npm run test:offline` in a manually reconstructed local source tree with the same package layout and Git blob SHA-1s as the GitHub PR, after correcting the test/shell RPC harness repository-root path. Results: ABI **21/21**, deploy guards **15/15**, RPC URL **18/18**, mocked RPC integration **8/8**, Foundry evidence parser (synthetic transcripts) **34/34**, local verification pipeline mocks **9/9**, zero failures, exit code 0. The RPC integration test also passed when invoked from an unrelated working directory. No real provider, signer, blockchain call, or broadcast was involved. This is **not a full Git clone/checkout** and **not** a Solidity build. `forge build`, Solidity unit/fuzz/invariant runs and compiled ABI inspection remain **unrun** here because Foundry, solc and npm dependency retrieval are unavailable. Do not report the smart contract as verified until the Solidity commands pass in a configured environment.
 
-**Foundry console table compatibility (2026-11-13):** A public Foundry report shows horizontal separator rows (`|-----+-----|`) between selector metrics entries (see [foundry-rs/foundry#12269](https://github.com/foundry-rs/foundry/issues/12269)). The earlier parser treated these rows as metrics and would reject a valid campaign. `scripts/check-foundry-invariants.mjs` now ignores **only pure ASCII/Unicode drawing separators**, while malformed rows, duplicate/missing selectors, zero calls and nonzero reverts remain rejected. `npm run test:foundry-format` runs **8 dedicated synthetic-format regressions**, all **8/8 passed** locally with Node.js 22. The tested parser and test file match the exact GitHub source blob hashes. The expanded offline suite now has **113 cases (previous 105 plus 8)**, but **the entire 113-case suite has not been rerun together in a clean checkout**; the previous 105/105 result above is historical. This is not a real Foundry execution or audit.
+**Foundry console table compatibility (2026-11-13):** A public Foundry report shows horizontal separator rows (`|-----+-----|`) between selector metrics entries (see [foundry-rs/foundry#12269](https://github.com/foundry-rs/foundry/issues/12269)). The earlier parser treated these rows as metrics and would reject a valid campaign. `scripts/check-foundry-invariants.mjs` now ignores **only pure ASCII/Unicode drawing separators**, while malformed rows, duplicate/missing selectors, zero calls and nonzero reverts remain rejected. `npm run test:foundry-format` runs **8 dedicated synthetic-format regressions**, all **8/8 passed** locally with Node.js 22. The tested parser and test file match the exact GitHub source blob hashes. The expanded offline suite now has **132 cases** (previous 105, plus 8 Foundry-format tests and 19 lockfile tests), but **the entire 132-case suite has not been rerun together in a clean checkout**; the previous 105/105 result above is historical. This is not a real Foundry execution or audit.
+
+## Reproducible npm dependency and supply-chain boundary
+
+The committed npm v3 `package-lock.json` records **only** the direct dependency `@openzeppelin/contracts@5.4.0`, resolved from the npm registry with the version's published **SHA-512 Subresource Integrity** digest. Prefer `npm ci` for a clean installation: npm checks the downloaded tarball against that digest. Avoid `npm install` during review because it may update dependency metadata.
+
+Run `npm run test:dependency-lock` to check the exact version, single-package lock graph, registry URL and pinned SRI value. **19/19** Node regression checks passed locally; `npm install --package-lock-only --offline --ignore-scripts --no-audit --no-fund` also accepted the lockfile **without changing its bytes**. These checks do **not** prove an existing `node_modules` folder has not been modified; for a trusted build start from a clean directory and run `npm ci`, reviewing any changed lockfile in a PR. The package was **not downloaded or installed here**, and neither a Foundry/Solidity build nor a live-chain test was performed.
 
 ## One-command local Solidity verification gate
 
 On a machine with Node.js 20+, Bash (WSL2 on Windows), Foundry, a **preinstalled local Solidity compiler 0.8.24**, and locally installed `@openzeppelin/contracts@5.4.0`, run:
 
 ```bash
-npm install
+npm ci
 npm run verify:local
 ```
 
 The script `scripts/verify-local.sh` is **offline-only for blockchain interactions**. It checks that `forge` and the OpenZeppelin ERC-20 dependency exist, removes inherited testnet/RPC/keystore variables from its environment, then runs these five gates sequentially:
 
-1. `npm run test:offline` (105 checks, including 34 synthetic parser regressions and nine fully mocked verification-pipeline scenarios).
+1. `npm run test:offline` (**132 registered checks**, including 19 npm supply-chain, eight Foundry-format, 34 synthetic parser and nine mocked verification-pipeline cases; the 132 have not yet been run together).
 2. `forge build --offline --force` to compile fresh Solidity artifacts **without downloading a compiler**.
 3. `node scripts/check-abi.mjs` against the **actual compiled artifact**.
 4. `forge test --offline -vv` for the full unit, fuzz and invariant suite.
@@ -77,7 +83,7 @@ The earlier `vm.targetContract(address)` call incorrectly treated the helper as 
 Run and record:
 
 ```bash
-npm install
+npm ci
 forge build
 forge test --match-contract SpicaCashInvariantTest -vv
 forge test --match-test invariant_ -vv
