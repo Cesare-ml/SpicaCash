@@ -36,7 +36,7 @@ After compilation, `scripts/check-abi.mjs` rejects any new external function bey
 
 `npm run test:deploy-guard` runs **15 offline cases** against the Sepolia deployment script with mock `forge` and `cast` executables. They exercise the wrong chain ID, zero receiver address, zero and noncanonical supplies, values above the EVM `uint256` limit, missing or invalid Foundry account names, missing explicit authorization, the exact maximum `uint256` (read-only), and one mock-only authorized call. None of these tests uses a real RPC, signer or transaction.
 
-**Validation status (2026-11-13):** Offline deployment guard **15/15 passed** and independent ABI checker tests **21/21 passed** in a local Linux/Node 22 environment. `forge build`, Solidity unit/fuzz/invariant runs and compiled ABI inspection are **not run** here because the compiler/Foundry and npm dependency retrieval are unavailable. Do not report the smart contract as verified until the Solidity commands pass in a configured environment.
+**Validation status (2026-11-13):** Offline deployment guard **15/15 passed**, RPC URL checker **18/18 passed**, RPC preflight integration **5/5 passed**, and independent ABI checker tests **21/21 passed** in a local Linux/Node 22 environment. `forge build`, Solidity unit/fuzz/invariant runs and compiled ABI inspection are **not run** here because the compiler/Foundry and npm dependency retrieval are unavailable. Do not report the smart contract as verified until the Solidity commands pass in a configured environment.
 
 **Never** run tests on a production fork with real signing credentials.
 
@@ -61,6 +61,8 @@ node scripts/check-abi.mjs
 Foundry invariant configuration enables `show_metrics = true` to print selector-call statistics. **Inspect the metrics for all three handler functions (`move`, `approve`, `pull`)**; a campaign without handler calls does not demonstrate stateful coverage. Do not count the invariants as validated if compilation fails, if any invariant target is missing, if the handler functions are never called, or if the invariant campaign reports a revert. Keep the PR in draft until real output is attached. No GitHub Actions or onchain deployment are required.
 
 ## Arbitrum Sepolia-only helper
+
+Before making the chain-ID query, the helper uses `scripts/validate-rpc-url.mjs` to check **HTTPS-only** RPC URL syntax. It refuses embedded URL user credentials, fragments, whitespace, backslashes and malformed ports, and never prints the RPC URL in its own diagnostic messages. This is a syntactic/TLS-transport safeguard; it **does not prove the server's identity, honesty, TLS certificate validity or the accuracy of the returned chain ID**. Provider keys may still be exposed by upstream CLI errors or process inspection; do not paste real provider URLs into issue reports or logs. The separate offline tests are `npm run test:rpc-url` (18 tests) and `npm run test:rpc-deploy-guard` (five mock integration checks). Both use synthetic URLs and no network.
 
 The guarded helper `scripts/deploy-arbitrum-sepolia.sh` checks the RPC's chain ID is **421614** before even offering a testnet broadcast. By default it is preflight-only (no transaction). It now refuses the all-zero EVM recipient, invalid or out-of-range `uint256` supplies (compared exactly as decimal strings, never with 64-bit shell arithmetic), and option-like/path-like Foundry keystore identifiers. These are local input checks, not an audit or a guarantee that an untrusted RPC endpoint reports the true network.
 
