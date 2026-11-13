@@ -4,6 +4,7 @@
 import { readSmallBytes } from './read-small-file.mjs';
 import { parseReviewJson } from './parse-review-json.mjs';
 import { validateContributorGrants } from './contributor-grants-core.mjs';
+import { validateTokenomics } from './tokenomics-core.mjs';
 
 const args = process.argv.slice(2);
 const usage = 'Usage: node scripts/validate-contributor-grants.mjs <grants.json> [--tokenomics <proposal.json>] [--require-proposal]';
@@ -24,7 +25,12 @@ if (!file || invalid || tokenomicsFile?.startsWith('--')) {
   try {
     const grants = parseReviewJson(readSmallBytes(file));
     const tokenomics = tokenomicsFile === null ? null : parseReviewJson(readSmallBytes(tokenomicsFile));
-    const report = validateContributorGrants(grants, tokenomics, { requireProposal });
+    // Do not silently accept a malformed companion plan when grants are draft.
+    // validateContributorGrants only needs economics for nonempty proposals.
+    const economicsCheck = tokenomics === null ? null : validateTokenomics(tokenomics);
+    const report = economicsCheck !== null && !economicsCheck.valid
+      ? { valid: false, errors: economicsCheck.errors.map(e => 'tokenomics.' + e) }
+      : validateContributorGrants(grants, tokenomics, { requireProposal });
     if (!report.valid) {
       console.error('INVALID contributor grant plan (no payment authorization):');
       for (const error of report.errors) console.error(' - ' + error);
