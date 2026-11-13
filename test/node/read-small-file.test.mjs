@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, rmSync, symlinkSync, mkdirSync, linkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { readSmallBytes } from '../../scripts/read-small-file.mjs';
 
 function fixture(t) {
@@ -59,4 +60,13 @@ test('multiple sequential reads do not leak an open descriptor', t => {
   const f = fixture(t);
   writeFileSync(f.path, '{"ok":true}');
   for (let i = 0; i < 100; i++) assert.equal(readSmallBytes(f.path).length, 11);
+});
+
+test('rejects named pipes rather than treating them as review JSON', t => {
+  if (process.platform === 'win32') { t.skip('mkfifo is not available on Windows'); return; }
+  const f = fixture(t);
+  const mkfifo = spawnSync('mkfifo', [f.path], { encoding: 'utf8', timeout: 2000 });
+  if (mkfifo.error?.code === 'ENOENT') { t.skip('mkfifo unavailable'); return; }
+  assert.equal(mkfifo.status, 0, mkfifo.stderr || String(mkfifo.error));
+  assert.throws(() => readSmallBytes(f.path), /regular, non-symlink/);
 });
