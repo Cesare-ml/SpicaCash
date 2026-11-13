@@ -4,12 +4,10 @@ pragma solidity ^0.8.24;
 import {SpicaCash} from "../src/SpicaCash.sol";
 
 /**
- * @dev Minimal Foundry cheatcode interface. Avoids a forge-std dependency.
- * Foundry targets only the handler during invariant campaigns.
+ * @dev Foundry discovers invariant targets through the test contract's
+ *      targetContracts() getter (StdInvariant-compatible interface).
+ *      This test deliberately avoids importing forge-std.
  */
-interface VmInvariant {
-    function targetContract(address newTargetedContract) external;
-}
 
 contract InvariantWallet {
     function send(SpicaCash token, address recipient, uint256 amount) external {
@@ -93,8 +91,15 @@ contract SpicaCashInvariantHandler {
 contract SpicaCashInvariantTest {
     uint256 private constant INITIAL_SUPPLY = 1_000_000 * 1e18;
 
-    VmInvariant private constant vm =
-        VmInvariant(address(uint160(uint256(keccak256("hevm cheat code")))));
+    address[] private configuredTargets;
+
+    /**
+     * @notice Called by Foundry when selecting invariant handler contracts.
+     * @dev Mirrors the relevant getter from forge-std/StdInvariant.sol.
+     */
+    function targetContracts() public view returns (address[] memory) {
+        return configuredTargets;
+    }
 
     SpicaCash private token;
     InvariantWallet private wallet0;
@@ -117,7 +122,14 @@ contract SpicaCashInvariantTest {
         );
 
         handler = new SpicaCashInvariantHandler(token, wallet0, wallet1, wallet2);
-        vm.targetContract(address(handler));
+        configuredTargets.push(address(handler));
+    }
+
+    function testInvariantTargetsOnlyTheHandler() public view {
+        address[] memory targets = targetContracts();
+        require(targets.length == 1, "expected exactly one invariant target");
+        require(targets[0] == address(handler), "wrong invariant target");
+        require(targets[0] != address(token), "ERC20 must not be directly fuzzed");
     }
 
     function invariant_TotalSupplyRemainsFixed() public view {
