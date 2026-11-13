@@ -126,7 +126,10 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1
       const manifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'));
       const lock = JSON.parse(readFileSync(resolve(root, 'package-lock.json'), 'utf8'));
       const { valid, errors } = checkDependencyLock(manifest, lock);
-      if (!valid) {
+      if (readFileSync(resolve(root, '.npmrc'), 'utf8') !== 'ignore-scripts=true\n') {
+        errors.push('project .npmrc must set ignore-scripts=true');
+      }
+      if (!valid || errors.length !== 0) {
         for (const error of errors) console.error(`Dependency lock check failed: ${error}`);
         process.exitCode = 1;
       } else {
@@ -134,7 +137,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1
       }
     } catch {
       // Avoid printing local paths/environment details.
-      console.error('Dependency lock check failed: cannot read or parse package manifest and lockfile');
+      console.error('Dependency lock check failed: cannot read or parse dependency policy inputs');
       process.exitCode = 1;
     }
   }
