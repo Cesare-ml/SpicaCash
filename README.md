@@ -28,7 +28,7 @@ The initial Solidity implementation, unit/fuzz test suite and guarded Arbitrum S
 - Testing: Foundry + `@openzeppelin/contracts@5.4.0`
 - License: MIT for code; VirgoStars marks and identity are not licensed for impersonation (see [NOTICE](NOTICE))
 
-**Local verification gate:** After installing Node.js, Foundry and dependencies, run `npm run verify:local` (Bash/WSL2). This runs offline tests, a fresh Forge build, compiled ABI checks, the Solidity suite, and a strict invariant-campaign evidence check. It **does not deploy** or authorize issuing tokens. The current branch's verified offline suite is **75/75**, while Solidity compilation/tests still require a machine with Foundry.
+**Local verification gate:** After installing Node.js, Foundry and dependencies, run `npm run verify:local` (Bash/WSL2). This runs offline tests, a fresh Forge build, compiled ABI checks, the Solidity suite, and a strict invariant-campaign evidence check. It **does not deploy** or authorize issuing tokens. The current branch's verified offline suite is **91/91** (including fail-closed checks for the local verification pipeline), while Solidity compilation/tests still require a machine with Foundry.
 
 The initial supply is not chosen and no on-chain address has been assigned. Do not treat any `SPICA` token shown elsewhere as official.
 
