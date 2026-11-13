@@ -9,10 +9,10 @@ command -v forge >/dev/null || { echo "Missing Foundry 'forge'." >&2; exit 1; }
 : "${ARBITRUM_SEPOLIA_RPC_URL:?Set ARBITRUM_SEPOLIA_RPC_URL for chain 421614}"
 : "${SPICA_TESTNET_HOLDER:?Set SPICA_TESTNET_HOLDER to an EVM address}"
 : "${SPICA_TESTNET_SUPPLY_BASE_UNITS:?Set SPICA_TESTNET_SUPPLY_BASE_UNITS (18-decimal base units)}"
+
 # Reject insecure or credential-bearing RPC endpoints before contacting any provider.
 command -v node >/dev/null || { echo "Missing Node.js for local RPC URL safety validation." >&2; exit 1; }
 node "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/validate-rpc-url.mjs" || exit 1
-
 
 if [[ ! "$SPICA_TESTNET_HOLDER" =~ ^0x[[:xdigit:]]{40}$ ]]; then
   echo "Invalid testnet holder address." >&2
