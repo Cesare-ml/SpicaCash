@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 # Tests execute with fake cast and forge; no RPC or token operations.
 set -euo pipefail
-root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 cat > "$work/cast" <<'MOCK'
