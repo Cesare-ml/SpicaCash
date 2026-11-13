@@ -8,24 +8,26 @@ const CHUNK_BYTES = 64 * 1024;
 
 /** Read raw bytes without following a final-component symlink or unbounded growth. */
 export function readSmallBytes(path) {
-  const before = lstatSync(path);
+  const before = lstatSync(path, { bigint: true });
   if (!before.isFile() || before.isSymbolicLink()) {
     throw new Error('regular, non-symlink file required');
   }
-  if (before.size > MAX_DOCUMENT_BYTES) throw new Error('file exceeds 1 MiB limit');
+  if (before.size > BigInt(MAX_DOCUMENT_BYTES)) throw new Error('file exceeds 1 MiB limit');
 
-  // O_NOFOLLOW is available on POSIX. Windows also receives a post-open inode
-  // check, but cannot be claimed to have the same atomic symlink protection.
+  // O_NOFOLLOW blocks a final-symlink swap where available; O_NONBLOCK keeps
+  // an attacker-swapped FIFO from indefinitely blocking open(). Windows still
+  // needs independent review: neither flag ensures race freedom everywhere.
   const flags = constants.O_RDONLY |
     (process.platform !== 'win32' && typeof constants.O_NOFOLLOW === 'number'
-      ? constants.O_NOFOLLOW : 0);
+      ? constants.O_NOFOLLOW : 0) |
+    (typeof constants.O_NONBLOCK === 'number' ? constants.O_NONBLOCK : 0);
   const fd = openSync(path, flags);
   try {
-    const opened = fstatSync(fd);
+    const opened = fstatSync(fd, { bigint: true });
     if (!opened.isFile() || before.dev !== opened.dev || before.ino !== opened.ino) {
       throw new Error('file changed while opening');
     }
-    if (opened.size > MAX_DOCUMENT_BYTES) throw new Error('file exceeds 1 MiB limit');
+    if (opened.size > BigInt(MAX_DOCUMENT_BYTES)) throw new Error('file exceeds 1 MiB limit');
     // Read one byte past the allowed size so a growing file cannot bypass the
     // bound after the initial size checks.
     const parts = [];
@@ -37,6 +39,14 @@ export function readSmallBytes(path) {
       total += count;
       if (total > MAX_DOCUMENT_BYTES) throw new Error('file exceeds 1 MiB limit');
       parts.push(chunk.subarray(0, count));
+    }
+    // A descriptor can refer to a file being modified in place. Detect
+    // observed truncation, growth and metadata changes before accepting it.
+    const after = fstatSync(fd, { bigint: true });
+    if (BigInt(total) !== opened.size || after.size !== opened.size ||
+        after.dev !== opened.dev || after.ino !== opened.ino ||
+        after.mtimeNs !== opened.mtimeNs || after.ctimeNs !== opened.ctimeNs) {
+      throw new Error('file changed during snapshot read');
     }
     return Buffer.concat(parts, total);
   } finally {
