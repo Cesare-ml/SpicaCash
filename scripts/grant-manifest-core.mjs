@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 // Read-only manifest integrity checks; no GitHub, wallet or chain access.
 import { createHash } from 'node:crypto';
-import { lstatSync, readFileSync, realpathSync } from 'node:fs';
+import { parseReviewJson } from './parse-review-json.mjs';
+import { lstatSync, realpathSync } from 'node:fs';
+import { readSmallBytes } from './read-small-file.mjs';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 
-const MAX_DOCUMENT_BYTES = 1024 * 1024;
 const MAX_BATCHES = 64;
 const HEX_SHA256 = /^[a-f0-9]{64}$/;
 
@@ -20,22 +21,6 @@ function exactShape(value, keys, path, errors) {
     if (!Object.hasOwn(value, key)) errors.push(path + '.' + key + ': missing field');
   }
   return true;
-}
-
-function readSmallBytes(path) {
-  const info = lstatSync(path);
-  if (!info.isFile() || info.isSymbolicLink()) {
-    throw new Error('regular, non-symlink file required');
-  }
-  if (info.size > MAX_DOCUMENT_BYTES) throw new Error('file exceeds 1 MiB limit');
-  const bytes = readFileSync(path);
-  if (bytes.length > MAX_DOCUMENT_BYTES) throw new Error('file exceeds 1 MiB limit');
-  return bytes;
-}
-
-function readSmallJson(path) {
-  const bytes = readSmallBytes(path);
-  return { bytes, value: JSON.parse(bytes.toString('utf8')) };
 }
 
 function relativeJsonPath(value) {
@@ -84,7 +69,7 @@ export function loadGrantManifest(manifestPath, options = {}) {
         return result;
       }
     }
-    manifest = JSON.parse(bytes.toString('utf8'));
+    manifest = parseReviewJson(bytes);
   } catch (err) {
     failure('manifest', 'cannot read JSON: ' + err.message);
     return result;
@@ -136,12 +121,13 @@ export function loadGrantManifest(manifestPath, options = {}) {
       if (realpathSync(abs) !== abs) {
         throw new Error('symlink or redirected path not allowed');
       }
-      const { bytes, value } = readSmallJson(abs);
+      // Authenticate raw bytes before interpreting any untrusted review JSON.
+      const bytes = readSmallBytes(abs);
       if (sha256Hex(bytes) !== entry.sha256) {
         failure(where + '.sha256', 'file digest mismatch: possible modification');
         return null;
       }
-      return { name: entry.path, value };
+      return { name: entry.path, value: parseReviewJson(bytes) };
     } catch (err) {
       failure(where + '.path', 'cannot read verified JSON file: ' + err.message);
       return null;
