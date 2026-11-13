@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: MIT
 // Offline grant proposal reconciliation. Never signs or issues any assets.
-import { readFileSync } from 'node:fs';
+import { readSmallBytes } from './read-small-file.mjs';
+import { assertDistinctBatchFiles } from './distinct-batch-files.mjs';
+import { parseReviewJson } from './parse-review-json.mjs';
 import { validateContributorGrants } from './contributor-grants-core.mjs';
 import { reconcileGrantBatches } from './grant-batches-core.mjs';
 
@@ -27,12 +29,14 @@ if (invalid || paths.length === 0 || paths.length > 64) {
   process.exitCode = 2;
 } else {
   try {
+    // Literal and alias paths must never double-count the same physical batch.
+    assertDistinctBatchFiles(paths);
     const batches = paths.map((path) => ({
       name: path,
-      plan: JSON.parse(readFileSync(path, 'utf8'))
+      plan: parseReviewJson(readSmallBytes(path))
     }));
     const tokenomics = tokenomicsFile === null
-      ? null : JSON.parse(readFileSync(tokenomicsFile, 'utf8'));
+      ? null : parseReviewJson(readSmallBytes(tokenomicsFile));
     const result = reconcileGrantBatches(
       batches, tokenomics, validateContributorGrants, { requireProposal }
     );
