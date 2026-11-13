@@ -82,9 +82,45 @@ export SPICA_TESTNET_SUPPLY_BASE_UNITS="0"
 expect_failure
 export SPICA_TESTNET_SUPPLY_BASE_UNITS="1000000000000000000"
 
+# The ERC-20 constructor refuses address(0): catch it before invoking forge.
+export SPICA_TESTNET_HOLDER="0x0000000000000000000000000000000000000000"
+expect_failure
+grep -q "zero address" "$work/output"
+export SPICA_TESTNET_HOLDER="0x000000000000000000000000000000000000BEEF"
+
+# Reject inputs that aren't canonical decimal uint256 values.
+export SPICA_TESTNET_SUPPLY_BASE_UNITS="0001"
+expect_failure
+grep -q "canonical integer" "$work/output"
+export SPICA_TESTNET_SUPPLY_BASE_UNITS="$(printf '9%.0s' {1..79})"
+expect_failure
+grep -q "exceeds uint256" "$work/output"
+export SPICA_TESTNET_SUPPLY_BASE_UNITS="115792089237316195423570985008687907853269984665640564039457584007913129639936"
+expect_failure
+grep -q "exceeds uint256" "$work/output"
+export SPICA_TESTNET_SUPPLY_BASE_UNITS="$(printf '9%.0s' {1..10000})"
+expect_failure
+grep -q "exceeds uint256" "$work/output"
+
+# The exact uint256 maximum must be accepted for *read-only* preflight.
+export SPICA_TESTNET_SUPPLY_BASE_UNITS="115792089237316195423570985008687907853269984665640564039457584007913129639935"
+export SPICA_CONFIRM_TESTNET_DEPLOY="NO"
+expect_success
+grep -q "No transaction broadcast" "$work/output"
+export SPICA_TESTNET_SUPPLY_BASE_UNITS="1000000000000000000"
+
 # Incorrect confirmation remains read-only.
 export SPICA_CONFIRM_TESTNET_DEPLOY="YES"
 expect_success
+
+# Keystore identifiers must not look like extra forge flags or paths.
+export SPICA_CONFIRM_TESTNET_DEPLOY="YES_ARBITRUM_SEPOLIA_ONLY"
+export FOUNDRY_ACCOUNT="--private-key"
+expect_failure
+grep -q "local keystore alias" "$work/output"
+export FOUNDRY_ACCOUNT="../secrets"
+expect_failure
+grep -q "local keystore alias" "$work/output"
 
 # With *all* gates satisfied, only the mock forge executable is invoked.
 # No real network or transaction is used in this test.
