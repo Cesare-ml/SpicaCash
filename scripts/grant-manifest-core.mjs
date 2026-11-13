@@ -22,7 +22,7 @@ function exactShape(value, keys, path, errors) {
   return true;
 }
 
-function readSmallJson(path) {
+function readSmallBytes(path) {
   const info = lstatSync(path);
   if (!info.isFile() || info.isSymbolicLink()) {
     throw new Error('regular, non-symlink file required');
@@ -30,6 +30,11 @@ function readSmallJson(path) {
   if (info.size > MAX_DOCUMENT_BYTES) throw new Error('file exceeds 1 MiB limit');
   const bytes = readFileSync(path);
   if (bytes.length > MAX_DOCUMENT_BYTES) throw new Error('file exceeds 1 MiB limit');
+  return bytes;
+}
+
+function readSmallJson(path) {
+  const bytes = readSmallBytes(path);
   return { bytes, value: JSON.parse(bytes.toString('utf8')) };
 }
 
@@ -64,9 +69,22 @@ export function loadGrantManifest(manifestPath, options = {}) {
       throw new Error('symlink manifest not allowed');
     }
     base = dirname(canonical);
-    const snapshot = readSmallJson(canonical);
-    result.manifestSha256 = sha256Hex(snapshot.bytes);
-    manifest = snapshot.value;
+    // A pinned review must authenticate the exact manifest bytes *before*
+    // JSON parsing or traversing any manifest-selected batch paths.
+    const bytes = readSmallBytes(canonical);
+    result.manifestSha256 = sha256Hex(bytes);
+    if (options.expectedManifestSha256 !== undefined) {
+      if (typeof options.expectedManifestSha256 !== 'string' ||
+          !HEX_SHA256.test(options.expectedManifestSha256)) {
+        failure('expectedManifestSha256', 'expected lowercase SHA-256 digest');
+        return result;
+      }
+      if (result.manifestSha256 !== options.expectedManifestSha256) {
+        failure('manifest.sha256', 'review snapshot digest mismatch');
+        return result;
+      }
+    }
+    manifest = JSON.parse(bytes.toString('utf8'));
   } catch (err) {
     failure('manifest', 'cannot read JSON: ' + err.message);
     return result;
@@ -74,15 +92,6 @@ export function loadGrantManifest(manifestPath, options = {}) {
   if (!exactShape(manifest, [
     'schemaVersion', 'status', 'executionAuthorized', 'tokenomics', 'batches'
   ], 'manifest', errors)) return result;
-
-  if (options.expectedManifestSha256 !== undefined) {
-    if (typeof options.expectedManifestSha256 !== 'string' ||
-        !HEX_SHA256.test(options.expectedManifestSha256)) {
-      failure('expectedManifestSha256', 'expected lowercase SHA-256 digest');
-    } else if (result.manifestSha256 !== options.expectedManifestSha256) {
-      failure('manifest.sha256', 'review snapshot digest mismatch');
-    }
-  }
   if (manifest.schemaVersion !== 1) failure('schemaVersion', 'expected version 1');
   if (!['draft', 'proposal'].includes(manifest.status)) {
     failure('status', 'must be draft or proposal');
