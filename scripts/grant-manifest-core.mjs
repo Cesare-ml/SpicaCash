@@ -51,7 +51,10 @@ export function sha256Hex(bytes) {
 export function loadGrantManifest(manifestPath, options = {}) {
   const errors = [];
   const failure = (where, message) => errors.push(where + ': ' + message);
-  const result = { valid: false, errors, batches: [], tokenomics: null, status: 'invalid' };
+  const result = {
+    valid: false, errors, batches: [], tokenomics: null, status: 'invalid',
+    manifestSha256: null
+  };
   let manifest;
   let base;
   try {
@@ -61,7 +64,9 @@ export function loadGrantManifest(manifestPath, options = {}) {
       throw new Error('symlink manifest not allowed');
     }
     base = dirname(canonical);
-    manifest = readSmallJson(canonical).value;
+    const snapshot = readSmallJson(canonical);
+    result.manifestSha256 = sha256Hex(snapshot.bytes);
+    manifest = snapshot.value;
   } catch (err) {
     failure('manifest', 'cannot read JSON: ' + err.message);
     return result;
@@ -70,6 +75,14 @@ export function loadGrantManifest(manifestPath, options = {}) {
     'schemaVersion', 'status', 'executionAuthorized', 'tokenomics', 'batches'
   ], 'manifest', errors)) return result;
 
+  if (options.expectedManifestSha256 !== undefined) {
+    if (typeof options.expectedManifestSha256 !== 'string' ||
+        !HEX_SHA256.test(options.expectedManifestSha256)) {
+      failure('expectedManifestSha256', 'expected lowercase SHA-256 digest');
+    } else if (result.manifestSha256 !== options.expectedManifestSha256) {
+      failure('manifest.sha256', 'review snapshot digest mismatch');
+    }
+  }
   if (manifest.schemaVersion !== 1) failure('schemaVersion', 'expected version 1');
   if (!['draft', 'proposal'].includes(manifest.status)) {
     failure('status', 'must be draft or proposal');
