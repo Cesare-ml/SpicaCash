@@ -132,6 +132,28 @@ contract SpicaCashInvariantTest {
         require(targets[0] != address(token), "ERC20 must not be directly fuzzed");
     }
 
+    function testInvariantHandlerExercisesTransferApprovalAndPull() public {
+        uint256 balance0 = token.balanceOf(address(wallet0));
+        uint256 balance1 = token.balanceOf(address(wallet1));
+        uint256 balance2 = token.balanceOf(address(wallet2));
+
+        // From wallet0 to wallet1; destination differs from source.
+        handler.move(0, 0, 17);
+        require(token.balanceOf(address(wallet0)) == balance0 - 17, "move: sender");
+        require(token.balanceOf(address(wallet1)) == balance1 + 17, "move: receiver");
+
+        // Wallet1 gives the handler a bounded allowance, then it pulls to wallet2.
+        handler.approve(1, 100);
+        require(token.allowance(address(wallet1), address(handler)) == 100, "approve: allowance");
+        handler.pull(1, 0, 37);
+        require(token.balanceOf(address(wallet1)) == balance1 + 17 - 37, "pull: sender");
+        require(token.balanceOf(address(wallet2)) == balance2 + 37, "pull: receiver");
+        require(token.allowance(address(wallet1), address(handler)) == 63, "pull: allowance");
+        invariant_TotalSupplyRemainsFixed();
+        invariant_TrackedBalancesConserveAllTokens();
+        invariant_NoTokensHeldByHandlerOrFixture();
+    }
+
     function invariant_TotalSupplyRemainsFixed() public view {
         require(token.totalSupply() == INITIAL_SUPPLY, "total supply changed");
     }
