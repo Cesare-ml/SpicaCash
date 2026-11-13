@@ -34,9 +34,9 @@ Stateful handler-based invariants are configured for 64 sequences of 64 calls pe
 
 After compilation, `scripts/check-abi.mjs` rejects any new external function beyond the nine expected ERC-20 methods, unexpected payable functions, missing standard functions or changed constructor types. This only checks the ABI surface, **not implementation behavior, storage safety or network security**. Run its six independent offline tests with `npm run test:abi-guard`.
 
-`npm run test:deploy-guard` runs seven offline cases against the Sepolia deployment script with mock `forge` and `cast` executables, proving it refuses incorrect chain ID, invalid values or missing explicit authorization under those mocked conditions. Neither offline test suite sends network transactions.
+`npm run test:deploy-guard` runs **15 offline cases** against the Sepolia deployment script with mock `forge` and `cast` executables. They exercise the wrong chain ID, zero receiver address, zero and noncanonical supplies, values above the EVM `uint256` limit, missing or invalid Foundry account names, missing explicit authorization, the exact maximum `uint256` (read-only), and one mock-only authorized call. None of these tests uses a real RPC, signer or transaction.
 
-**Validation status (2026-11-13):** Offline deployment guard **7/7 passed** and independent ABI checker tests **6/6 passed** in a local Linux/Node 22 environment. `forge build`, Solidity unit/fuzz/invariant runs and compiled ABI inspection are **not run** here because the compiler/Foundry and npm dependency retrieval are unavailable. Do not report the smart contract as verified until the Solidity commands pass in a configured environment.
+**Validation status (2026-11-13):** Offline deployment guard **15/15 passed** and independent ABI checker tests **6/6 passed** in a local Linux/Node 22 environment. `forge build`, Solidity unit/fuzz/invariant runs and compiled ABI inspection are **not run** here because the compiler/Foundry and npm dependency retrieval are unavailable. Do not report the smart contract as verified until the Solidity commands pass in a configured environment.
 
 **Never** run tests on a production fork with real signing credentials.
 
@@ -62,7 +62,7 @@ Foundry invariant configuration enables `show_metrics = true` to print selector-
 
 ## Arbitrum Sepolia-only helper
 
-The guarded helper `scripts/deploy-arbitrum-sepolia.sh` checks the RPC's chain ID is **421614** before even offering a testnet broadcast. By default it is preflight-only (no transaction).
+The guarded helper `scripts/deploy-arbitrum-sepolia.sh` checks the RPC's chain ID is **421614** before even offering a testnet broadcast. By default it is preflight-only (no transaction). It now refuses the all-zero EVM recipient, invalid or out-of-range `uint256` supplies (compared exactly as decimal strings, never with 64-bit shell arithmetic), and option-like/path-like Foundry keystore identifiers. These are local input checks, not an audit or a guarantee that an untrusted RPC endpoint reports the true network.
 
 ```bash
 export ARBITRUM_SEPOLIA_RPC_URL="https://sepolia-rollup.arbitrum.io/rpc"
