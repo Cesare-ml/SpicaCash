@@ -28,9 +28,18 @@ The initial Solidity implementation, unit/fuzz test suite and guarded Arbitrum S
 - Testing: Foundry + `@openzeppelin/contracts@5.4.0`
 - License: MIT for code; VirgoStars marks and identity are not licensed for impersonation (see [NOTICE](NOTICE))
 
-**Dependency integrity:** `package-lock.json` now pins `@openzeppelin/contracts@5.4.0` to its reviewed npm SHA-512 tarball digest. Use **`npm ci`**, not `npm install`, to install the exact locked dependency, then `npm run test:dependency-lock` to detect version, registry, or integrity drift. Upgrading OpenZeppelin requires an explicit review of the lockfile, test expectations, and token security. The new offline checker has **19/19 locally passed tests**; installation and Solidity compilation have not been completed here.
+**Dependency integrity:** The committed npm lockfile pins `@openzeppelin/contracts@5.4.0` to a reviewed SHA-512 digest. The repository also sets `ignore-scripts=true` in `.npmrc` and pins the reviewed npm commands in the lock-policy checker. Use this order in a clean checkout, **before running any npm script**:
 
-**Local verification gate:** After installing Node.js, Foundry and dependencies, run `npm run verify:local` (Bash/WSL2). This runs offline tests, a fresh Forge build, compiled ABI checks, the Solidity suite, and a strict invariant-campaign evidence check. It **does not deploy** or authorize issuing tokens. All Forge build/test stages use **`--offline`** and require the configured Solidity compiler to be installed locally; they do not fetch compiler versions during verification. The last fully reconstructed offline suite passed **105/105**; an additional **8/8** Foundry-format tests and **19/19** dependency-lock tests passed separately. The combined **132-case** suite and Solidity compilation still require validation in a configured environment.
+```bash
+node scripts/check-dependency-lock.mjs
+npm ci --ignore-scripts --no-audit --no-fund
+npm run test:offline
+bash scripts/verify-local.sh
+```
+
+`npm ci --ignore-scripts` disables install-time lifecycle scripts even if npm's configuration was altered. The Node policy check catches unexpected npm hooks, script-command drift, overrides, extra package metadata and changes to `.npmrc`. Its **38/38 local tests passed**, including actual offline npm installations in isolated, dependency-free fixtures. Do not mistake this for a verified OpenZeppelin installation or Solidity compilation. Upgrades and approved script changes must update the explicit review policy.
+
+**Local verification gate:** After installing Node.js, Foundry and dependencies, run `npm run verify:local` (Bash/WSL2). This runs offline tests, a fresh Forge build, compiled ABI checks, the Solidity suite, and a strict invariant-campaign evidence check. It **does not deploy** or authorize issuing tokens. All Forge build/test stages use **`--offline`** and require the configured Solidity compiler to be installed locally; they do not fetch compiler versions during verification. The last fully reconstructed offline suite passed **105/105**; an additional **8/8** Foundry-format tests and **38/38** dependency-policy tests passed separately. The combined **151-case** suite and Solidity compilation still require validation in a configured environment.
 
 The initial supply is not chosen and no on-chain address has been assigned. Do not treat any `SPICA` token shown elsewhere as official.
 
