@@ -20,11 +20,12 @@ MOCK
 cat > "$work/bin/forge" <<'MOCK'
 #!/usr/bin/env bash
 printf 'forge %s\n' "$*" >> "$MOCK_LOG"
+[[ " $* " == *' --offline '* ]] || exit 87
 [[ -z "${ETH_RPC_URL:-}" && -z "${ARBITRUM_SEPOLIA_RPC_URL:-}" && -z "${FOUNDRY_ACCOUNT:-}" ]] || exit 83
 case "$*" in
-  'build --force') [[ "${MOCK_FAIL_STAGE:-}" != 'build' ]] || exit 42 ;;
-  'test -vv') [[ "${MOCK_FAIL_STAGE:-}" != 'tests' ]] || exit 43 ;;
-  'test --match-contract SpicaCashInvariantTest -vv')
+  'build --offline --force') [[ "${MOCK_FAIL_STAGE:-}" != 'build' ]] || exit 42 ;;
+  'test --offline -vv') [[ "${MOCK_FAIL_STAGE:-}" != 'tests' ]] || exit 43 ;;
+  'test --offline --match-contract SpicaCashInvariantTest -vv')
     [[ "${MOCK_FAIL_STAGE:-}" != 'invariants' ]] || exit 44
     printf 'Synthetic test output for mocked gate only\n'
     ;;
@@ -87,11 +88,11 @@ expect_stage_failure() {
   fi
   pass=$((pass+1))
 }
-expect_stage_failure offline 'npm run test:offline' 'forge build --force'
-expect_stage_failure build 'forge build --force' 'node scripts/check-abi.mjs'
-expect_stage_failure abi 'node scripts/check-abi.mjs' 'forge test -vv'
-expect_stage_failure tests 'forge test -vv' 'forge test --match-contract SpicaCashInvariantTest -vv'
-expect_stage_failure invariants 'forge test --match-contract SpicaCashInvariantTest -vv' 'node scripts/check-foundry-invariants.mjs'
+expect_stage_failure offline 'npm run test:offline' 'forge build --offline --force'
+expect_stage_failure build 'forge build --offline --force' 'node scripts/check-abi.mjs'
+expect_stage_failure abi 'node scripts/check-abi.mjs' 'forge test --offline -vv'
+expect_stage_failure tests 'forge test --offline -vv' 'forge test --offline --match-contract SpicaCashInvariantTest -vv'
+expect_stage_failure invariants 'forge test --offline --match-contract SpicaCashInvariantTest -vv' 'node scripts/check-foundry-invariants.mjs'
 
 # The evidence check must block the final success line even after mock Forge exits 0.
 expect_stage_failure evidence 'node scripts/check-foundry-invariants.mjs' 'NEVER_EXPECTED_MARKER'
@@ -104,10 +105,10 @@ export MOCK_FAIL_STAGE=''
 bash "$work/project/scripts/verify-local.sh" > "$work/output" 2>&1
 [[ $(wc -l < "$MOCK_LOG") -eq 6 ]] || { cat "$MOCK_LOG" >&2; exit 1; }
 grep -Fxq 'npm run test:offline' "$MOCK_LOG"
-grep -Fxq 'forge build --force' "$MOCK_LOG"
+grep -Fxq 'forge build --offline --force' "$MOCK_LOG"
 grep -Fxq 'node scripts/check-abi.mjs' "$MOCK_LOG"
-grep -Fxq 'forge test -vv' "$MOCK_LOG"
-grep -Fxq 'forge test --match-contract SpicaCashInvariantTest -vv' "$MOCK_LOG"
+grep -Fxq 'forge test --offline -vv' "$MOCK_LOG"
+grep -Fxq 'forge test --offline --match-contract SpicaCashInvariantTest -vv' "$MOCK_LOG"
 grep -Fq 'node scripts/check-foundry-invariants.mjs ' "$MOCK_LOG"
 grep -Fq 'PASS: local offline + Solidity' "$work/output"
 if grep -Fq 'SECRET_VALUE' "$work/output" || grep -Eq '^forge (create|script|broadcast)' "$MOCK_LOG"; then
