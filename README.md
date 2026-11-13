@@ -62,7 +62,7 @@ The [offline grant batch reconciler](docs/GRANT_BATCH_RECONCILIATION.md) catches
 - `npm run check:grant-batches` — check the default **empty draft** only
 - `npm run test:grant-batches` — run synthetic cross-batch regression tests
 
-Standalone `check:tokenomics`, `check:grants` and `check:grant-batches` use the same strict JSON decoder as the pinned-manifest review. Every JSON input (including companion tokenomics files) is read through the descriptor-backed reader, limited to **1 MiB per file**, and rejects symlink aliases. Standalone inputs are **not** SHA-256-authenticated. Use `npm run test:strict-cli-json` for CLI regression coverage. The multi-batch CLI also rejects multiple path aliases or hard links for the same physical batch (where inode identity is available); run `npm run test:batch-identity` for filesystem regressions.
+Standalone `check:tokenomics`, `check:grants` and `check:grant-batches` use the same strict JSON decoder as the pinned-manifest review. Every JSON input (including companion tokenomics files) is read through the descriptor-backed reader, limited to **1 MiB per file**, and rejects symlink aliases. When either standalone grant CLI receives an optional tokenomics file, it **validates that companion plan even when the grant input is an empty draft**, refusing unsafe deployment flags or AI-credit conversion rather than silently ignoring it. Standalone inputs are **not** SHA-256-authenticated. Use `npm run test:strict-cli-json` for CLI regression coverage. The multi-batch CLI also rejects multiple path aliases or hard links for the same physical batch (where inode identity is available); run `npm run test:batch-identity` for filesystem regressions.
 
 ## Hashed grant proposal manifest (review-only)
 
@@ -72,7 +72,7 @@ The [SHA-256 manifest integrity check](docs/GRANT_MANIFEST_INTEGRITY.md) detects
 - `npm run test:grant-manifest` — run synthetic integrity and safety tests
 - `npm run test:review-json` — reject duplicate keys, malformed UTF-8, lone Unicode surrogates and ambiguous grant-review JSON; verify file hashes before parsing
 - `npm run test:grant-inventory` — check for unlisted JSON batches and unsafe directory paths
-- `npm run test:proposal-cli-integration` — test real tokenomics and grant validators with synthetic proposals, including cross-batch budget and duplicate PR protections
+- `npm run test:proposal-cli-integration` — test real tokenomics and grant validators with synthetic proposals, including cross-batch budget and duplicate PR protections and validation of optional economics on empty drafts
 - `--inventory-dir review-batches` (CLI option) — verify every lowercase `.json` file in a dedicated flat review folder is listed; reject nested folders, symlinks and case-variant `.JSON` extensions; abort if the folder contains more than 128 total entries
 - `--expected-manifest-sha256 <digest>` (CLI option) — independently pin the **raw manifest** for a read-only review; SHA-256 is not a signature or issuance authorization
 

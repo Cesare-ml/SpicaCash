@@ -244,3 +244,50 @@ test('grant base units exceeding uint256 are rejected', t => {
   assertExit(r, 1);
   assert.match(r.stderr, /exceeds uint256/);
 });
+
+
+function emptyDraftGrants() {
+  return {
+    schemaVersion: 1, status: 'draft', deploymentApproved: false,
+    distributionEnabled: false, aiCreditConversionEnabled: false,
+    tokenomicsBucketId: null, grants: []
+  };
+}
+
+for (const entry of [
+  { name: 'contributor grants CLI', command: 'validate-contributor-grants.mjs' },
+  { name: 'multi-batch CLI', command: 'check-grant-batches.mjs' }
+]) {
+  test(entry.name + ' accepts a valid optional economics proposal with draft grants', t => {
+    const f = fixture(t);
+    const grants = f.file('draft-grants.json', emptyDraftGrants());
+    const economics = f.file('safe-economics.json', tokenomics());
+    const r = command(entry.command, grants, '--tokenomics', economics);
+    assertExit(r, 0);
+    assert.match(r.stdout, /NOT approved/);
+  });
+
+  test(entry.name + ' rejects an unsafe optional economics document on an empty draft', t => {
+    const f = fixture(t);
+    const grants = f.file('draft-grants.json', emptyDraftGrants());
+    const bad = tokenomics();
+    bad.deploymentApproved = true;
+    const economics = f.file('unsafe-economics.json', bad);
+    const r = command(entry.command, grants, '--tokenomics', economics);
+    assertExit(r, 1);
+    assert.match(r.stderr, /tokenomics\.deploymentApproved.*never authorizes deployment/);
+    assert.doesNotMatch(r.stdout, /VALID/);
+  });
+
+  test(entry.name + ' rejects forbidden AI-credit conversion in companion economics', t => {
+    const f = fixture(t);
+    const grants = f.file('draft-grants.json', emptyDraftGrants());
+    const bad = tokenomics();
+    bad.product.aiCreditConversionEnabled = true;
+    const economics = f.file('unsafe-credits.json', bad);
+    const r = command(entry.command, grants, '--tokenomics', economics);
+    assertExit(r, 1);
+    assert.match(r.stderr, /tokenomics\.product\.aiCreditConversionEnabled.*must be false/);
+    assert.doesNotMatch(r.stdout, /VALID/);
+  });
+}
