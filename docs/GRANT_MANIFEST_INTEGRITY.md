@@ -67,7 +67,7 @@ The manifest loader now rejects duplicate object properties at any nesting level
 
 A trusted, independently supplied SHA-256 pin is checked **before manifest parsing**. For each referenced grant batch and tokenomics JSON document, its raw bytes are compared with the manifest hash **before strict parsing**. A mismatch reports a digest error rather than interpreting unauthenticated document contents.
 
-Run `npm run test:review-json` (twelve parser tests and nine manifest-integration tests). The strict rules apply to the hashed-manifest review path, not automatically to all standalone JSON draft CLIs. Validation does not authorize any distributions or onchain actions.
+Run `npm run test:review-json` (seventeen parser tests and eleven manifest-integration tests). The strict rules apply to the hashed-manifest review path, not automatically to all standalone JSON draft CLIs. Validation does not authorize any distributions or onchain actions.
 
 ## Optional directory inventory verification
 
