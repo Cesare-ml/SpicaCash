@@ -7,13 +7,25 @@ import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { checkInvariantEvidence } from '../../scripts/check-foundry-invariants.mjs';
 
+const metrics = (move = 1400, approve = 1400, pull = 1296) => `
+╭----------------------------+----------+-------+---------+----------╮
+| Contract                   | Selector | Calls | Reverts | Discards |
++============================+==========+=======+=========+==========+
+| SpicaCashInvariantHandler  | move     | ${move} | 0       | 0        |
+| SpicaCashInvariantHandler  | approve  | ${approve} | 0       | 0        |
+| SpicaCashInvariantHandler  | pull     | ${pull} | 0       | 0        |
+╰----------------------------+----------+-------+---------+----------╯`;
+
 const fixture = () => `
 Ran 5 tests for test/SpicaCashInvariant.t.sol:SpicaCashInvariantTest
 [PASS] testInvariantTargetsOnlyTheHandler() (gas: 998)
 [PASS] testInvariantHandlerExercisesTransferApprovalAndPull() (gas: 998)
 [PASS] invariant_TotalSupplyRemainsFixed() (runs: 64, calls: 4096, reverts: 0)
+${metrics()}
 [PASS] invariant_TrackedBalancesConserveAllTokens() (runs: 64, calls: 4096, reverts: 0)
+${metrics()}
 [PASS] invariant_NoTokensHeldByHandlerOrFixture() (runs: 64, calls: 4096, reverts: 0)
+${metrics()}
 Suite result: ok. 5 passed; 0 failed; 0 skipped
 `;
 function rejected(name, modify, expected) {
@@ -49,6 +61,31 @@ rejected('passing markers after summary are not counted', s => {
   return s.replace(line, '') + '\n' + line + '\n';
 }, /invariant_NoTokensHeldByHandlerOrFixture/);
 rejected('an extra unexpected passing test is refused', s => s.replace('Suite result:', '[PASS] testUnexpected() (gas: 1)\nSuite result:'), /exactly five passing markers/);
+
+
+// Selector metrics guard: aggregate campaign PASS counts are not enough to
+// prove the fuzz engine ever invoked all three handler methods.
+rejected('missing selector table fails closed', s => s.replace(metrics(), ''), /expected exactly one Foundry selector metrics table/);
+rejected('missing pull selector fails closed', s => s.replace('| SpicaCashInvariantHandler  | pull     | 1296 | 0       | 0        |', ''), /expected exactly three handler selector metric rows/);
+rejected('zero calls to one handler fail', s => s.replace('| move     | 1400 |', '| move     | 0 |'), /move selector was never called/);
+rejected('handler revert is rejected', s => s.replace('| approve  | 1400 | 0       |', '| approve  | 1400 | 1       |'), /approve selector reverted/);
+rejected('discarded calls are rejected', s => s.replace('| pull     | 1296 | 0       | 0', '| pull     | 1296 | 0       | 2'), /pull selector discarded calls/);
+rejected('wrong target contract is rejected', s => s.replace('SpicaCashInvariantHandler  | move', 'UnknownHandler              | move'), /unexpected or malformed handler selector metrics row/);
+rejected('unexpected selector is rejected', s => s.replace('| move     | 1400 |', '| mint     | 1400 |'), /unexpected or malformed handler selector metrics row/);
+rejected('duplicate selector rows cannot pass', s => s.replace('| pull     | 1296 |', '| move     | 1296 |'), /unexpected or malformed handler selector metrics row/);
+rejected('fabricated selector totals do not pass', s => s.replace('| move     | 1400 |', '| move     | 1399 |'), /selector calls do not sum to campaign calls/);
+rejected('selector metrics moved to another campaign are rejected', s => {
+  const table = metrics();
+  return s.replace(table, '') + '\n' + table + '\n';
+}, /expected exactly one Foundry selector metrics table/);
+rejected('additional selector row cannot be included', s => s.replace('| pull     | 1296 | 0       | 0        |', '| pull     | 1296 | 0       | 0        |\n| SpicaCashInvariantHandler  | burn     | 1 | 0       | 0        |'), /expected exactly three handler selector metric rows/);
+rejected('missing metrics header cannot pass', s => s.replace('Contract                   | Selector | Calls | Reverts | Discards', 'Contract                   | Selector | Fake  | Reverts | Discards'), /expected exactly one Foundry selector metrics table/);
+rejected('selector columns with malformed numbers fail', s => s.replace('| move     | 1400 |', '| move     | NaN |'), /unexpected or malformed handler selector metrics row/);
+
+test('box drawing vertical separators are accepted', () => {
+  const output = fixture().replaceAll('|', '│');
+  assert.equal(checkInvariantEvidence(output).valid, true);
+});
 
 test('CLI works with evidence file and fails on missing file', () => {
   const dir = mkdtempSync(join(tmpdir(), 'spica-forge-evidence-'));
