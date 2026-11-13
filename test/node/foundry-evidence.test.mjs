@@ -1,0 +1,54 @@
+// SPDX-License-Identifier: MIT
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { checkInvariantEvidence } from '../../scripts/check-foundry-invariants.mjs';
+
+const fixture = () => `
+Ran 5 tests for test/SpicaCashInvariant.t.sol:SpicaCashInvariantTest
+[PASS] testInvariantTargetsOnlyTheHandler() (gas: 998)
+[PASS] testInvariantHandlerExercisesTransferApprovalAndPull() (gas: 998)
+[PASS] invariant_TotalSupplyRemainsFixed() (runs: 64, calls: 4096, reverts: 0)
+[PASS] invariant_TrackedBalancesConserveAllTokens() (runs: 64, calls: 4096, reverts: 0)
+[PASS] invariant_NoTokensHeldByHandlerOrFixture() (runs: 64, calls: 4096, reverts: 0)
+Suite result: ok. 5 passed; 0 failed; 0 skipped
+`;
+function rejected(name, modify, expected) {
+  test(name, () => {
+    const result = checkInvariantEvidence(modify(fixture()));
+    assert.equal(result.valid, false);
+    assert.match(result.errors.join('\n'), expected);
+  });
+}
+test('plausible Foundry invariant campaign is recognized', () => {
+  assert.deepEqual(checkInvariantEvidence(fixture()), { valid: true, errors: [] });
+});
+test('ANSI-colored output and CRLF are recognized', () => {
+  assert.equal(checkInvariantEvidence(fixture().replaceAll('[PASS]', '\x1b[32m[PASS]\x1b[0m').replaceAll('\n','\r\n')).valid, true);
+});
+rejected('suite cannot be unrelated', s => s.replace('SpicaCashInvariantTest', 'OtherTest'), /suite header missing/);
+rejected('a passing smoke test cannot be omitted', s => s.replace('[PASS] testInvariantTargetsOnlyTheHandler()', '[SKIP] testInvariantTargetsOnlyTheHandler()'), /testInvariantTargetsOnlyTheHandler/);
+rejected('all invariants must appear', s => s.replace('[PASS] invariant_NoTokensHeldByHandlerOrFixture()', '[SKIP] invariant_NoTokensHeldByHandlerOrFixture()'), /invariant_NoTokensHeldByHandlerOrFixture/);
+rejected('64-run minimum is enforced', s => s.replace('runs: 64', 'runs: 1'), /fewer than 64/);
+rejected('4096-call minimum is enforced', s => s.replace('calls: 4096', 'calls: 0'), /fewer than 4096/);
+rejected('nonzero revert is never accepted', s => s.replace('reverts: 0', 'reverts: 1'), /nonzero revert/);
+rejected('an explicit failure overrides PASS markers', s => s + '\n[FAIL] testUnexpected()\n', /failing tests/);
+rejected('Forge success summary is required', s => s.replace('5 passed; 0 failed', '4 passed; 1 failed'), /success summary/);
+rejected('duplicate PASS markers are refused', s => s + '\n[PASS] invariant_TotalSupplyRemainsFixed() (runs: 64, calls: 4096, reverts: 0)\n', /exactly one passing invariant/);
+rejected('empty transcript fails closed', () => '', /missing or oversized/);
+test('CLI works with evidence file and fails on missing file', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'spica-forge-evidence-'));
+  const path = join(dir, 'transcript.txt');
+  try {
+    writeFileSync(path, fixture());
+    const ok = spawnSync(process.execPath, ['scripts/check-foundry-invariants.mjs', path], { encoding: 'utf8' });
+    assert.equal(ok.status, 0, ok.stderr);
+    assert.match(ok.stdout, /PASS: 3 invariant campaigns/);
+    const bad = spawnSync(process.execPath, ['scripts/check-foundry-invariants.mjs', join(dir,'missing')], { encoding: 'utf8' });
+    assert.equal(bad.status, 1);
+    assert.match(bad.stderr, /cannot read Forge output/);
+  } finally { rmSync(dir, { recursive:true, force:true }); }
+});
