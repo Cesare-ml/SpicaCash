@@ -11,7 +11,10 @@ export function validateTokenomics(p, options={}) {
   };
   const MAX=(1n<<256n)-1n;
   const units=(x,path)=>{
-    if(typeof x!=='string'||! /^(0|[1-9][0-9]*)$/.test(x)){err(path,'expected exact base-10 integer string');return null}
+    if(typeof x!=='string'){err(path,'expected exact base-10 integer string');return null}
+    // uint256 has at most 78 decimal digits: bound input before regex/BigInt parsing.
+    if(x.length>78){err(path,'exceeds uint256');return null}
+    if(! /^(0|[1-9][0-9]*)$/.test(x)){err(path,'expected exact base-10 integer string');return null}
     const n=BigInt(x); if(n===0n)err(path,'must be positive');if(n>MAX)err(path,'exceeds uint256');return n;
   };
   if(!shape(p,'plan',['schemaVersion','status','deploymentApproved','product','network','token','allocations','treasury','reviews']))
@@ -69,5 +72,14 @@ export function validateTokenomics(p, options={}) {
   }
   if(shape(p.reviews,'reviews',['security','legal']))
     for(const k of ['security','legal'])if(!['not_started','in_progress','completed'].includes(p.reviews[k]))err('reviews.'+k,'invalid review status');
+  // A draft is intentionally undecided; populated economic fields need explicit proposal status.
+  if(p.status==='draft'){
+    if(obj(p.token)&&p.token.totalSupplyBaseUnits!==null)
+      err('token.totalSupplyBaseUnits','draft must leave supply undecided');
+    if(Array.isArray(p.allocations)&&p.allocations.length!==0)
+      err('allocations','draft must not contain allocation commitments');
+    if(obj(p.treasury)&&p.treasury.status!=='undecided')
+      err('treasury.status','draft must leave treasury policy undecided');
+  }
   return {valid:errors.length===0,errors,status:p.status};
 }
