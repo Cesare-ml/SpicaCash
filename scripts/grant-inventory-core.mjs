@@ -76,6 +76,11 @@ export function checkGrantInventory(manifestPath, inventoryDirectory, verifiedBa
         fail(where, 'non-regular filesystem entries are not allowed');
         continue;
       }
+      // JSON-like files with uppercase/mixed-case suffixes cannot be silently omitted.
+      if (entry.name.toLowerCase().endsWith('.json') && !entry.name.endsWith('.json')) {
+        fail(where, 'JSON filenames must use lowercase .json extension');
+        continue;
+      }
       // Non-JSON regular files (for example README.md) remain documentation.
       if (entry.name.endsWith('.json')) discovered.push(entry.name);
     }

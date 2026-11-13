@@ -88,3 +88,9 @@ test('missing inventory folder is rejected', t => {
   const f = fixture(t);
   assert.equal(check(f, 'missing').valid, false);
 });
+test('uppercase or mixed-case JSON file extensions cannot hide a grant', t => {
+  const f = fixture(t);
+  writeFileSync(join(f.inventory, 'forgotten.JSON'), '{}\n');
+  writeFileSync(join(f.inventory, 'another.JsOn'), '{}\n');
+  assert.match(check(f).errors.join('\n'), /JSON filenames must use lowercase \.json extension/);
+});
