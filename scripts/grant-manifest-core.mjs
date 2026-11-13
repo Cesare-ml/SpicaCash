@@ -2,10 +2,10 @@
 // Read-only manifest integrity checks; no GitHub, wallet or chain access.
 import { createHash } from 'node:crypto';
 import { parseReviewJson } from './parse-review-json.mjs';
-import { closeSync, constants, fstatSync, lstatSync, openSync, readSync, realpathSync } from 'node:fs';
+import { lstatSync, realpathSync } from 'node:fs';
+import { readSmallBytes } from './read-small-file.mjs';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 
-const MAX_DOCUMENT_BYTES = 1024 * 1024;
 const MAX_BATCHES = 64;
 const HEX_SHA256 = /^[a-f0-9]{64}$/;
 
@@ -21,43 +21,6 @@ function exactShape(value, keys, path, errors) {
     if (!Object.hasOwn(value, key)) errors.push(path + '.' + key + ': missing field');
   }
   return true;
-}
-
-function readSmallBytes(path) {
-  // Refuse symlinks even where O_NOFOLLOW is unavailable. On platforms that
-  // support it, O_NOFOLLOW also closes the check-to-open symlink swap window.
-  const info = lstatSync(path);
-  if (!info.isFile() || info.isSymbolicLink()) {
-    throw new Error('regular, non-symlink file required');
-  }
-  const flags = constants.O_RDONLY | (constants.O_NOFOLLOW || 0) |
-                (constants.O_NONBLOCK || 0);
-  const fd = openSync(path, flags);
-  try {
-    const before = fstatSync(fd, { bigint: true });
-    if (!before.isFile()) throw new Error('regular file required');
-    if (before.size > BigInt(MAX_DOCUMENT_BYTES)) {
-      throw new Error('file exceeds 1 MiB limit');
-    }
-    // Bounded read: do not trust a size from lstat/fstat to cap a later
-    // readFileSync() call if an untrusted file grows concurrently.
-    const buffer = Buffer.allocUnsafe(MAX_DOCUMENT_BYTES + 1);
-    let length = 0;
-    while (length < buffer.length) {
-      const count = readSync(fd, buffer, length, buffer.length - length, null);
-      if (count === 0) break;
-      length += count;
-    }
-    if (length > MAX_DOCUMENT_BYTES) throw new Error('file exceeds 1 MiB limit');
-    const after = fstatSync(fd, { bigint: true });
-    if (BigInt(length) !== before.size || before.size !== after.size ||
-        before.mtimeNs !== after.mtimeNs || before.ctimeNs !== after.ctimeNs) {
-      throw new Error('file changed during snapshot read');
-    }
-    return buffer.subarray(0, length);
-  } finally {
-    closeSync(fd);
-  }
 }
 
 function readSmallJson(path) {
