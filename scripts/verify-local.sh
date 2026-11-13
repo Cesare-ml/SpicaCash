@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
 # Local-only verification gate: no deployment, wallet use, signing or RPC calls.
+# Requires preinstalled solc 0.8.24: Forge must not fetch compiler binaries.
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -22,15 +23,15 @@ export NO_COLOR=1
 printf 'Gate 1/5: offline Node/Bash tests\n'
 npm run test:offline
 printf 'Gate 2/5: compile fresh Solidity artifacts\n'
-forge build --force
+forge build --offline --force
 printf 'Gate 3/5: inspect the real compiled SpicaCash ABI\n'
 node scripts/check-abi.mjs
 printf 'Gate 4/5: run full Solidity unit/fuzz/invariant tests\n'
-forge test -vv
+forge test --offline -vv
 printf 'Gate 5/5: re-run invariant suite and verify actual campaign evidence\n'
 report="$(mktemp)"
 trap 'rm -f "$report"' EXIT
-forge test --match-contract SpicaCashInvariantTest -vv | tee "$report"
+forge test --offline --match-contract SpicaCashInvariantTest -vv | tee "$report"
 node scripts/check-foundry-invariants.mjs "$report"
 printf 'PASS: local offline + Solidity compilation, ABI and Foundry invariant gates.\n'
 printf 'NOTE: inspect selector metrics for move(), approve(), pull() manually; this is not an audit.\n'
