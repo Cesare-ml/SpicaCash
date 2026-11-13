@@ -62,7 +62,7 @@ The [offline grant batch reconciler](docs/GRANT_BATCH_RECONCILIATION.md) catches
 - `npm run check:grant-batches` — check the default **empty draft** only
 - `npm run test:grant-batches` — run synthetic cross-batch regression tests
 
-Standalone `check:tokenomics`, `check:grants` and `check:grant-batches` now reject duplicate JSON keys (including escaped aliases), malformed UTF-8, leading BOM and excessive JSON nesting using the same strict parser as the pinned-manifest path. These standalone commands **do not pin SHA-256**; use an independently pinned manifest and strict inventory for grant-review authenticity.
+Standalone `check:tokenomics`, `check:grants` and `check:grant-batches` now enforce bounded, descriptor-backed reads (1 MiB per file, with symlinks rejected) and reject duplicate JSON keys (including escaped aliases), malformed UTF-8, leading BOM and excessive JSON nesting using the same strict parser as the pinned-manifest path. These standalone commands **do not pin SHA-256**; use an independently pinned manifest and strict inventory for grant-review authenticity.
 
 ## Hashed grant proposal manifest (review-only)
 

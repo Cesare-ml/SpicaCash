@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: MIT
 // Read-only CLI. Does not authenticate GitHub PRs or approve grants.
-import { readFileSync } from 'node:fs';
+import { readSmallBytes } from './read-small-file.mjs';
 import { parseReviewJson } from './parse-review-json.mjs';
 import { validateContributorGrants } from './contributor-grants-core.mjs';
 
@@ -22,8 +22,8 @@ if (!file || invalid || tokenomicsFile?.startsWith('--')) {
   process.exitCode = 2;
 } else {
   try {
-    const grants = parseReviewJson(readFileSync(file));
-    const tokenomics = tokenomicsFile === null ? null : parseReviewJson(readFileSync(tokenomicsFile));
+    const grants = parseReviewJson(readSmallBytes(file));
+    const tokenomics = tokenomicsFile === null ? null : parseReviewJson(readSmallBytes(tokenomicsFile));
     const report = validateContributorGrants(grants, tokenomics, { requireProposal });
     if (!report.valid) {
       console.error('INVALID contributor grant plan (no payment authorization):');

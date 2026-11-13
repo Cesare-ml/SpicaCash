@@ -2,7 +2,7 @@
 // Offline CLI input tests; synthetic drafts only. No wallets or network.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -101,3 +101,42 @@ test('standalone tokenomics CLI rejects duplicate fields nested in the plan', t 
   assert.equal(r.status, 2, r.stderr);
   assert.match(r.stderr, /duplicate JSON object key/);
 });
+
+
+// Protect the standalone paths from oversized or aliased local review inputs.
+for (const entry of commands) {
+  test(entry.name + ' rejects oversized primary review JSON before decoding', t => {
+    const f = fixture(t);
+    writeFileSync(f.file, Buffer.alloc(1024 * 1024 + 1, 0x20));
+    const r = run(entry.command, f.file);
+    assert.equal(r.status, 2, r.stderr);
+    assert.match(r.stderr, /file exceeds 1 MiB limit/);
+    assert.doesNotMatch(r.stdout, /VALID/);
+  });
+
+  test(entry.name + ' rejects symlinked primary review JSON', t => {
+    const f = fixture(t);
+    writeFileSync(f.companion, entry.draft);
+    try { symlinkSync(f.companion, f.file); }
+    catch (error) {
+      if (error.code === 'EPERM') { t.skip('symlink permission denied'); return; }
+      throw error;
+    }
+    const r = run(entry.command, f.file);
+    assert.equal(r.status, 2, r.stderr);
+    assert.match(r.stderr, /regular, non-symlink file required/);
+    assert.doesNotMatch(r.stdout, /VALID/);
+  });
+}
+
+for (const entry of commands.filter(x => x.name !== 'tokenomics')) {
+  test(entry.name + ' rejects oversized companion tokenomics JSON', t => {
+    const f = fixture(t);
+    writeFileSync(f.file, entry.draft);
+    writeFileSync(f.companion, Buffer.alloc(1024 * 1024 + 1, 0x20));
+    const r = run(entry.command, f.file, '--tokenomics', f.companion);
+    assert.equal(r.status, 2, r.stderr);
+    assert.match(r.stderr, /file exceeds 1 MiB limit/);
+    assert.doesNotMatch(r.stdout, /VALID/);
+  });
+}
