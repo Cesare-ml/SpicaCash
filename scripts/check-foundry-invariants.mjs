@@ -69,7 +69,11 @@ export function checkInvariantEvidence(raw) {
   const parseMetricsCells = (line) => {
     const trimmed = line.trim();
     if (!/^[|│]/u.test(trimmed) || !/[|│]$/u.test(trimmed)) return null;
-    return trimmed.slice(1, -1).split(/[|│]/u).map((cell) => cell.trim());
+    const inside = trimmed.slice(1, -1);
+    // Actual Forge tables contain horizontal rules between selector rows.
+    // Ignore only pure drawing characters; mixed text must still fail closed.
+    if (/^[-=+─━═┼┬┴┤├┿╪\s]+$/u.test(inside) && /[-=─━═]/u.test(inside)) return null;
+    return inside.split(/[|│]/u).map((cell) => cell.trim());
   };
   const passLines = [...scopedReport.matchAll(/^\s*\[PASS\][^\n]*/gm)];
 
