@@ -52,7 +52,7 @@ test('a symbolic link pretending to be a batch is rejected', t => {
   const f = fixture(t);
   try { symlinkSync(join(f.inventory, 'grant-a.json'), join(f.inventory, 'forgotten.json')); }
   catch (error) { if (error.code === 'EPERM') { t.skip('No symlink privileges'); return; } throw error; }
-  assert.match(check(f).errors.join('\n'), /must be a regular file/);
+  assert.match(check(f).errors.join('\n'), /symlinks are not allowed/);
 });
 test('symlinked inventory directory is rejected', t => {
   const f = fixture(t);
