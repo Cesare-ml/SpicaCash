@@ -60,11 +60,6 @@ function readSmallBytes(path) {
   }
 }
 
-function readSmallJson(path) {
-  const bytes = readSmallBytes(path);
-  return { bytes, value: parseReviewJson(bytes) };
-}
-
 function relativeJsonPath(value) {
   if (typeof value !== 'string' || value.length > 240 ||
       !/^[a-zA-Z0-9_.\/-]+\.json$/.test(value) || value.includes('\\') ||
@@ -163,11 +158,14 @@ export function loadGrantManifest(manifestPath, options = {}) {
       if (realpathSync(abs) !== abs) {
         throw new Error('symlink or redirected path not allowed');
       }
-      const { bytes, value } = readSmallJson(abs);
+      // Do not parse an unauthenticated batch or tokenomics document. A
+      // malformed file with the wrong digest must fail on its checksum first.
+      const bytes = readSmallBytes(abs);
       if (sha256Hex(bytes) !== entry.sha256) {
         failure(where + '.sha256', 'file digest mismatch: possible modification');
         return null;
       }
+      const value = parseReviewJson(bytes);
       return { name: entry.path, value };
     } catch (err) {
       failure(where + '.path', 'cannot read verified JSON file: ' + err.message);

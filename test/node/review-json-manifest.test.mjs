@@ -64,3 +64,28 @@ test('equivalent escaped manifest keys are also duplicates',t=>{
   assert.equal(r.valid,false);
   assert.match(r.errors.join('; '),/duplicate JSON object key/);
 });
+
+test('mismatched batch digest fails before parsing duplicate JSON fields',t=>{
+  const f=fixture(t,Buffer.from('{"status":"proposal","status":"draft"}'));
+  f.manifest.batches[0].sha256='0'.repeat(64);
+  writeFileSync(f.path,JSON.stringify(f.manifest));
+  const r=loadGrantManifest(f.path);
+  assert.deepEqual(r.errors,['batches[0].sha256: file digest mismatch: possible modification']);
+});
+test('mismatched batch digest fails before decoding malformed UTF-8',t=>{
+  const f=fixture(t,Buffer.from([0x7b,0x22,0x78,0x22,0x3a,0xff,0x7d]));
+  f.manifest.batches[0].sha256='f'.repeat(64);
+  writeFileSync(f.path,JSON.stringify(f.manifest));
+  const r=loadGrantManifest(f.path);
+  assert.deepEqual(r.errors,['batches[0].sha256: file digest mismatch: possible modification']);
+});
+test('mismatched tokenomics digest fails before parsing contradictory keys',t=>{
+  const f=fixture(t,Buffer.from('{"status":"proposal","grants":[]}'));
+  const economics=Buffer.from('{"status":"proposal","status":"draft"}');
+  writeFileSync(join(f.dir,'economics.json'),economics);
+  f.manifest.status='proposal';
+  f.manifest.tokenomics={path:'economics.json',sha256:'0'.repeat(64)};
+  writeFileSync(f.path,JSON.stringify(f.manifest));
+  const r=loadGrantManifest(f.path);
+  assert.deepEqual(r.errors,['tokenomics.sha256: file digest mismatch: possible modification']);
+});
