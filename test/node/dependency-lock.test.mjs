@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { readFileSync, mkdtempSync, rmSync, existsSync, writeFileSync } from 'node:fs';
+import { dirname, resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
 import { checkDependencyLock } from '../../scripts/check-dependency-lock.mjs';
 
 const project = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -43,4 +44,43 @@ test('CLI checks current repository lock successfully', () => {
   const run = spawnSync(process.execPath, [resolve(project, 'scripts/check-dependency-lock.mjs')], { encoding: 'utf8', cwd: '/tmp' });
   assert.equal(run.status, 0, run.stderr);
   assert.match(run.stdout, /PASS: @openzeppelin\/contracts@5\.4\.0/);
+});
+
+// npm lifecycle hooks execute during ordinary `npm ci` unless ignore-scripts is
+// set. Lockfile integrity alone does not make those commands safe.
+rejects('reject added npm preinstall lifecycle hook', (p) => { p.scripts.preinstall = 'echo unsafe'; }, /npm scripts must match/);
+rejects('reject added npm postinstall lifecycle hook', (p) => { p.scripts.postinstall = 'echo unsafe'; }, /npm scripts must match/);
+rejects('reject added npm prepare lifecycle hook', (p) => { p.scripts.prepare = 'echo unsafe'; }, /npm scripts must match/);
+rejects('reject added pretest:offline hook that runs before checks', (p) => { p.scripts['pretest:offline'] = 'echo unsafe'; }, /npm scripts must match/);
+rejects('reject altered offline test command', (p) => { p.scripts['test:offline'] = 'echo skipped'; }, /npm scripts must match/);
+rejects('reject altered Solidity verifier command', (p) => { p.scripts['verify:local'] = 'echo skipped'; }, /npm scripts must match/);
+rejects('reject removal of dependency checker command', (p) => { delete p.scripts['test:dependency-lock']; }, /npm scripts must match/);
+rejects('reject npm overrides metadata', (p) => { p.overrides = {'@openzeppelin/contracts': '0.1.0'}; }, /unexpected package.json fields/);
+rejects('reject workspace package injection', (p) => { p.workspaces = ['packages/*']; }, /unexpected package.json fields/);
+rejects('reject bundledDependencies metadata', (p) => { p.bundledDependencies = ['other']; }, /unexpected package.json fields/);
+rejects('reject package made public', (p) => { p.private = false; }, /non-private package/);
+rejects('reject unexpected top-level lock metadata', (_p, l) => { l.overrides = {other: '1.0.0'}; }, /unexpected top-level lockfile metadata/);
+rejects('reject root install hook indicator', (_p, l) => { l.packages[''].hasInstallScript = true; }, /unreviewed root package metadata/);
+rejects('reject dependency install hook indicator', (_p, l) => { l.packages['node_modules/@openzeppelin/contracts'].hasInstallScript = true; }, /unreviewed dependency metadata/);
+rejects('reject dependency binary entry', (_p, l) => { l.packages['node_modules/@openzeppelin/contracts'].bin = {hack: 'run.js'}; }, /unreviewed dependency metadata/);
+
+test('npm ci --ignore-scripts suppresses local preinstall hook (offline empty fixture)', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'spicacash-npm-policy-'));
+  const marker = join(dir, 'unexpected-preinstall-run');
+  try {
+    // The only script would write a harmless marker; no dependencies or network.
+    writeFileSync(join(dir, 'package.json'), JSON.stringify({
+      name:'offline-lifecycle-fixture', version:'0.0.1', private:true,
+      scripts: {preinstall: 'node -e "require(\'fs\').writeFileSync(\'unexpected-preinstall-run\',\'executed\')"'}
+    }));
+    writeFileSync(join(dir, 'package-lock.json'), JSON.stringify({
+      name:'offline-lifecycle-fixture', version:'0.0.1', lockfileVersion:3, requires:true,
+      packages: {'': {name:'offline-lifecycle-fixture', version:'0.0.1'}}
+    }));
+    const cli = spawnSync('npm', ['ci', '--ignore-scripts', '--offline', '--no-audit', '--no-fund'], {
+      encoding:'utf8', cwd:dir, timeout:15000
+    });
+    assert.equal(cli.status, 0, cli.stderr);
+    assert.equal(existsSync(marker), false, 'npm ci executed a lifecycle hook despite --ignore-scripts');
+  } finally { rmSync(dir, {recursive:true, force:true}); }
 });
