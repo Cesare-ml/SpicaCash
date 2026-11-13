@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: MIT
 // Fail closed when Foundry does not report an actually exercised invariant campaign.
-// This checks test-run output, not source, ABI, bytecode or handler selector metrics.
+// This checks test-run output and selector metrics, not source, ABI or bytecode.
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
@@ -10,6 +10,8 @@ const requiredInvariants = [
   'invariant_TrackedBalancesConserveAllTokens',
   'invariant_NoTokensHeldByHandlerOrFixture',
 ];
+const handlerContract = 'SpicaCashInvariantHandler';
+const requiredSelectors = ['move', 'approve', 'pull'];
 const requiredSmoke = [
   'testInvariantTargetsOnlyTheHandler',
   'testInvariantHandlerExercisesTransferApprovalAndPull',
@@ -61,6 +63,16 @@ export function checkInvariantEvidence(raw) {
     const matches = [...scopedReport.matchAll(pattern)];
     if (matches.length !== 1) errors.push(`${name}: expected exactly one passing result`);
   }
+  // Foundry `show_metrics = true` renders a pipe-delimited selector table
+  // immediately below each invariant result. We bind each table to *its own*
+  // campaign, rather than accepting plausible counts from other tests.
+  const parseMetricsCells = (line) => {
+    const trimmed = line.trim();
+    if (!/^[|│]/u.test(trimmed) || !/[|│]$/u.test(trimmed)) return null;
+    return trimmed.slice(1, -1).split(/[|│]/u).map((cell) => cell.trim());
+  };
+  const passLines = [...scopedReport.matchAll(/^\s*\[PASS\][^\n]*/gm)];
+
   for (const name of requiredInvariants) {
     const pattern = new RegExp(
       `^\\s*\\[PASS\\]\\s+${name}\\(\\)\\s+\\(runs:\\s*(\\d+),\\s*calls:\\s*(\\d+),\\s*reverts:\\s*(\\d+)\\)`,
@@ -75,6 +87,44 @@ export function checkInvariantEvidence(raw) {
     if (runs < 64n) errors.push(`${name}: fewer than 64 invariant runs`);
     if (calls < 4096n) errors.push(`${name}: fewer than 4096 invariant calls`);
     if (reverts !== 0n) errors.push(`${name}: nonzero revert count`);
+
+    const sectionStart = matches[0].index + matches[0][0].length;
+    const nextPass = passLines.find((line) => line.index > matches[0].index);
+    const sectionEnd = nextPass ? nextPass.index : scopedReport.length;
+    const section = scopedReport.slice(sectionStart, sectionEnd);
+    const rows = section.split('\n').map(parseMetricsCells).filter(Boolean);
+    const headers = rows.filter((row) => row.join(',') === 'Contract,Selector,Calls,Reverts,Discards');
+    if (headers.length !== 1) {
+      errors.push(`${name}: expected exactly one Foundry selector metrics table`);
+      continue;
+    }
+    const data = rows.filter((row) => row.join(',') !== 'Contract,Selector,Calls,Reverts,Discards');
+    // No extra target functions/rows: expected only the three bounded handlers.
+    if (data.length !== requiredSelectors.length) {
+      errors.push(`${name}: expected exactly three handler selector metric rows`);
+    }
+    const entries = new Map();
+    let summedCalls = 0n;
+    for (const row of data) {
+      if (row.length !== 5 || row[0] !== handlerContract ||
+          !requiredSelectors.includes(row[1]) || entries.has(row[1]) ||
+          !row.slice(2).every((value) => /^\d+$/.test(value))) {
+        errors.push(`${name}: unexpected or malformed handler selector metrics row`);
+        continue;
+      }
+      const [callsPerSelector, selectorReverts, discards] = row.slice(2).map(BigInt);
+      entries.set(row[1], callsPerSelector);
+      summedCalls += callsPerSelector;
+      if (callsPerSelector === 0n) errors.push(`${name}: ${row[1]} selector was never called`);
+      if (selectorReverts !== 0n) errors.push(`${name}: ${row[1]} selector reverted`);
+      if (discards !== 0n) errors.push(`${name}: ${row[1]} selector discarded calls`);
+    }
+    for (const selector of requiredSelectors) {
+      if (!entries.has(selector)) errors.push(`${name}: ${selector} selector metrics missing`);
+    }
+    if (summedCalls !== calls) {
+      errors.push(`${name}: selector calls do not sum to campaign calls`);
+    }
   }
   return { valid: errors.length === 0, errors };
 }
@@ -91,7 +141,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
         for (const problem of result.errors) console.error(`Invariant evidence failed: ${problem}`);
         process.exitCode = 1;
       } else {
-        console.log('PASS: 3 invariant campaigns (>=64 runs, >=4096 calls, zero reverts) and 2 smoke tests');
+        console.log('PASS: 3 invariant campaigns, each with 64+ runs, 4096+ calls, 3 exercised handlers and zero reverts/discards; 2 smoke tests');
       }
     } catch {
       // Do not echo file paths or error payloads, which could contain sensitive data.
