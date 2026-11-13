@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 // Validates a proposed allocation plan; cannot deploy, sign, mint or approve one.
 import { readFileSync } from 'node:fs';
+import { parseReviewJson } from './parse-review-json.mjs';
 import { validateTokenomics } from './tokenomics-core.mjs';
 
 const args = process.argv.slice(2);
@@ -10,7 +11,7 @@ if (args.length < 1 || args.length > 2 || (args.length === 2 && args[1] !== '--r
   process.exitCode = 2;
 } else {
   try {
-    const plan = JSON.parse(readFileSync(args[0], 'utf8'));
+    const plan = parseReviewJson(readFileSync(args[0]));
     const report = validateTokenomics(plan, { requireProposal: args[1] === '--require-proposal' });
     if (!report.valid) {
       console.error('INVALID tokenomics plan (never deployment approval):');
