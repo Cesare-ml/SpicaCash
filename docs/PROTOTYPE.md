@@ -36,7 +36,26 @@ After compilation, `scripts/check-abi.mjs` rejects any new external function bey
 
 `npm run test:deploy-guard` runs **15 offline cases** against the Sepolia deployment script with mock `forge` and `cast` executables. They exercise the wrong chain ID, zero receiver address, zero and noncanonical supplies, values above the EVM `uint256` limit, missing or invalid Foundry account names, missing explicit authorization, the exact maximum `uint256` (read-only), and one mock-only authorized call. None of these tests uses a real RPC, signer or transaction.
 
-**Validation status (2026-11-13):** **Complete PR #2 offline suite passed: 62/62 cases** using `npm run test:offline` in a manually reconstructed local source tree with the same package layout and Git blob SHA-1s as the GitHub PR, after correcting the test/shell RPC harness repository-root path. Results: ABI **21/21**, deploy guards **15/15**, RPC URL **18/18**, mocked RPC integration **8/8**, zero failures, exit code 0. The RPC integration test also passed when invoked from an unrelated working directory. No real provider, signer, blockchain call, or broadcast was involved. This is **not a full Git clone/checkout** and **not** a Solidity build. `forge build`, Solidity unit/fuzz/invariant runs and compiled ABI inspection remain **unrun** here because Foundry, solc and npm dependency retrieval are unavailable. Do not report the smart contract as verified until the Solidity commands pass in a configured environment.
+**Validation status (2026-11-13):** **Complete PR #2 offline suite passed: 75/75 cases** using `npm run test:offline` in a manually reconstructed local source tree with the same package layout and Git blob SHA-1s as the GitHub PR, after correcting the test/shell RPC harness repository-root path. Results: ABI **21/21**, deploy guards **15/15**, RPC URL **18/18**, mocked RPC integration **8/8**, Foundry evidence parser (synthetic transcripts) **13/13**, zero failures, exit code 0. The RPC integration test also passed when invoked from an unrelated working directory. No real provider, signer, blockchain call, or broadcast was involved. This is **not a full Git clone/checkout** and **not** a Solidity build. `forge build`, Solidity unit/fuzz/invariant runs and compiled ABI inspection remain **unrun** here because Foundry, solc and npm dependency retrieval are unavailable. Do not report the smart contract as verified until the Solidity commands pass in a configured environment.
+
+## One-command local Solidity verification gate
+
+On a machine with Node.js 20+, Bash (WSL2 on Windows), Foundry and locally installed `@openzeppelin/contracts@5.4.0`, run:
+
+```bash
+npm install
+npm run verify:local
+```
+
+The script `scripts/verify-local.sh` is **offline-only for blockchain interactions**. It checks that `forge` and the OpenZeppelin ERC-20 dependency exist, removes inherited testnet/RPC/keystore variables from its environment, then runs these five gates sequentially:
+
+1. `npm run test:offline` (75 checks, including 13 synthetic parser regressions).
+2. `forge build --force` to compile fresh Solidity artifacts.
+3. `node scripts/check-abi.mjs` against the **actual compiled artifact**.
+4. `forge test -vv` for the full unit, fuzz and invariant suite.
+5. `forge test --match-contract SpicaCashInvariantTest -vv` and `node scripts/check-foundry-invariants.mjs <output>` to reject missing/failed tests, fewer than 64 runs or 4,096 calls in any of the three invariant campaigns, or any nonzero revert counts. Both deterministic handler smoke tests must also pass.
+
+**An external review must still inspect the Foundry selector metrics for `move`, `approve` and `pull`** and verify that real Foundry/compiler binaries were used. Output parsing does not establish executable authenticity, account safety, or audit-grade assurance. No build or Solidity tests were completed on the contributor machine used for this update: `forge` is not installed there, and `npm run verify:local` correctly exits with code 2 and a missing-Foundry error. `npm run test:offline` passed **75/75** on the byte-matched local source reconstruction. Build dependencies may need to be installed before using this gate, but no deployment should be triggered.
 
 **Never** run tests on a production fork with real signing credentials.
 
