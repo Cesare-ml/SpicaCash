@@ -53,6 +53,7 @@ This is a public, pre-launch crypto-asset project. **There is no official deploy
 - Manifest hashes pin *bytes*, not reviewer identities or authorization. For reviewed proposals, use `--expected-manifest-sha256` with an independently obtained, lowercase 64-character digest. A digest supplied by the same untrusted proposal is not independent evidence. Verify the canonical file inventory separately.
 - Update the digest whenever the empty grant draft intentionally changes; never add unreviewed real tokenomics or grant recipients.
 - Restrict manifest entries to local relative JSON; do not allow network downloads, symlinks, parent-path traversal or signing operations.
+- Read grant JSON only from regular files through a bounded, descriptor-backed snapshot. Keep the 1 MiB per-file cap and preserve no-follow checks where supported; do not claim this proves atomicity under concurrent writers.
 - For review proposals, use `--inventory-dir <relative-folder>` with a dedicated flat batch directory to detect omitted local JSON files. Nested folders, symlinks, special filesystem entries and case-varied `.JSON` extensions fail; use lowercase `.json` only. Verify externally that the directory is the canonical complete inventory; no local scan can prove it alone.
 - Run `npm run test:grant-manifest`, `npm run test:grant-inventory` and `npm run check:grant-manifest` after modifications.
 
