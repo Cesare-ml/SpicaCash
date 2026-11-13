@@ -60,6 +60,25 @@ test('symlinked inventory directory is rejected', t => {
   catch (error) { if (error.code === 'EPERM') { t.skip('No symlink privileges'); return; } throw error; }
   assert.equal(check(f, 'shadow').valid, false);
 });
+test('empty nested directories are rejected in a flat inventory', t => {
+  const f = fixture(t);
+  mkdirSync(join(f.inventory, 'archive'));
+  assert.match(check(f).errors.join('\n'), /nested directories are not allowed/);
+});
+test('nested unlisted JSON grants cannot hide under an inventory', t => {
+  const f = fixture(t);
+  mkdirSync(join(f.inventory, 'more-grants'));
+  writeFileSync(join(f.inventory, 'more-grants', 'hidden.json'), '{}\n');
+  const result = check(f);
+  assert.equal(result.valid, false);
+  assert.match(result.errors.join('\n'), /nested directories are not allowed/);
+});
+test('non-JSON symlink aliases are rejected too', t => {
+  const f = fixture(t);
+  try { symlinkSync(join(f.inventory, 'grant-a.json'), join(f.inventory, 'notes.md')); }
+  catch (error) { if (error.code === 'EPERM') { t.skip('No symlink privileges'); return; } throw error; }
+  assert.match(check(f).errors.join('\n'), /symlinks are not allowed/);
+});
 test('empty or malformed batch list is rejected', t => {
   const f = fixture(t);
   assert.equal(check(f, 'batch-proposals', []).valid, false);
