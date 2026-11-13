@@ -39,7 +39,7 @@ test('nested directories are rejected even if their JSON files were not listed',
   const f = fixture(t);
   mkdirSync(join(f.inventory, 'unreviewed'));
   writeFileSync(join(f.inventory, 'unreviewed', 'extra.json'), '{}\n');
-  assert.match(check(f).errors.join('\\n'), /nested directories are forbidden/);
+  assert.match(check(f).errors.join('\n'), /nested directories are forbidden/);
 });
 test('empty nested directories also invalidate the flat inventory', t => {
   const f = fixture(t);
@@ -58,7 +58,7 @@ test('non-JSON symlinks are rejected rather than hiding directories or documents
   const f = fixture(t);
   try { symlinkSync(join(f.inventory, 'grant-a.json'), join(f.inventory, 'notes.link')); }
   catch (error) { if (error.code === 'EPERM') { t.skip('No symlink privileges'); return; } throw error; }
-  assert.match(check(f).errors.join('\\n'), /symlinks are forbidden/);
+  assert.match(check(f).errors.join('\n'), /symlinks are forbidden/);
 });
 test('symlinked nested directories are rejected', t => {
   const f = fixture(t);
@@ -66,7 +66,7 @@ test('symlinked nested directories are rejected', t => {
   mkdirSync(outside);
   try { symlinkSync(outside, join(f.inventory, 'shadow'), 'dir'); }
   catch (error) { if (error.code === 'EPERM') { t.skip('No symlink privileges'); return; } throw error; }
-  assert.match(check(f).errors.join('\\n'), /symlinks are forbidden/);
+  assert.match(check(f).errors.join('\n'), /symlinks are forbidden/);
 });
 test('manifest-listed batch in a different directory is rejected', t => {
   const f = fixture(t);
