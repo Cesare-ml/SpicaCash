@@ -71,6 +71,7 @@ The [SHA-256 manifest integrity check](docs/GRANT_MANIFEST_INTEGRITY.md) detects
 - `npm run test:grant-inventory` — check for unlisted JSON batches and unsafe directory paths
 - `--inventory-dir review-batches` (CLI option) — verify every lowercase `.json` file in a dedicated flat review folder is listed; reject nested folders, symlinks and case-variant `.JSON` extensions
 - `--expected-manifest-sha256 <digest>` (CLI option) — independently pin the **raw manifest** for a read-only review; SHA-256 is not a signature or issuance authorization
+- Local manifest/batch reads: descriptor-backed and capped at 1 MiB per JSON file; concurrent filesystem changes still require independent review
 
 ## Roadmap
 
