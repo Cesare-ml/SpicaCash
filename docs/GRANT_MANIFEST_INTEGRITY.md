@@ -63,7 +63,7 @@ A matching digest permits the usual **read-only checks** to continue; a mismatch
 
 ## Unambiguous hashed JSON review
 
-The manifest loader now rejects duplicate object properties at any nesting level, including keys that decode to the same string after Unicode escaping. It rejects malformed UTF-8, initial UTF-8 BOMs and nesting beyond 128 levels. Unlike `JSON.parse` on its own, this avoids silently treating conflicting duplicate fields as the last value. The strict parser still uses native `JSON.parse` for final grammar validation.
+The manifest loader now rejects duplicate object properties at any nesting level, including keys that decode to the same string after Unicode escaping. It rejects malformed UTF-8, initial UTF-8 BOMs, unpaired UTF-16 surrogate escapes in keys or values, and nesting beyond 128 levels. Paired surrogate escapes and literal Unicode characters remain valid. This extra restriction avoids the cross-implementation ambiguity described in RFC 8259 section 8.2. Unlike `JSON.parse` on its own, this avoids silently treating conflicting duplicate fields as the last value. The strict parser still uses native `JSON.parse` for final grammar validation.
 
 A trusted, independently supplied SHA-256 pin is checked **before manifest parsing**. For each referenced grant batch and tokenomics JSON document, its raw bytes are compared with the manifest hash **before strict parsing**. A mismatch reports a digest error rather than interpreting unauthenticated document contents.
 
