@@ -69,7 +69,7 @@ The [SHA-256 manifest integrity check](docs/GRANT_MANIFEST_INTEGRITY.md) detects
 - `npm run check:grant-manifest` — validate the committed empty draft and its exact checksum
 - `npm run test:grant-manifest` — run synthetic integrity and safety tests
 - `npm run test:grant-inventory` — check for unlisted JSON batches and unsafe directory paths
-- `--inventory-dir review-batches` (CLI option) — verify every JSON file in a dedicated review folder is listed in the manifest
+- `--inventory-dir review-batches` (CLI option) — verify every JSON file in a dedicated review folder is listed in the manifest; reject nested folders and symlink aliases instead of silently skipping them
 
 ## Roadmap
 
