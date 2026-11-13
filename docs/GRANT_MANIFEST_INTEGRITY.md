@@ -61,6 +61,14 @@ A matching digest permits the usual **read-only checks** to continue; a mismatch
 
 **Important:** the digest is a fingerprint, **not a signature or approval**. Copying it directly from the same untrusted manifest or checker run does not establish authenticity. Obtain the approved value separately (for example, from a trusted, reviewed Git commit or independently verified review record). The loader reads at most 1 MiB through a verified file descriptor (POSIX `O_NOFOLLOW` where available), with a one-byte overflow probe and a second descriptor metadata check (size, mtime and ctime) that rejects observed changes during the read. `O_NONBLOCK` where supported also prevents a swapped named pipe from blocking the open indefinitely. File handles close on success or failure. This reduces symlink-swap and unbounded-read exposure, but is **not** a guarantee against all concurrent filesystem races, especially on Windows; review in a controlled, immutable checkout. The loader checks the independently supplied digest against raw manifest bytes **before JSON parsing or opening any manifest-listed files**. A mismatch stops the review without traversing those paths. Even a pinned manifest does not prove that the declared folder is the complete intended grant corpus or that any contributor is eligible. Because raw bytes are hashed, even whitespace-only formatting changes require a newly reviewed digest. No grants, payments or tokens are issued.
 
+## Unambiguous hashed JSON review
+
+The manifest loader now rejects duplicate object properties at any nesting level, including keys that decode to the same string after Unicode escaping. It rejects malformed UTF-8, initial UTF-8 BOMs and nesting beyond 128 levels. Unlike `JSON.parse` on its own, this avoids silently treating conflicting duplicate fields as the last value. The strict parser still uses native `JSON.parse` for final grammar validation.
+
+A trusted, independently supplied SHA-256 pin is checked **before manifest parsing**. For each referenced grant batch and tokenomics JSON document, its raw bytes are compared with the manifest hash **before strict parsing**. A mismatch reports a digest error rather than interpreting unauthenticated document contents.
+
+Run `npm run test:review-json` (twelve parser tests and nine manifest-integration tests). The strict rules apply to the hashed-manifest review path, not automatically to all standalone JSON draft CLIs. Validation does not authorize any distributions or onchain actions.
+
 ## Optional directory inventory verification
 
 A manifest hash check validates only the entries listed by the author. To detect **JSON batch files omitted from that manifest within a known folder**, the CLI now supports `--inventory-dir`:
