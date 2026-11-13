@@ -125,6 +125,7 @@ grep -q "local keystore alias" "$work/output"
 # With *all* gates satisfied, only the mock forge executable is invoked.
 # No real network or transaction is used in this test.
 export SPICA_CONFIRM_TESTNET_DEPLOY="YES_ARBITRUM_SEPOLIA_ONLY"
+export FOUNDRY_ACCOUNT="fake-test-wallet"
 : > "$MOCK_FORGE_LOG"
 bash "$deploy_script" > "$work/output" 2>&1
 [[ $(wc -l < "$MOCK_FORGE_LOG") -eq 1 ]] || { echo "FAIL: expected one mock invocation" >&2; exit 1; }
