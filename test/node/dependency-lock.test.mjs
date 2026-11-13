@@ -2,11 +2,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { checkDependencyLock } from '../../scripts/check-dependency-lock.mjs';
 
-const project = resolve(import.meta.dirname, '../..');
+const project = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const manifest = JSON.parse(readFileSync(resolve(project, 'package.json'), 'utf8'));
 const lock = JSON.parse(readFileSync(resolve(project, 'package-lock.json'), 'utf8'));
 const inputs = () => [structuredClone(manifest), structuredClone(lock)];
