@@ -53,11 +53,11 @@ This is a public, pre-launch crypto-asset project. **There is no official deploy
 - Manifest hashes pin *bytes*, not reviewer identities or authorization. For reviewed proposals, use `--expected-manifest-sha256` with an independently obtained, lowercase 64-character digest. A digest supplied by the same untrusted proposal is not independent evidence. Verify the canonical file inventory separately.
 - Update the digest whenever the empty grant draft intentionally changes; never add unreviewed real tokenomics or grant recipients.
 - Restrict manifest entries to local relative JSON; do not allow network downloads, symlinks, parent-path traversal or signing operations.
-- Read grant JSON only from regular files through a bounded, descriptor-backed snapshot. Keep the 1 MiB per-file cap and preserve no-follow checks where supported; do not claim this proves atomicity under concurrent writers.
-- Check each referenced batch/tokenomics SHA-256 against its bounded raw bytes **before** passing them to `parseReviewJson`; parsing untrusted documents before checking their digests is forbidden.
-- Use `parseReviewJson` for all JSON inside the hashed manifest review workflow. Reject duplicate keys, malformed UTF-8 and nesting deeper than 128 levels; run `npm run test:review-json` when changing parsing behavior.
 - For review proposals, use `--inventory-dir <relative-folder>` with a dedicated flat batch directory to detect omitted local JSON files. Nested folders, symlinks, special filesystem entries and case-varied `.JSON` extensions fail; use lowercase `.json` only. Verify externally that the directory is the canonical complete inventory; no local scan can prove it alone.
-- Run `npm run test:grant-manifest`, `npm run test:grant-inventory` and `npm run check:grant-manifest` after modifications.
+- Preserve descriptor-bound and maximum-1-MiB reads in `scripts/read-small-file.mjs` for every manifest and referenced JSON file. Retain POSIX `O_NOFOLLOW`, supported `O_NONBLOCK`, the one-byte overflow probe, and before/after descriptor metadata checks; never weaken fail-closed behavior without regression tests. Windows inode checks and all metadata checks are only best effort: do not claim a complete TOCTOU defense or an atomic directory snapshot.
+- Validate each referenced batch and tokenomics SHA-256 against the raw bounded bytes **before** passing them to `parseReviewJson`.
+- Use `parseReviewJson` for hashed-manifest review JSON: reject duplicate object keys, escaped equivalents, malformed UTF-8, leading BOM, and nesting deeper than 128. Run `npm run test:review-json` for parser changes.
+- Run `npm run test:safe-reader`, `npm run test:review-json`, `npm run test:grant-manifest`, `npm run test:grant-inventory` and `npm run check:grant-manifest` after modifications.
 
 ## Pull request checklist
 
