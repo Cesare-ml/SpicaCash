@@ -20,6 +20,8 @@ This is a public, pre-launch crypto-asset project. **There is no official deploy
 - Run `npm run test:rpc-url` and `npm run test:rpc-deploy-guard` when changing testnet RPC handling. All tests must remain fully mocked/offline.
 - Do not connect SpicaCash to VirgoStars AI credits, credit purchases, conversions or checkout in the initial release.
 - Prefer minimal and verifiable standard-contract components; no fee-on-transfer, hidden mint functions, owner blacklists or speculative marketing claims.
+- For Solidity changes, run `npm run verify:local` on a machine with Foundry and local OpenZeppelin dependencies before reporting a verified PR. It checks the compiled ABI and requires three real invariant campaigns (at least 64 runs and 4096 calls each, zero reverts) plus two smoke tests. Inspect `move`, `approve`, and `pull` selector metrics manually; a transcript parser is not proof of a genuine forge binary or audit.
+- If Foundry is missing, report `verify:local` as **blocked**, even if `npm run test:offline` succeeds. The local gate never deploys, signs, calls RPCs, or enables GitHub Actions.
 - For financial/security-sensitive changes, request review; provide exact tests actually run. Never claim an audit based on self-tests.
 
 ## Pull request checklist
