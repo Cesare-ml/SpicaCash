@@ -54,7 +54,8 @@ This is a public, pre-launch crypto-asset project. **There is no official deploy
 - Update the digest whenever the empty grant draft intentionally changes; never add unreviewed real tokenomics or grant recipients.
 - Restrict manifest entries to local relative JSON; do not allow network downloads, symlinks, parent-path traversal or signing operations.
 - For review proposals, use `--inventory-dir <relative-folder>` with a dedicated flat batch directory to detect omitted local JSON files. Nested folders, symlinks, special filesystem entries and case-varied `.JSON` extensions fail; use lowercase `.json` only. Verify externally that the directory is the canonical complete inventory; no local scan can prove it alone.
-- Run `npm run test:grant-manifest`, `npm run test:grant-inventory` and `npm run check:grant-manifest` after modifications.
+- Preserve descriptor-bound and maximum-1-MiB reads in `scripts/read-small-file.mjs` for every manifest and referenced JSON file. On POSIX use `O_NOFOLLOW`; on Windows inode checks are only best effort. Do not claim a complete TOCTOU defense.
+- Run `npm run test:safe-reader`, `npm run test:grant-manifest`, `npm run test:grant-inventory` and `npm run check:grant-manifest` after modifications.
 
 ## Pull request checklist
 

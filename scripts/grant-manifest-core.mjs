@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 // Read-only manifest integrity checks; no GitHub, wallet or chain access.
 import { createHash } from 'node:crypto';
-import { lstatSync, readFileSync, realpathSync } from 'node:fs';
+import { lstatSync, realpathSync } from 'node:fs';
+import { readSmallBytes } from './read-small-file.mjs';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 
-const MAX_DOCUMENT_BYTES = 1024 * 1024;
 const MAX_BATCHES = 64;
 const HEX_SHA256 = /^[a-f0-9]{64}$/;
 
@@ -20,17 +20,6 @@ function exactShape(value, keys, path, errors) {
     if (!Object.hasOwn(value, key)) errors.push(path + '.' + key + ': missing field');
   }
   return true;
-}
-
-function readSmallBytes(path) {
-  const info = lstatSync(path);
-  if (!info.isFile() || info.isSymbolicLink()) {
-    throw new Error('regular, non-symlink file required');
-  }
-  if (info.size > MAX_DOCUMENT_BYTES) throw new Error('file exceeds 1 MiB limit');
-  const bytes = readFileSync(path);
-  if (bytes.length > MAX_DOCUMENT_BYTES) throw new Error('file exceeds 1 MiB limit');
-  return bytes;
 }
 
 function readSmallJson(path) {
