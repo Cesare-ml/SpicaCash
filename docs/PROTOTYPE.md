@@ -40,7 +40,7 @@ After compilation, `scripts/check-abi.mjs` rejects any new external function bey
 
 ## One-command local Solidity verification gate
 
-On a machine with Node.js 20+, Bash (WSL2 on Windows), Foundry and locally installed `@openzeppelin/contracts@5.4.0`, run:
+On a machine with Node.js 20+, Bash (WSL2 on Windows), Foundry, a **preinstalled local Solidity compiler 0.8.24**, and locally installed `@openzeppelin/contracts@5.4.0`, run:
 
 ```bash
 npm install
@@ -50,12 +50,14 @@ npm run verify:local
 The script `scripts/verify-local.sh` is **offline-only for blockchain interactions**. It checks that `forge` and the OpenZeppelin ERC-20 dependency exist, removes inherited testnet/RPC/keystore variables from its environment, then runs these five gates sequentially:
 
 1. `npm run test:offline` (91 checks, including 20 synthetic parser regressions and nine fully mocked verification-pipeline scenarios).
-2. `forge build --force` to compile fresh Solidity artifacts.
+2. `forge build --offline --force` to compile fresh Solidity artifacts **without downloading a compiler**.
 3. `node scripts/check-abi.mjs` against the **actual compiled artifact**.
-4. `forge test -vv` for the full unit, fuzz and invariant suite.
-5. `forge test --match-contract SpicaCashInvariantTest -vv` and `node scripts/check-foundry-invariants.mjs <output>` to reject missing/failed tests, fewer than 64 runs or 4,096 calls in any of the three invariant campaigns, or any nonzero revert counts. Both deterministic handler smoke tests must also pass.
+4. `forge test --offline -vv` for the full unit, fuzz and invariant suite.
+5. `forge test --offline --match-contract SpicaCashInvariantTest -vv` and `node scripts/check-foundry-invariants.mjs <output>` to reject missing/failed tests, fewer than 64 runs or 4,096 calls in any of the three invariant campaigns, or any nonzero revert counts. Both deterministic handler smoke tests must also pass.
 
 The invariant transcript verifier now requires one (and only one) matching Foundry suite header, exactly five passing test markers **within that suite**, an exact five-passed/zero-failed/zero-skipped summary, and three campaigns above the configured run/call thresholds. It rejects transcripts with unrelated suites or PASS markers after the suite summary. `test/shell/verify-local-guard.test.sh` uses mocked Node/npm/Forge binaries to assert the gate fails at each intermediate stage and clears inherited RPC/account environment settings. These checks exercise validation plumbing, **not** Solidity bytecode, and must not be described as real Foundry test runs.
+
+All three Forge invocations in `verify:local` explicitly use Foundry's `--offline` option, in addition to clearing inherited RPC variables. If the specified compiler is not already installed, **the gate must fail**, not download it. The nine mocked verification-pipeline tests assert that every Forge invocation includes `--offline`; the full offline suite remains **91/91**. The locally executed verification is still **blocked** on missing Foundry, so no Solidity test pass is claimed. 
 
 **An external review must still inspect the Foundry selector metrics for `move`, `approve` and `pull`** and verify that real Foundry/compiler binaries were used. Output parsing does not establish executable authenticity, account safety, or audit-grade assurance. No build or Solidity tests were completed on the contributor machine used for this update: `forge` is not installed there, and `npm run verify:local` correctly exits with code 2 and a missing-Foundry error. `npm run test:offline` passed **91/91** on the byte-matched local source reconstruction. Build dependencies may need to be installed before using this gate, but no deployment should be triggered.
 
