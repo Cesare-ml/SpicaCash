@@ -87,6 +87,37 @@ test('expected manifest digest rejects invalid casing and missing CLI values',t=
  assert.equal(invalid.valid,false);
  assert.match(invalid.errors.join('\n'),/expected lowercase SHA-256 digest/);
 });
+test('wrong external pin rejects malformed manifest before JSON parsing',t=>{
+ const f=fixture(t);
+ writeFileSync(f.path,'{"incomplete":');
+ const report=loadGrantManifest(f.path,{expectedManifestSha256:'0'.repeat(64)});
+ assert.equal(report.valid,false);
+ assert.deepEqual(report.errors,['manifest.sha256: review snapshot digest mismatch']);
+ assert.equal(report.batches.length,0);
+});
+test('wrong external pin rejects untrusted linked paths before file reads',t=>{
+ const f=fixture(t);
+ f.data.batches[0].path='not-present.json';
+ save(f.dir,f.data);
+ const report=loadGrantManifest(f.path,{expectedManifestSha256:'f'.repeat(64)});
+ assert.equal(report.valid,false);
+ assert.deepEqual(report.errors,['manifest.sha256: review snapshot digest mismatch']);
+ assert.equal(report.batches.length,0);
+});
+test('matching external pin still rejects malformed JSON',t=>{
+ const f=fixture(t);
+ writeFileSync(f.path,'{"incomplete":');
+ const digest=sha256Hex(readFileSync(f.path));
+ const report=loadGrantManifest(f.path,{expectedManifestSha256:digest});
+ assert.equal(report.valid,false);
+ assert.match(report.errors.join('\n'),/cannot read JSON/);
+});
+test('invalid external digest fails before parsing',t=>{
+ const f=fixture(t);
+ writeFileSync(f.path,'{"incomplete":');
+ const report=loadGrantManifest(f.path,{expectedManifestSha256:'BAD'});
+ assert.deepEqual(report.errors,['expectedManifestSha256: expected lowercase SHA-256 digest']);
+});
 test('require-proposal rejects draft',t=>{
  const r=run(fixture(t).path,'--require-proposal');
  assert.equal(r.status,1);assert.match(r.stderr,/review proposal is required/);
