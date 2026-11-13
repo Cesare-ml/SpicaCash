@@ -35,6 +35,39 @@ test('non-JSON notes are ignored', t => {
   writeFileSync(join(f.inventory, 'README.md'), 'notes');
   assert.equal(check(f).valid, true);
 });
+test('nested directories are rejected even if their JSON files were not listed', t => {
+  const f = fixture(t);
+  mkdirSync(join(f.inventory, 'unreviewed'));
+  writeFileSync(join(f.inventory, 'unreviewed', 'extra.json'), '{}\n');
+  assert.match(check(f).errors.join('\\n'), /nested directories are forbidden/);
+});
+test('empty nested directories also invalidate the flat inventory', t => {
+  const f = fixture(t);
+  mkdirSync(join(f.inventory, 'empty'));
+  assert.equal(check(f).valid, false);
+});
+test('uppercase and mixed-case JSON extensions cannot hide proposal batches', t => {
+  const f = fixture(t);
+  writeFileSync(join(f.inventory, 'hidden.JSON'), '{}\n');
+  writeFileSync(join(f.inventory, 'another.Json'), '{}\n');
+  const report = check(f);
+  assert.equal(report.valid, false);
+  assert.equal(report.errors.filter(e => /JSON extension must be lowercase/.test(e)).length, 2);
+});
+test('non-JSON symlinks are rejected rather than hiding directories or documents', t => {
+  const f = fixture(t);
+  try { symlinkSync(join(f.inventory, 'grant-a.json'), join(f.inventory, 'notes.link')); }
+  catch (error) { if (error.code === 'EPERM') { t.skip('No symlink privileges'); return; } throw error; }
+  assert.match(check(f).errors.join('\\n'), /symlinks are forbidden/);
+});
+test('symlinked nested directories are rejected', t => {
+  const f = fixture(t);
+  const outside = join(f.dir, 'outside');
+  mkdirSync(outside);
+  try { symlinkSync(outside, join(f.inventory, 'shadow'), 'dir'); }
+  catch (error) { if (error.code === 'EPERM') { t.skip('No symlink privileges'); return; } throw error; }
+  assert.match(check(f).errors.join('\\n'), /symlinks are forbidden/);
+});
 test('manifest-listed batch in a different directory is rejected', t => {
   const f = fixture(t);
   assert.match(check(f, 'batch-proposals', [{ name: 'somewhere/grant-a.json' }]).errors.join('\n'), /outside/);
