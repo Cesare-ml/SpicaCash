@@ -37,8 +37,19 @@ rejected('4096-call minimum is enforced', s => s.replace('calls: 4096', 'calls: 
 rejected('nonzero revert is never accepted', s => s.replace('reverts: 0', 'reverts: 1'), /nonzero revert/);
 rejected('an explicit failure overrides PASS markers', s => s + '\n[FAIL] testUnexpected()\n', /failing tests/);
 rejected('Forge success summary is required', s => s.replace('5 passed; 0 failed', '4 passed; 1 failed'), /success summary/);
-rejected('duplicate PASS markers are refused', s => s + '\n[PASS] invariant_TotalSupplyRemainsFixed() (runs: 64, calls: 4096, reverts: 0)\n', /exactly one passing invariant/);
+rejected('duplicate PASS markers are refused', s => s + '\n[PASS] invariant_TotalSupplyRemainsFixed() (runs: 64, calls: 4096, reverts: 0)\n', /exactly five passing markers/);
 rejected('empty transcript fails closed', () => '', /missing or oversized/);
+rejected('suite test count cannot be exaggerated', s => s.replace('Ran 5 tests', 'Ran 9 tests'), /exactly five tests/);
+rejected('summary must count five passing tests', s => s.replace('5 passed; 0 failed', '9 passed; 0 failed'), /success summary/);
+rejected('nonzero skipped tests are rejected', s => s.replace('0 skipped', '1 skipped'), /success summary/);
+rejected('summary cannot be duplicated', s => s + '\nTest result: ok. 5 passed; 0 failed; 0 skipped\n', /success summary/);
+rejected('an unrelated extra suite cannot be combined', s => s + '\nRan 1 test for test/Other.t.sol:Other\n[PASS] testOther()\nSuite result: ok. 1 passed; 0 failed; 0 skipped\n', /exactly one Foundry test suite/);
+rejected('passing markers after summary are not counted', s => {
+  const line = '[PASS] invariant_NoTokensHeldByHandlerOrFixture() (runs: 64, calls: 4096, reverts: 0)';
+  return s.replace(line, '') + '\n' + line + '\n';
+}, /invariant_NoTokensHeldByHandlerOrFixture/);
+rejected('an extra unexpected passing test is refused', s => s.replace('Suite result:', '[PASS] testUnexpected() (gas: 1)\nSuite result:'), /exactly five passing markers/);
+
 test('CLI works with evidence file and fails on missing file', () => {
   const dir = mkdtempSync(join(tmpdir(), 'spica-forge-evidence-'));
   const path = join(dir, 'transcript.txt');
