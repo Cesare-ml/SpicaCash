@@ -84,3 +84,31 @@ test('npm ci --ignore-scripts suppresses local preinstall hook (offline empty fi
     assert.equal(existsSync(marker), false, 'npm ci executed a lifecycle hook despite --ignore-scripts');
   } finally { rmSync(dir, {recursive:true, force:true}); }
 });
+
+test('repository npm policy disables install scripts by default', () => {
+  assert.equal(readFileSync(resolve(project, '.npmrc'), 'utf8'), 'ignore-scripts=true\n');
+});
+
+test('npm ci respects project .npmrc ignore-scripts default (offline fixture)', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'spicacash-npm-config-'));
+  const marker = join(dir, 'unexpected-preinstall-run');
+  try {
+    writeFileSync(join(dir, '.npmrc'), 'ignore-scripts=true\n');
+    writeFileSync(join(dir, 'package.json'), JSON.stringify({
+      name:'offline-npmrc-fixture', version:'0.0.1', private:true,
+      scripts: {preinstall: 'node -e "require(\'fs\').writeFileSync(\'unexpected-preinstall-run\',\'executed\')"'}
+    }));
+    writeFileSync(join(dir, 'package-lock.json'), JSON.stringify({
+      name:'offline-npmrc-fixture', version:'0.0.1', lockfileVersion:3, requires:true,
+      packages: {'': {name:'offline-npmrc-fixture', version:'0.0.1'}}
+    }));
+    const env = {...process.env};
+    delete env.npm_config_ignore_scripts;
+    delete env.NPM_CONFIG_IGNORE_SCRIPTS;
+    const result = spawnSync('npm', ['ci', '--offline', '--no-audit', '--no-fund'], {
+      encoding:'utf8', cwd:dir, env, timeout:15000
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(existsSync(marker), false, 'npm ci ignored the project .npmrc policy');
+  } finally { rmSync(dir, {recursive:true, force:true}); }
+});
