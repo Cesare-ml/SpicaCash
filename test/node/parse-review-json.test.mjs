@@ -25,6 +25,13 @@ test('detects equivalent escaped and plain keys', () => {
 test('does not mistake escaped quotes, commas or braces inside strings for structure', () => {
   assert.deepEqual(parse('{"x":"\\\" , } [ : ","y":"{a,b}"}'), {x:'" , } [ : ',y:'{a,b}'});
 });
+test('rejects UTF-8 BOM instead of silently stripping bytes', () => {
+  const bytes = Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from('{"status":"draft"}')]);
+  assert.throws(() => parseReviewJson(bytes), /UTF-8 BOM is not permitted/);
+});
+test('allows U+FEFF as actual JSON string content, not as a leading BOM', () => {
+  assert.deepEqual(parseReviewJson(Buffer.from(JSON.stringify({text:'\uFEFF'}))), {text:'\uFEFF'});
+});
 test('rejects invalid UTF-8 rather than accepting replacement glyphs', () => {
   assert.throws(() => parseReviewJson(Buffer.from([0x7b,0x22,0x78,0x22,0x3a,0x22,0xff,0x22,0x7d])), /encoded|UTF-8|valid/i);
 });
