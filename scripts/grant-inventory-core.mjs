@@ -60,13 +60,24 @@ export function checkGrantInventory(manifestPath, inventoryDirectory, verifiedBa
   let discovered = [];
   try {
     const entries = readdirSync(directory, { withFileTypes: true });
+    // Fail closed on nested folders, aliases and special files. Otherwise a
+    // reviewer could overlook batches hidden below a supposedly flat inventory.
     for (const entry of entries) {
-      if (!entry.name.endsWith('.json')) continue;
-      if (!entry.isFile() || entry.isSymbolicLink()) {
-        fail('inventoryDirectory/' + entry.name, 'JSON entry must be a regular file');
+      const where = 'inventoryDirectory/' + entry.name;
+      if (entry.isDirectory()) {
+        fail(where, 'nested directories are not allowed in a flat batch inventory');
         continue;
       }
-      discovered.push(entry.name);
+      if (entry.isSymbolicLink()) {
+        fail(where, 'symlinks are not allowed in a flat batch inventory');
+        continue;
+      }
+      if (!entry.isFile()) {
+        fail(where, 'non-regular filesystem entries are not allowed');
+        continue;
+      }
+      // Non-JSON regular files (for example README.md) remain documentation.
+      if (entry.name.endsWith('.json')) discovered.push(entry.name);
     }
   } catch (error) {
     fail('inventoryDirectory', 'cannot enumerate JSON files: ' + error.message);
