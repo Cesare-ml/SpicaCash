@@ -70,3 +70,8 @@ test('rejects named pipes rather than treating them as review JSON', t => {
   assert.equal(mkfifo.status, 0, mkfifo.stderr || String(mkfifo.error));
   assert.throws(() => readSmallBytes(f.path), /regular, non-symlink/);
 });
+test('preserves non-UTF-8 bytes without JSON reinterpretation', t => {
+  const f = fixture(t), bytes = Buffer.from([0, 255, 128, 10, 13, 42]);
+  writeFileSync(f.path, bytes);
+  assert.deepEqual(readSmallBytes(f.path), bytes);
+});
