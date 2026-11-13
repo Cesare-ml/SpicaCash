@@ -59,11 +59,30 @@ export function checkGrantInventory(manifestPath, inventoryDirectory, verifiedBa
 
   let discovered = [];
   try {
-    const entries = readdirSync(directory, { withFileTypes: true });
+    // A review folder must be flat. Ignoring child directories would create a
+    // misleading "complete" inventory when another batch is hidden below one.
+    const entries = readdirSync(directory, { withFileTypes: true })
+      .sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
     for (const entry of entries) {
-      if (!entry.name.endsWith('.json')) continue;
-      if (!entry.isFile() || entry.isSymbolicLink()) {
-        fail('inventoryDirectory/' + entry.name, 'JSON entry must be a regular file');
+      const location = 'inventoryDirectory/' + entry.name;
+      if (entry.isDirectory()) {
+        fail(location, 'nested directories are forbidden in a flat batch inventory');
+        continue;
+      }
+      if (entry.isSymbolicLink()) {
+        fail(location, entry.name.toLowerCase().endsWith('.json')
+          ? 'JSON entry must be a regular file (no symlinks)'
+          : 'symlinks are forbidden in a flat batch inventory');
+        continue;
+      }
+      // Detect noncanonical .JSON/.Json rather than silently ignoring them.
+      if (!/\.json$/i.test(entry.name)) continue;
+      if (!entry.name.endsWith('.json')) {
+        fail(location, 'JSON extension must be lowercase .json');
+        continue;
+      }
+      if (!entry.isFile()) {
+        fail(location, 'JSON entry must be a regular file');
         continue;
       }
       discovered.push(entry.name);
