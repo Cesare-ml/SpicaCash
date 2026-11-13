@@ -21,10 +21,10 @@
     "check:grant-batches": "node scripts/check-grant-batches.mjs config/contributor-grants.draft.json",
     "test:grant-batches": "node --test test/node/grant-batches.test.mjs",
     "check:grant-manifest": "node scripts/check-grant-manifest.mjs config/grant-batches.draft.manifest.json",
-    "test:review-json": "node --test test/node/parse-review-json.test.mjs test/node/review-json-manifest.test.mjs",
     "test:strict-cli-json": "node --test test/node/strict-cli-json.test.mjs",
     "test:grant-manifest": "node --test test/node/grant-manifest.test.mjs",
-    "test:grant-inventory": "node --test test/node/grant-inventory.test.mjs"
+    "test:grant-inventory": "node --test test/node/grant-inventory.test.mjs",
+    "test:review-json": "node --test test/node/parse-review-json.test.mjs test/node/review-json-manifest.test.mjs"
   },
   "dependencies": {
     "@openzeppelin/contracts": "5.4.0"

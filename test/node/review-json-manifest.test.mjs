@@ -65,6 +65,22 @@ test('equivalent escaped manifest keys are also duplicates',t=>{
   assert.match(r.errors.join('; '),/duplicate JSON object key/);
 });
 
+test('hash-matching batch with an unpaired surrogate is rejected',t=>{
+  const f=fixture(t,Buffer.from(String.raw`{"status":"draft","memo":"\uD800","grants":[]}`));
+  const r=loadGrantManifest(f.path);
+  assert.equal(r.valid,false);
+  assert.match(r.errors.join('; '),/unpaired UTF-16 surrogate/);
+});
+test('manifest with a lone surrogate is rejected before following batch paths',t=>{
+  const f=fixture(t);
+  const source=JSON.stringify(f.manifest).replace('"status":"draft"',
+    String.raw`"status":"draft","memo":"\uDC00"`);
+  writeFileSync(f.path,source);
+  const r=loadGrantManifest(f.path);
+  assert.equal(r.valid,false);
+  assert.match(r.errors.join('; '),/unpaired UTF-16 surrogate/);
+  assert.equal(r.batches.length,0);
+});
 test('mismatched batch digest fails before parsing duplicate JSON fields',t=>{
   const f=fixture(t,Buffer.from('{"status":"proposal","status":"draft"}'));
   f.manifest.batches[0].sha256='0'.repeat(64);

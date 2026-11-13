@@ -62,7 +62,7 @@ The [offline grant batch reconciler](docs/GRANT_BATCH_RECONCILIATION.md) catches
 - `npm run check:grant-batches` — check the default **empty draft** only
 - `npm run test:grant-batches` — run synthetic cross-batch regression tests
 
-Standalone `check:tokenomics`, `check:grants` and `check:grant-batches` now reject duplicate JSON keys (including escaped aliases), malformed UTF-8, leading BOM and excessive JSON nesting using the same strict parser as the pinned-manifest path. All three commands also read through the shared descriptor-backed, 1 MiB-bounded reader and reject symlinked inputs, including companion tokenomics JSON. These standalone commands **do not pin SHA-256**; use an independently pinned manifest and strict inventory for grant-review authenticity.
+Standalone `check:tokenomics`, `check:grants` and `check:grant-batches` use the same strict JSON decoder as the pinned-manifest review. Every JSON input (including companion tokenomics files) is read through the descriptor-backed reader, limited to **1 MiB per file**, and rejects symlink aliases. Standalone inputs are **not** SHA-256-authenticated. Use `npm run test:strict-cli-json` for CLI regression coverage.
 
 ## Hashed grant proposal manifest (review-only)
 
@@ -70,12 +70,10 @@ The [SHA-256 manifest integrity check](docs/GRANT_MANIFEST_INTEGRITY.md) detects
 
 - `npm run check:grant-manifest` — validate the committed empty draft and its exact checksum
 - `npm run test:grant-manifest` — run synthetic integrity and safety tests
+- `npm run test:review-json` — reject duplicate keys, malformed UTF-8, lone Unicode surrogates and ambiguous grant-review JSON; verify file hashes before parsing
 - `npm run test:grant-inventory` — check for unlisted JSON batches and unsafe directory paths
-- `--inventory-dir review-batches` (CLI option) — verify every lowercase `.json` file in a dedicated flat review folder is listed; reject nested folders, symlinks and case-variant `.JSON` extensions
+- `--inventory-dir review-batches` (CLI option) — verify every lowercase `.json` file in a dedicated flat review folder is listed; reject nested folders, symlinks and case-variant `.JSON` extensions; abort if the folder contains more than 128 total entries
 - `--expected-manifest-sha256 <digest>` (CLI option) — independently pin the **raw manifest** for a read-only review; SHA-256 is not a signature or issuance authorization
-- `npm run test:safe-reader` — bound and verify descriptor-backed local file reads
-- `npm run test:review-json` — reject duplicate grant-review JSON keys, malformed UTF-8, leading BOM, and pathological nesting
-- `npm run test:strict-cli-json` — exercise strict decoding across standalone tokenomics, contributor-grants and batch CLIs
 
 ## Roadmap
 

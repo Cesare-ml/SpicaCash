@@ -40,6 +40,22 @@ test('rejects malformed JSON syntax', () => {
     assert.throws(() => parse(input), SyntaxError, input);
   }
 });
+test('rejects a lone high surrogate in a JSON field name', () => {
+  assert.throws(() => parse(String.raw`{"\uD800":1}`), /unpaired UTF-16 surrogate/);
+});
+test('rejects a lone low surrogate in a JSON field value', () => {
+  assert.throws(() => parse(String.raw`{"memo":"\uDC00"}`), /unpaired UTF-16 surrogate/);
+});
+test('rejects a high surrogate not immediately followed by a low one', () => {
+  assert.throws(() => parse(String.raw`{"memo":"\uD83Dhello\uDE00"}`), /unpaired UTF-16 surrogate/);
+});
+test('accepts correctly paired escaped surrogates and literal Unicode', () => {
+  assert.deepEqual(parse(String.raw`{"emoji":"\uD83D\uDE00"}`), {emoji:'😀'});
+  assert.deepEqual(parse('{"emoji":"😀"}'), {emoji:'😀'});
+});
+test('detects duplicate Unicode-equivalent keys across escape and UTF-8 forms', () => {
+  assert.throws(() => parse(String.raw`{"\uD83D\uDE00":1,"😀":2}`), /duplicate JSON object key/);
+});
 test('rejects dangerous depth before stack overflow', () => {
   assert.throws(() => parse('['.repeat(130)+'0'+']'.repeat(130)), /nesting limit exceeded/);
 });

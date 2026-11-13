@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: MIT
 // Local filesystem inventory only. No GitHub access, wallet, or signing.
-import { lstatSync, readdirSync, realpathSync } from 'node:fs';
+import { lstatSync, opendirSync, realpathSync } from 'node:fs';
 import { basename, dirname, isAbsolute, relative, resolve, sep } from 'node:path';
+
+// At most 64 batches; permit review notes but reject oversized input folders.
+const MAX_INVENTORY_ENTRIES = 128;
 
 export function checkGrantInventory(manifestPath, inventoryDirectory, verifiedBatches) {
   const errors = [];
@@ -59,8 +62,26 @@ export function checkGrantInventory(manifestPath, inventoryDirectory, verifiedBa
 
   let discovered = [];
   try {
-    const entries = readdirSync(directory, { withFileTypes: true })
-      .sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
+    // Stream a bounded prefix, rather than allocating an unbounded readdir array.
+    // If a folder exceeds the limit, the result is always invalid regardless
+    // of whether the manifest-listed files appear in the prefix.
+    const stream = opendirSync(directory);
+    const entries = [];
+    try {
+      for (;;) {
+        const entry = stream.readSync();
+        if (entry === null) break;
+        if (entries.length >= MAX_INVENTORY_ENTRIES) {
+          fail('inventoryDirectory',
+            'exceeds ' + MAX_INVENTORY_ENTRIES + ' entries; use a dedicated review folder');
+          break;
+        }
+        entries.push(entry);
+      }
+    } finally {
+      stream.closeSync();
+    }
+    entries.sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
     // Fail closed on nested folders, aliases and special files. Otherwise a
     // reviewer could overlook batches hidden below a supposedly flat inventory.
     for (const entry of entries) {
