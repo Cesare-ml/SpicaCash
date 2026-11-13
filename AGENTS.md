@@ -50,7 +50,7 @@ This is a public, pre-launch crypto-asset project. **There is no official deploy
 ## SHA-256 manifest integrity
 
 - Read `docs/GRANT_MANIFEST_INTEGRITY.md` before changing `scripts/grant-manifest-core.mjs`.
-- Manifest hashes pin *bytes*, not reviewer identities or authorization. Verify the canonical file inventory separately.
+- Manifest hashes pin *bytes*, not reviewer identities or authorization. For reviewed proposals, use `--expected-manifest-sha256` with an independently obtained, lowercase 64-character digest. A digest supplied by the same untrusted proposal is not independent evidence. Verify the canonical file inventory separately.
 - Update the digest whenever the empty grant draft intentionally changes; never add unreviewed real tokenomics or grant recipients.
 - Restrict manifest entries to local relative JSON; do not allow network downloads, symlinks, parent-path traversal or signing operations.
 - For review proposals, use `--inventory-dir <relative-folder>` with a dedicated flat batch directory to detect omitted local JSON files. Nested folders, symlinks, special filesystem entries and case-varied `.JSON` extensions fail; use lowercase `.json` only. Verify externally that the directory is the canonical complete inventory; no local scan can prove it alone.

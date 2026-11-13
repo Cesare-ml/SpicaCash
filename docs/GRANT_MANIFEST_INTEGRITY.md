@@ -45,6 +45,22 @@ The checked-in draft passes the first command but **must fail** `--require-propo
 
 File paths must be relative to the manifest directory and end in `.json`. The loader refuses path traversal, absolute paths, symlink redirects, duplicated local paths, malformed/unexpected fields, digest mismatches, invalid statuses and files larger than 1 MiB. Maximum: 64 batches, each subject to the existing grant validator limits. It validates hashes **before** arithmetic and cross-file PR duplicate checks.
 
+## Optional out-of-band review fingerprint
+
+The CLI prints the SHA-256 digest of the **raw manifest bytes**, in addition to checking each declared file digest. Reviewers can pin one approved review snapshot through an independent channel and reject any changed manifest (including a manifest and batches maliciously modified together):
+
+```bash
+# Replace with a 64-character lowercase SHA-256 value obtained independently.
+node scripts/check-grant-manifest.mjs path/to/manifest.json \
+  --require-proposal \
+  --inventory-dir review-batches \
+  --expected-manifest-sha256 <independently-reviewed-64-character-sha256>
+```
+
+A matching digest permits the usual **read-only checks** to continue; a mismatch fails validation. Invalid/missing digest arguments fail with usage exit code 2. Without the option, the CLI remains compatible with existing draft workflows and simply prints the actual manifest digest. The programmatic `loadGrantManifest()` API also accepts `expectedManifestSha256` and returns `manifestSha256`.
+
+**Important:** the digest is a fingerprint, **not a signature or approval**. Copying it directly from the same untrusted manifest or checker run does not establish authenticity. Obtain the approved value separately (for example, from a trusted, reviewed Git commit or independently verified review record). The loader checks the independently supplied digest against raw manifest bytes **before JSON parsing or opening any manifest-listed files**. A mismatch stops the review without traversing those paths. Even a pinned manifest does not prove that the declared folder is the complete intended grant corpus or that any contributor is eligible. Because raw bytes are hashed, even whitespace-only formatting changes require a newly reviewed digest. No grants, payments or tokens are issued.
+
 ## Optional directory inventory verification
 
 A manifest hash check validates only the entries listed by the author. To detect **JSON batch files omitted from that manifest within a known folder**, the CLI now supports `--inventory-dir`:
@@ -79,4 +95,4 @@ This is an **opt-in** directory check; omitting `--inventory-dir` explicitly rep
 
 ## Validation gates
 
-The 23 Node tests in `test/node/grant-manifest.test.mjs` cover default and synthetic proposals, tampered file hashes, unsafe file paths, duplicate references, Symlink denial, cross-batch over-allocation and CLI authorization disclaimers. Run `npm run test:grant-manifest`, `npm run test:grant-inventory` and `npm run test:offline` in a clean repository checkout and document actual test output before merge. Solidity compilation and audit are separate, still mandatory before an onchain trial.
+The 32 Node tests in `test/node/grant-manifest.test.mjs` cover default and synthetic proposals, tampered file hashes, unsafe file paths, duplicate references, Symlink denial, cross-batch over-allocation and CLI authorization disclaimers. Run `npm run test:grant-manifest`, `npm run test:grant-inventory` and `npm run test:offline` in a clean repository checkout and document actual test output before merge. Solidity compilation and audit are separate, still mandatory before an onchain trial.
