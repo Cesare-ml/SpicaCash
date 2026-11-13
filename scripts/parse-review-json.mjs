@@ -8,6 +8,11 @@ const whitespace = /[\x20\t\n\r]/;
 
 /** Decode UTF-8 without silently replacing malformed byte sequences. */
 export function parseReviewJson(bytes) {
+  // TextDecoder normally strips an initial UTF-8 BOM. JSON.parse of the raw
+  // UTF-8 text rejects it, so preserve that strict review-file contract.
+  if (bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
+    throw new SyntaxError('UTF-8 BOM is not permitted in review JSON');
+  }
   const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
   let i = 0;
   const skip = () => { while (i < text.length && whitespace.test(text[i])) i++; };

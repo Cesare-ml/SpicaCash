@@ -87,9 +87,9 @@ This is an **opt-in** directory check; omitting `--inventory-dir` explicitly rep
 
 The offline manifest loader now rejects **duplicate object properties at any nesting level** in the manifest, referenced grant batches, and referenced tokenomics JSON. This includes distinct textual spellings which decode to the same key (for example, a literal key and its `\\u`-escaped equivalent). Standard `JSON.parse` otherwise silently keeps the last occurrence, which can conceal contradictory authority or amount fields from human review.
 
-The decoder also refuses malformed UTF-8 instead of silently replacing invalid sequences, caps nesting at 128 levels, and still relies on native `JSON.parse` to validate full JSON syntax. These checks operate on the same raw file bytes that the SHA-256 digest pins. An invalid document fails review without approving or issuing anything.
+The decoder also refuses malformed UTF-8 instead of silently replacing invalid sequences. It rejects a leading UTF-8 byte-order mark (BOM), which `TextDecoder` would otherwise strip despite the previous `JSON.parse` behavior, while allowing U+FEFF when it appears *inside* a JSON string. It caps nesting at 128 levels and still relies on native `JSON.parse` to validate full JSON syntax. These checks operate on the same raw file bytes that the SHA-256 digest pins. An invalid document fails review without approving or issuing anything.
 
-Run `npm run test:review-json` for the ten direct parser tests and six manifest integration tests, or `npm run test:offline` for the full local offline chain. These rules apply to the **hashed manifest review workflow**; other independent draft-validation CLIs should not be assumed to reject duplicate keys until migrated to the shared decoder.
+Run `npm run test:review-json` for the twelve direct parser tests and six manifest integration tests, or `npm run test:offline` for the full local offline chain. These rules apply to the **hashed manifest review workflow**; other independent draft-validation CLIs should not be assumed to reject duplicate keys until migrated to the shared decoder.
 
 ## Descriptor-bound, size-limited JSON reads
 
