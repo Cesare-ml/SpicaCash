@@ -57,7 +57,7 @@ node scripts/check-grant-manifest.mjs path/to/manifest.json \
   --inventory-dir review-batches
 ```
 
-The folder is resolved relative to the manifest location. Every regular `.json` file **directly in that directory** must be included in the hashed manifest, and every manifest-listed batch must reside in that same folder. The verifier fails on unlisted batch files, missing files, symlinked directories and paths that leave the manifest directory. Subdirectories are **not recursively scanned**. Keep all proposal batch files in one dedicated, flat directory and put the tokenomics file outside it. Paths through symlinks are not allowed.
+The folder is resolved relative to the manifest location. Every regular `.json` file **directly in that directory** must be included in the hashed manifest, and every manifest-listed batch must reside in that same folder. The verifier fails on unlisted batch files, missing files, **any nested directories (even empty ones), symbolic links (including non-JSON names)** and paths that leave the manifest directory. `.JSON` or `.Json` extensions fail instead of being silently ignored; batch names must use the canonical lowercase `.json`. Ordinary non-JSON regular notes (such as `README.md`) are ignored. Subdirectories are deliberately rejected, rather than recursively scanned. Keep all proposal batch files in one dedicated, flat directory and put the tokenomics file outside it.
 
 For a local smoke test of the inventory checker:
 
