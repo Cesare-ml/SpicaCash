@@ -134,6 +134,14 @@ test('strict inventory rejects unlisted batch even when other hashes match',t=>{
   assert.equal(r.status,1,r.stdout);
   assert.match(r.stderr,/unlisted JSON batch file/);
 });
+test('strict CLI inventory fails if nested grant batches are hidden',t=>{
+  const f=groupedProposal(t);
+  mkdirSync(join(f.dir,'review-batches','unlisted'));
+  writeFileSync(join(f.dir,'review-batches','unlisted','hidden.json'),'{}\n');
+  const r=run(f.path,'--require-proposal','--inventory-dir','review-batches');
+  assert.equal(r.status,1,r.stdout);
+  assert.match(r.stderr,/nested directories are not allowed/);
+});
 test('strict inventory rejects missing folder and missing option argument',t=>{
   const f=groupedProposal(t);
   const badDir=run(f.path,'--require-proposal','--inventory-dir','no-such-folder');
