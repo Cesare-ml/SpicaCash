@@ -106,3 +106,22 @@ test('missing inventory folder is rejected', t => {
   const f = fixture(t);
   assert.equal(check(f, 'missing').valid, false);
 });
+
+test('bounded scanner accepts exactly 128 entries including one grant', t => {
+  const f = fixture(t);
+  for (let i = 0; i < 127; i++) {
+    writeFileSync(join(f.inventory, 'note-' + i + '.txt'), 'local review note');
+  }
+  const result = check(f);
+  assert.equal(result.valid, true, result.errors.join('\n'));
+  assert.equal(result.discoveredFiles, 1);
+});
+test('bounded scanner rejects more than 128 entries even if all extras are notes', t => {
+  const f = fixture(t);
+  for (let i = 0; i < 128; i++) {
+    writeFileSync(join(f.inventory, 'note-' + i + '.txt'), 'local review note');
+  }
+  const result = check(f);
+  assert.equal(result.valid, false);
+  assert.match(result.errors.join('\n'), /exceeds 128 entries/);
+});

@@ -11,7 +11,7 @@ The per-document [contributor grants validator](CONTRIBUTOR_GRANTS.md) checks a 
 - Validates every input file with the existing `validateContributorGrants` and one shared tokenomics proposal; each proposal must reference a `contributors` allocation.
 - Sums exact positive integer base-unit amounts using JavaScript `BigInt` **per contributor bucket**. Catches cumulative over-allocation even if each file passes separately.
 - Refuses repeated grant IDs or canonical PR references **across files**; PR comparisons are case-insensitive.
-- Refuses duplicate file names, unknown batch wrapper fields, missing plans and inconsistent draft/proposal mixtures.
+- Refuses duplicate file names, unknown batch wrapper fields, missing plans and inconsistent draft/proposal mixtures. The standalone CLI additionally rejects multiple path aliases or hard links referencing the same physical batch before parsing it (where canonical path/inode identity can be checked).
 - Allows inspection of the existing **empty draft** with no tokenomics selection, but a draft is never a funding reservation. `--require-proposal` rejects it.
 - Limits each run to 64 batch files and 10,000 proposed entries. The per-file validator separately caps each file at 1,000 grants.
 - Always emits **not approved** warnings; success means only syntactic and arithmetic consistency.
@@ -32,6 +32,7 @@ node scripts/check-grant-batches.mjs \
 
 # Regressions (synthetic fixtures only)
 npm run test:grant-batches
+npm run test:batch-identity
 ```
 
 The proposed amounts and temporary IDs used in tests are **not** authorized SPICA tokenomics. A successful output may include per-bucket proposed and unassigned **base units**. This must never be described as issued, reserved, payable, vested or legally earned.

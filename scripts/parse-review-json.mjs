@@ -22,7 +22,25 @@ export function parseReviewJson(bytes) {
     const begin = i++;
     while (i < text.length) {
       if (text[i] === '\\') { i += 2; continue; }
-      if (text[i++] === '"') return text.slice(begin, i);
+      if (text[i++] === '"') {
+        const token = text.slice(begin, i);
+        // JSON.parse accepts escaped, unpaired UTF-16 surrogates, which can
+        // display differently across review tools (RFC 8259, section 8.2).
+        // Reject them for an unambiguous, Unicode-scalar review snapshot.
+        const decoded = JSON.parse(token);
+        for (let j = 0; j < decoded.length; j++) {
+          const unit = decoded.charCodeAt(j);
+          if (unit >= 0xd800 && unit <= 0xdbff) {
+            const low = decoded.charCodeAt(++j);
+            if (!(low >= 0xdc00 && low <= 0xdfff)) {
+              throw new SyntaxError('unpaired UTF-16 surrogate in review JSON');
+            }
+          } else if (unit >= 0xdc00 && unit <= 0xdfff) {
+            throw new SyntaxError('unpaired UTF-16 surrogate in review JSON');
+          }
+        }
+        return token;
+      }
     }
     throw new SyntaxError('unterminated JSON string');
   }

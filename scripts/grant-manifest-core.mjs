@@ -121,15 +121,13 @@ export function loadGrantManifest(manifestPath, options = {}) {
       if (realpathSync(abs) !== abs) {
         throw new Error('symlink or redirected path not allowed');
       }
-      // Do not parse an unauthenticated batch or tokenomics document. A
-      // malformed file with the wrong digest must fail on its checksum first.
+      // Authenticate raw bytes before interpreting any untrusted review JSON.
       const bytes = readSmallBytes(abs);
       if (sha256Hex(bytes) !== entry.sha256) {
         failure(where + '.sha256', 'file digest mismatch: possible modification');
         return null;
       }
-      const value = parseReviewJson(bytes);
-      return { name: entry.path, value };
+      return { name: entry.path, value: parseReviewJson(bytes) };
     } catch (err) {
       failure(where + '.path', 'cannot read verified JSON file: ' + err.message);
       return null;
