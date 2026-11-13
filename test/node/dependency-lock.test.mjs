@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, mkdtempSync, rmSync, existsSync, writeFileSync } from 'node:fs';
+import { readFileSync, mkdtempSync, rmSync, existsSync, writeFileSync, mkdirSync, copyFileSync } from 'node:fs';
 import { dirname, resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
@@ -111,4 +111,19 @@ test('npm ci respects project .npmrc ignore-scripts default (offline fixture)', 
     assert.equal(result.status, 0, result.stderr);
     assert.equal(existsSync(marker), false, 'npm ci ignored the project .npmrc policy');
   } finally { rmSync(dir, {recursive:true, force:true}); }
+});
+
+test('dependency lock CLI rejects tampered project npm configuration', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'spicacash-lock-policy-'));
+  const scriptsDir = join(dir, 'scripts');
+  try {
+    mkdirSync(scriptsDir, {recursive:true});
+    copyFileSync(resolve(project,'scripts/check-dependency-lock.mjs'), join(scriptsDir,'check-dependency-lock.mjs'));
+    copyFileSync(resolve(project,'package.json'), join(dir,'package.json'));
+    copyFileSync(resolve(project,'package-lock.json'), join(dir,'package-lock.json'));
+    writeFileSync(join(dir,'.npmrc'), 'ignore-scripts=false\n');
+    const result = spawnSync(process.execPath, [join(scriptsDir,'check-dependency-lock.mjs')], {cwd:dir,encoding:'utf8'});
+    assert.equal(result.status, 1, result.stderr);
+    assert.match(result.stderr, /project .npmrc must set ignore-scripts=true/);
+  } finally { rmSync(dir,{recursive:true,force:true}); }
 });
