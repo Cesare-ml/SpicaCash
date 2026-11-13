@@ -62,7 +62,7 @@ The [offline grant batch reconciler](docs/GRANT_BATCH_RECONCILIATION.md) catches
 - `npm run check:grant-batches` — check the default **empty draft** only
 - `npm run test:grant-batches` — run synthetic cross-batch regression tests
 
-Standalone `check:tokenomics`, `check:grants` and `check:grant-batches` use the same strict JSON decoder as the pinned-manifest review. Every JSON input (including companion tokenomics files) is read through the descriptor-backed reader, limited to **1 MiB per file**, and rejects symlink aliases. Standalone inputs are **not** SHA-256-authenticated. Use `npm run test:strict-cli-json` for CLI regression coverage. The multi-batch CLI also rejects multiple path aliases or hard links for the same physical batch (where inode identity is available); run `npm run test:batch-identity` for filesystem regressions.
+Standalone `check:tokenomics`, `check:grants` and `check:grant-batches` use the same strict JSON decoder as the pinned-manifest review. Every JSON input (including companion tokenomics files) is read through the descriptor-backed reader, limited to **1 MiB per file**, and rejects symlink aliases. Standalone inputs are **not** SHA-256-authenticated. Use `npm run test:strict-cli-json` for CLI regression coverage. Run `npm run test:proposal-cli-integration` for real-validator, synthetic proposal flows: valid grants, cross-batch oversubscription, duplicate evidence and rejected approvals. The multi-batch CLI also rejects multiple path aliases or hard links for the same physical batch (where inode identity is available); run `npm run test:batch-identity` for filesystem regressions.
 
 ## Hashed grant proposal manifest (review-only)
 
