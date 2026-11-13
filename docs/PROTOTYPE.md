@@ -23,21 +23,42 @@ forge build
 forge test -vv
 forge test --match-test testFuzz -vv
 forge test --match-test invariant_ -vv
+forge test --match-contract SpicaCashInvariantTest -vv
 node scripts/check-abi.mjs
 npm run test:offline
 ```
 
 The project contains plain Solidity tests with no forge-std dependency. Unit tests check constructor errors, token metadata, transfer amount conservation, approvals (including max allowance), ERC-6093 revert selectors and zero-address transfers. Three fuzz tests cover supply conservation, delegated transfers and overspending.
 
-Stateful handler-based invariants run 64 sequences of 64 calls per invariant and reject unexpected reverts. They check constant supply and conservation of tracked holder balances across transfers and delegated transfers. This is useful automated testing, **not formal verification or an audit**.
+Stateful handler-based invariants are configured for 64 sequences of 64 calls per invariant and to reject unexpected reverts. They check constant supply and conservation of tracked holder balances across transfers and delegated transfers. The test contract exposes a `targetContracts()` getter to Foundry that **selects only the handler** (the same mechanism used by `forge-std/StdInvariant`), rather than calling a nonexistent `vm.targetContract` cheatcode. Two deterministic smoke tests check the handler target selection and its transfer/approve/pull behavior. These settings **must still be demonstrated by a real Foundry test run**, not inferred from the source. This is useful automated testing, **not formal verification or an audit**.
 
 After compilation, `scripts/check-abi.mjs` rejects any new external function beyond the nine expected ERC-20 methods, unexpected payable functions, missing standard functions or changed constructor types. This only checks the ABI surface, **not implementation behavior, storage safety or network security**. Run its six independent offline tests with `npm run test:abi-guard`.
 
 `npm run test:deploy-guard` runs seven offline cases against the Sepolia deployment script with mock `forge` and `cast` executables, proving it refuses incorrect chain ID, invalid values or missing explicit authorization under those mocked conditions. Neither offline test suite sends network transactions.
 
-**Validation status (2026-11-12):** Offline deployment guard **7/7 passed** and independent ABI checker tests **6/6 passed** in a local Linux/Node 22 environment. `forge build`, Solidity unit/fuzz/invariant runs and compiled ABI inspection are **not run** here because the compiler/Foundry and npm dependency retrieval are unavailable. Do not report the smart contract as verified until the Solidity commands pass in a configured environment.
+**Validation status (2026-11-13):** Offline deployment guard **7/7 passed** and independent ABI checker tests **6/6 passed** in a local Linux/Node 22 environment. `forge build`, Solidity unit/fuzz/invariant runs and compiled ABI inspection are **not run** here because the compiler/Foundry and npm dependency retrieval are unavailable. Do not report the smart contract as verified until the Solidity commands pass in a configured environment.
 
 **Never** run tests on a production fork with real signing credentials.
+
+
+## Invariant test target selection — verification gate
+
+Foundry's documented `StdInvariant` helper declares an internal `targetContract(address)` that records targets and a public `targetContracts()` getter read by the test runner. The project does not include `forge-std`, so `test/SpicaCashInvariant.t.sol` implements only the equivalent public getter and address list needed for handler selection.
+
+The earlier `vm.targetContract(address)` call incorrectly treated the helper as a VM cheatcode and has been removed. The two `testInvariant...` smoke cases verify the getter points exclusively to the handler and that it can transfer, approve and spend an allowance while preserving tracked balances.
+
+Run and record:
+
+```bash
+npm install
+forge build
+forge test --match-contract SpicaCashInvariantTest -vv
+forge test --match-test invariant_ -vv
+forge test -vv
+node scripts/check-abi.mjs
+```
+
+Do not count the invariants as validated if compilation fails, if any invariant target is missing, if the handler functions are never called, or if the invariant campaign reports a revert. Keep the PR in draft until real output is attached. No GitHub Actions or onchain deployment are required.
 
 ## Arbitrum Sepolia-only helper
 
