@@ -140,6 +140,29 @@ test('changed batch contents invalidate SHA-256',t=>{
  const f=fixture(t);writeFileSync(join(f.dir,'grant.json'),'{}\n');
  assert.match(errors(f),/digest mismatch/);
 });
+test('exactly 1 MiB of valid JSON batch bytes is accepted',t=>{
+ const f=fixture(t);
+ const original=readFileSync(join(f.dir,'grant.json'));
+ const padded=Buffer.concat([original,Buffer.alloc(1024*1024-original.length,0x20)]);
+ writeFileSync(join(f.dir,'grant.json'),padded);
+ f.data.batches[0].sha256=sha256Hex(padded);
+ const report=loadGrantManifest(save(f.dir,f.data));
+ assert.equal(report.valid,true,report.errors.join('\n'));
+});
+test('oversized batch is rejected even with an updated matching digest',t=>{
+ const f=fixture(t);
+ const padded=Buffer.alloc(1024*1024+1,0x20);
+ writeFileSync(join(f.dir,'grant.json'),padded);
+ f.data.batches[0].sha256=sha256Hex(padded);
+ assert.match(errors(f),/file exceeds 1 MiB limit/);
+});
+test('oversized manifest is rejected before parsing or reading linked files',t=>{
+ const f=fixture(t);
+ writeFileSync(f.path,Buffer.alloc(1024*1024+1,0x20));
+ const result=loadGrantManifest(f.path);
+ assert.equal(result.valid,false);
+ assert.match(result.errors.join('\n'),/file exceeds 1 MiB limit/);
+});
 test('changed economics invalidate SHA-256',t=>{
  const f=proposal(t);writeFileSync(join(f.dir,'economics.json'),'{}\n');
  assert.match(errors(f),/digest mismatch/);
