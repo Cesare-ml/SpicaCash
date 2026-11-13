@@ -2,7 +2,7 @@
 // Offline CLI input tests; synthetic drafts only. No wallets or network.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { linkSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -171,3 +171,28 @@ for (const entry of commands.filter(x => x.name !== 'tokenomics')) {
     assert.doesNotMatch(r.stdout, /VALID/);
   });
 }
+
+test('batch CLI rejects a second lexical path alias to the same file', t => {
+  const f = fixture(t);
+  writeFileSync(f.file, grantDraft);
+  const r = run('check-grant-batches.mjs', f.file, f.dir + '/./review.json');
+  assert.equal(r.status, 2, r.stderr);
+  assert.match(r.stderr, /duplicate physical grant batch file/);
+  assert.doesNotMatch(r.stdout, /VALID/);
+});
+test('batch CLI rejects hard-linked copies of a single physical draft', t => {
+  const f = fixture(t);
+  writeFileSync(f.file, grantDraft);
+  try { linkSync(f.file, f.companion); }
+  catch (error) {
+    if (['EPERM', 'ENOTSUP'].includes(error.code)) {
+      t.skip('hardlink unsupported');
+      return;
+    }
+    throw error;
+  }
+  const r = run('check-grant-batches.mjs', f.file, f.companion);
+  assert.equal(r.status, 2, r.stderr);
+  assert.match(r.stderr, /duplicate physical grant batch file/);
+  assert.doesNotMatch(r.stdout, /VALID/);
+});
