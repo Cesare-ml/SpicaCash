@@ -161,3 +161,86 @@ test('individual grant proposal exceeding its contributor reserve is rejected', 
   assertExit(r, 1);
   assert.match(r.stderr, /proposed grants exceed the contributor bucket/);
 });
+
+test('exactly filled contributor reserve reports zero unassigned units', t => {
+  const f = fixture(t), economics = f.file('economics.json', tokenomics());
+  const grants = f.file('grants.json', batch(grant('full-reserve-test', 10, 400)));
+  const r = command('validate-contributor-grants.mjs', grants,
+    '--tokenomics', economics, '--require-proposal');
+  assertExit(r, 0);
+  assert.match(r.stdout, /Proposed base units: 400/);
+  assert.match(r.stdout, /Unassigned contributor bucket base units: 0/);
+  assert.match(r.stdout, /NOT approved for issuance/);
+});
+
+test('multiple grants in one batch cannot exceed contributor reserve', t => {
+  const f = fixture(t), economics = f.file('economics.json', tokenomics());
+  const grants = f.file('grants.json', batch(
+    grant('first-grant-test', 11, 250), grant('second-grant-test', 12, 175)));
+  const r = command('validate-contributor-grants.mjs', grants,
+    '--tokenomics', economics, '--require-proposal');
+  assertExit(r, 1);
+  assert.match(r.stderr, /proposed grants exceed the contributor bucket/);
+});
+
+test('batch reconciliation forbids mixing empty drafts with proposals', t => {
+  const f = fixture(t), economics = f.file('economics.json', tokenomics());
+  const a = f.file('draft.json', {
+    schemaVersion: 1, status: 'draft', deploymentApproved: false,
+    distributionEnabled: false, aiCreditConversionEnabled: false,
+    tokenomicsBucketId: null, grants: []
+  });
+  const b = f.file('proposal.json', batch(grant('test-grant-one', 13, 150)));
+  const r = command('check-grant-batches.mjs', '--tokenomics', economics, a, b);
+  assertExit(r, 1);
+  assert.match(r.stderr, /cannot mix drafts and proposals/);
+});
+
+test('review-only tokenomics rejects credit-conversion activation', t => {
+  const f = fixture(t), plan = tokenomics();
+  plan.product.aiCreditConversionEnabled = true;
+  const r = command('validate-tokenomics.mjs', f.file('economics.json', plan),
+    '--require-proposal');
+  assertExit(r, 1);
+  assert.match(r.stderr, /product\.aiCreditConversionEnabled: must be false/);
+});
+
+test('standalone grant review rejects noncanonical contribution source URL', t => {
+  const f = fixture(t), economics = f.file('economics.json', tokenomics());
+  const g = grant('invalid-source-test', 14, 150);
+  g.sourcePullRequest = 'https://github.example/ExampleOrg/dummy-repo/pull/14';
+  const r = command('validate-contributor-grants.mjs',
+    f.file('grants.json', batch(g)), '--tokenomics', economics, '--require-proposal');
+  assertExit(r, 1);
+  assert.match(r.stderr, /expected canonical GitHub pull request URL/);
+});
+
+test('tokenomics proposal must reconcile allocations to total supply', t => {
+  const f = fixture(t), plan = tokenomics();
+  plan.token.totalSupplyBaseUnits = '1001';
+  const r = command('validate-tokenomics.mjs', f.file('economics.json', plan),
+    '--require-proposal');
+  assertExit(r, 1);
+  assert.match(r.stderr, /allocation sum differs from total supply/);
+});
+
+test('same-batch duplicate contribution source is rejected before reconciliation', t => {
+  const f = fixture(t), economics = f.file('economics.json', tokenomics());
+  const g = grant('second-grant-test', 15, 100);
+  g.sourcePullRequest = g.sourcePullRequest.replace('ExampleOrg', 'exampleorg');
+  const r = command('validate-contributor-grants.mjs',
+    f.file('grants.json', batch(grant('first-grant-test', 15, 100), g)),
+    '--tokenomics', economics, '--require-proposal');
+  assertExit(r, 1);
+  assert.match(r.stderr, /duplicate contribution reference/);
+});
+
+test('grant base units exceeding uint256 are rejected', t => {
+  const f = fixture(t), economics = f.file('economics.json', tokenomics());
+  const enormous = '9'.repeat(79);
+  const r = command('validate-contributor-grants.mjs',
+    f.file('grants.json', batch(grant('overflow-grant-test', 16, enormous))),
+    '--tokenomics', economics, '--require-proposal');
+  assertExit(r, 1);
+  assert.match(r.stderr, /exceeds uint256/);
+});
