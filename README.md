@@ -75,7 +75,8 @@ The [SHA-256 manifest integrity check](docs/GRANT_MANIFEST_INTEGRITY.md) detects
 - `--expected-manifest-sha256 <digest>` (CLI option) — independently pin the **raw manifest** for a read-only review; SHA-256 is not a signature or issuance authorization
 - `npm run test:safe-reader` — bound and verify descriptor-backed local file reads
 - `npm run test:review-json` — reject duplicate grant-review JSON keys, malformed UTF-8, leading BOM, and pathological nesting
-- `npm run test:strict-cli-json` — exercise strict decoding across standalone tokenomics, contributor-grants and batch CLIs
+- `npm run test:strict-cli-json` — exercise strict decoding and bounded input reads across standalone tokenomics, contributor-grants and batch CLIs
+- `npm run test:proposal-cli-integration` — verify the real economic validators through CLI subprocesses using synthetic proposals, including multi-batch overspending and duplicate contribution rejection
 
 ## Roadmap
 
