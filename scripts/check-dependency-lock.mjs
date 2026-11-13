@@ -14,10 +14,57 @@ const pinnedIntegrity = 'sha512-eCYgWnLg6WO+X52I16TZt8uEjbtdkgLC0SUX/xnAksjjrQI4
 const own = (value, property) => Object.hasOwn(value, property);
 const record = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 
+// A lock digest alone does not protect npm's executable lifecycle hooks or
+// package.json scripts. Changes to the reviewed commands need explicit review.
+const reviewedScripts = Object.freeze({
+ "build": "forge build && node scripts/check-abi.mjs",
+ "check:abi": "node scripts/check-abi.mjs",
+ "test": "forge test -vv",
+ "test:fuzz": "forge test --match-test testFuzz -vv",
+ "test:invariant": "forge test --match-test invariant_ -vv",
+ "test:abi-guard": "node --test test/node/abi-check.test.mjs",
+ "test:deploy-guard": "bash test/shell/deploy-guard.test.sh",
+ "test:offline": "npm run test:dependency-lock && npm run test:abi-guard && npm run test:deploy-guard && npm run test:rpc-url && npm run test:rpc-deploy-guard && npm run test:foundry-evidence && npm run test:local-gate && npm run test:foundry-format",
+ "test:rpc-url": "node --test test/node/rpc-url.test.mjs",
+ "test:rpc-deploy-guard": "bash test/shell/rpc-url-guard.test.sh",
+ "test:foundry-evidence": "node --test test/node/foundry-evidence.test.mjs",
+ "check:foundry-invariants": "node scripts/check-foundry-invariants.mjs",
+ "verify:local": "bash scripts/verify-local.sh",
+ "test:local-gate": "bash test/shell/verify-local-guard.test.sh",
+ "test:foundry-format": "node --test test/node/foundry-format.test.mjs",
+ "test:dependency-lock": "node --test test/node/dependency-lock.test.mjs"
+});
+const reviewedManifestFields = new Set([
+  'name', 'version', 'private', 'description', 'scripts', 'dependencies', 'engines',
+  'devDependencies', 'optionalDependencies', 'peerDependencies',
+]);
+const reviewedLockFields = new Set(['name', 'version', 'lockfileVersion', 'requires', 'packages']);
+const reviewedRootFields = new Set(['name', 'version', 'dependencies', 'engines']);
+const reviewedDependencyFields = new Set(['version', 'resolved', 'integrity', 'license']);
+const unexpectedKeys = (object, reviewed) =>
+  Object.keys(object).filter((key) => !reviewed.has(key));
+
 export function checkDependencyLock(manifest, lock) {
   const errors = [];
   if (!record(manifest) || !record(lock)) {
     return { valid: false, errors: ['package manifest and lockfile must be JSON objects'] };
+  }
+  // npm ci can execute preinstall/install/postinstall/prepare and pre/post
+  // hooks for npm run. Pin the exact commands so silent script changes fail.
+  if (!record(manifest.scripts)) {
+    errors.push('npm scripts must match the reviewed script commands');
+  } else {
+    const entries = Object.entries(reviewedScripts);
+    if (Object.keys(manifest.scripts).length !== entries.length ||
+        entries.some(([name, command]) => manifest.scripts[name] !== command)) {
+      errors.push('npm scripts must match the reviewed script commands');
+    }
+  }
+  if (unexpectedKeys(manifest, reviewedManifestFields).length !== 0 || manifest.private !== true) {
+    errors.push('unexpected package.json fields or non-private package; require review');
+  }
+  if (unexpectedKeys(lock, reviewedLockFields).length !== 0) {
+    errors.push('unexpected top-level lockfile metadata');
   }
   const deps = manifest.dependencies;
   if (!record(deps) || Object.keys(deps).length !== 1 || deps[pinnedName] !== pinnedVersion) {
@@ -49,6 +96,9 @@ export function checkDependencyLock(manifest, lock) {
       project.dependencies[pinnedName] !== pinnedVersion) {
     errors.push('lockfile root dependencies or identity are inconsistent');
   }
+  if (record(project) && unexpectedKeys(project, reviewedRootFields).length !== 0) {
+    errors.push('unreviewed root package metadata in lockfile');
+  }
   if (!record(project?.engines) || project.engines.node !== '>=20') {
     errors.push('unexpected Node engine requirement in root lock entry');
   }
@@ -57,6 +107,9 @@ export function checkDependencyLock(manifest, lock) {
       dependency.resolved !== pinnedTarball || dependency.integrity !== pinnedIntegrity ||
       dependency.license !== 'MIT') {
     errors.push('OpenZeppelin version, registry, license or SHA-512 integrity differs from pinned release');
+  }
+  if (record(dependency) && unexpectedKeys(dependency, reviewedDependencyFields).length !== 0) {
+    errors.push('unreviewed dependency metadata in lockfile');
   }
   if (own(lock, 'dependencies')) {
     errors.push('lockfile contains unexpected legacy dependency records');
