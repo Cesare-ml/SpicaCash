@@ -40,9 +40,16 @@ if (( ${#SPICA_TESTNET_SUPPLY_BASE_UNITS} > ${#max_uint256} )) ||
   exit 1
 fi
 
-network_id="$(cast chain-id --rpc-url "$ARBITRUM_SEPOLIA_RPC_URL")"
+# Read the endpoint through Foundry's supported environment setting, not CLI argv.
+# An RPC URL may contain a provider token; putting it in argv exposes it to ps.
+export ETH_RPC_URL="$ARBITRUM_SEPOLIA_RPC_URL"
+# Do not forward upstream RPC errors verbatim: they may echo query-string tokens.
+if ! network_id="$(cast chain-id 2>/dev/null)"; then
+  echo "REFUSED: testnet chain ID query failed (provider details suppressed)." >&2
+  exit 1
+fi
 if [[ "$network_id" != "421614" ]]; then
-  echo "REFUSED: expected Arbitrum Sepolia (421614), got $network_id." >&2
+  echo "REFUSED: expected Arbitrum Sepolia (421614); chain ID mismatch." >&2
   exit 1
 fi
 
@@ -64,7 +71,6 @@ if [[ ! "$FOUNDRY_ACCOUNT" =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$ ]]; then
 fi
 
 forge create src/SpicaCash.sol:SpicaCash \
-  --rpc-url "$ARBITRUM_SEPOLIA_RPC_URL" \
   --account "$FOUNDRY_ACCOUNT" \
   --constructor-args "$SPICA_TESTNET_HOLDER" "$SPICA_TESTNET_SUPPLY_BASE_UNITS" \
   --broadcast
