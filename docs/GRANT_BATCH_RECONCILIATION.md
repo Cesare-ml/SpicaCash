@@ -32,6 +32,7 @@ node scripts/check-grant-batches.mjs \
 
 # Regressions (synthetic fixtures only)
 npm run test:grant-batches
+npm run test:batch-identity
 ```
 
 The proposed amounts and temporary IDs used in tests are **not** authorized SPICA tokenomics. A successful output may include per-bucket proposed and unassigned **base units**. This must never be described as issued, reserved, payable, vested or legally earned.
