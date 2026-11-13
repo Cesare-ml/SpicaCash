@@ -12,7 +12,7 @@
     "test:safe-reader": "node --test test/node/read-small-file.test.mjs",
     "test:abi-guard": "node --test test/node/abi-check.test.mjs",
     "test:deploy-guard": "bash test/shell/deploy-guard.test.sh",
-    "test:offline": "npm run test:safe-reader && npm run test:abi-guard && npm run test:deploy-guard && npm run test:tokenomics && npm run check:tokenomics && npm run test:grants && npm run check:grants && npm run test:grant-batches && npm run check:grant-batches && npm run test:grant-manifest && npm run check:grant-manifest && npm run test:grant-inventory",
+    "test:offline": "npm run test:safe-reader && npm run test:abi-guard && npm run test:deploy-guard && npm run test:tokenomics && npm run check:tokenomics && npm run test:grants && npm run check:grants && npm run test:grant-batches && npm run check:grant-batches && npm run test:review-json && npm run test:grant-manifest && npm run check:grant-manifest && npm run test:grant-inventory",
     "check:tokenomics": "node scripts/validate-tokenomics.mjs config/tokenomics.draft.json",
     "test:tokenomics": "node --test test/node/tokenomics.test.mjs",
     "check:grants": "node scripts/validate-contributor-grants.mjs config/contributor-grants.draft.json",
@@ -22,7 +22,8 @@
     "test:grant-batches": "node --test test/node/grant-batches.test.mjs",
     "check:grant-manifest": "node scripts/check-grant-manifest.mjs config/grant-batches.draft.manifest.json",
     "test:grant-manifest": "node --test test/node/grant-manifest.test.mjs",
-    "test:grant-inventory": "node --test test/node/grant-inventory.test.mjs"
+    "test:grant-inventory": "node --test test/node/grant-inventory.test.mjs",
+    "test:review-json": "node --test test/node/parse-review-json.test.mjs test/node/review-json-manifest.test.mjs"
   },
   "dependencies": {
     "@openzeppelin/contracts": "5.4.0"
