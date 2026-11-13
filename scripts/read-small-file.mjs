@@ -14,17 +14,20 @@ export function readSmallBytes(path) {
   }
   if (before.size > BigInt(MAX_DOCUMENT_BYTES)) throw new Error('file exceeds 1 MiB limit');
 
-  // O_NOFOLLOW blocks a final-symlink swap where available; O_NONBLOCK keeps
-  // an attacker-swapped FIFO from indefinitely blocking open(). Windows still
-  // needs independent review: neither flag ensures race freedom everywhere.
+  // On POSIX, O_NOFOLLOW prevents swapping the final path component for a
+  // symlink; O_NONBLOCK avoids hanging on a substituted FIFO. Ancestor path
+  // changes and unsupported Windows flags remain outside these guarantees.
   const flags = constants.O_RDONLY |
     (process.platform !== 'win32' && typeof constants.O_NOFOLLOW === 'number'
       ? constants.O_NOFOLLOW : 0) |
-    (typeof constants.O_NONBLOCK === 'number' ? constants.O_NONBLOCK : 0);
+    (process.platform !== 'win32' && typeof constants.O_NONBLOCK === 'number'
+      ? constants.O_NONBLOCK : 0);
   const fd = openSync(path, flags);
   try {
     const opened = fstatSync(fd, { bigint: true });
-    if (!opened.isFile() || before.dev !== opened.dev || before.ino !== opened.ino) {
+    if (!opened.isFile() || before.dev !== opened.dev || before.ino !== opened.ino ||
+        before.size !== opened.size || before.mtimeNs !== opened.mtimeNs ||
+        before.ctimeNs !== opened.ctimeNs) {
       throw new Error('file changed while opening');
     }
     if (opened.size > BigInt(MAX_DOCUMENT_BYTES)) throw new Error('file exceeds 1 MiB limit');
@@ -40,11 +43,11 @@ export function readSmallBytes(path) {
       if (total > MAX_DOCUMENT_BYTES) throw new Error('file exceeds 1 MiB limit');
       parts.push(chunk.subarray(0, count));
     }
-    // A descriptor can refer to a file being modified in place. Detect
-    // observed truncation, growth and metadata changes before accepting it.
+    // A stable, complete descriptor read is required; a shortened or edited
+    // file cannot masquerade as an authenticated review snapshot.
     const after = fstatSync(fd, { bigint: true });
-    if (BigInt(total) !== opened.size || after.size !== opened.size ||
-        after.dev !== opened.dev || after.ino !== opened.ino ||
+    if (!after.isFile() || after.dev !== opened.dev || after.ino !== opened.ino ||
+        opened.size !== BigInt(total) || after.size !== opened.size ||
         after.mtimeNs !== opened.mtimeNs || after.ctimeNs !== opened.ctimeNs) {
       throw new Error('file changed during snapshot read');
     }
