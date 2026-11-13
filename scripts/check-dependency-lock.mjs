@@ -17,22 +17,22 @@ const record = (value) => value !== null && typeof value === 'object' && !Array.
 // A lock digest alone does not protect npm's executable lifecycle hooks or
 // package.json scripts. Changes to the reviewed commands need explicit review.
 const reviewedScripts = Object.freeze({
- "build": "forge build && node scripts/check-abi.mjs",
- "check:abi": "node scripts/check-abi.mjs",
- "test": "forge test -vv",
- "test:fuzz": "forge test --match-test testFuzz -vv",
- "test:invariant": "forge test --match-test invariant_ -vv",
- "test:abi-guard": "node --test test/node/abi-check.test.mjs",
- "test:deploy-guard": "bash test/shell/deploy-guard.test.sh",
- "test:offline": "npm run test:dependency-lock && npm run test:abi-guard && npm run test:deploy-guard && npm run test:rpc-url && npm run test:rpc-deploy-guard && npm run test:foundry-evidence && npm run test:local-gate && npm run test:foundry-format",
- "test:rpc-url": "node --test test/node/rpc-url.test.mjs",
- "test:rpc-deploy-guard": "bash test/shell/rpc-url-guard.test.sh",
- "test:foundry-evidence": "node --test test/node/foundry-evidence.test.mjs",
- "check:foundry-invariants": "node scripts/check-foundry-invariants.mjs",
- "verify:local": "bash scripts/verify-local.sh",
- "test:local-gate": "bash test/shell/verify-local-guard.test.sh",
- "test:foundry-format": "node --test test/node/foundry-format.test.mjs",
- "test:dependency-lock": "node --test test/node/dependency-lock.test.mjs"
+  "build": "forge build && node scripts/check-abi.mjs",
+  "check:abi": "node scripts/check-abi.mjs",
+  "test": "forge test -vv",
+  "test:fuzz": "forge test --match-test testFuzz -vv",
+  "test:invariant": "forge test --match-test invariant_ -vv",
+  "test:abi-guard": "node --test test/node/abi-check.test.mjs",
+  "test:deploy-guard": "bash test/shell/deploy-guard.test.sh",
+  "test:offline": "npm run test:dependency-lock && npm run test:abi-guard && npm run test:deploy-guard && npm run test:rpc-url && npm run test:rpc-deploy-guard && npm run test:foundry-evidence && npm run test:local-gate && npm run test:foundry-format",
+  "test:rpc-url": "node --test test/node/rpc-url.test.mjs",
+  "test:rpc-deploy-guard": "bash test/shell/rpc-url-guard.test.sh",
+  "test:foundry-evidence": "node --test test/node/foundry-evidence.test.mjs",
+  "check:foundry-invariants": "node scripts/check-foundry-invariants.mjs",
+  "verify:local": "bash scripts/verify-local.sh",
+  "test:local-gate": "bash test/shell/verify-local-guard.test.sh",
+  "test:foundry-format": "node --test test/node/foundry-format.test.mjs",
+  "test:dependency-lock": "node --test test/node/dependency-lock.test.mjs"
 });
 const reviewedManifestFields = new Set([
   'name', 'version', 'private', 'description', 'scripts', 'dependencies', 'engines',
