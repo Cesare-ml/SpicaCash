@@ -2,7 +2,7 @@
 // Offline CLI input tests; synthetic drafts only. No wallets or network.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -137,5 +137,37 @@ for (const entry of commands.filter(x => x.name !== 'tokenomics')) {
     const r = run(entry.command, f.file, '--tokenomics', f.companion);
     assert.equal(r.status, 2, r.stderr);
     assert.match(r.stderr, /exceeds 1 MiB limit/);
+  });
+}
+
+for (const entry of commands) {
+  test(entry.name + ' rejects directory as a primary review input', t => {
+    const f = fixture(t);
+    mkdirSync(f.file);
+    const r = run(entry.command, f.file);
+    assert.equal(r.status, 2, r.stderr);
+    assert.match(r.stderr, /regular, non-symlink file required/);
+    assert.doesNotMatch(r.stdout, /VALID/);
+  });
+}
+
+for (const entry of commands.filter(x => x.name !== 'tokenomics')) {
+  test(entry.name + ' rejects symlinked companion tokenomics JSON', t => {
+    const f = fixture(t);
+    writeFileSync(f.file, entry.draft);
+    writeFileSync(f.companion, tokenomicsDraft);
+    const alias = join(f.dir, 'tokenomics-alias.json');
+    try { symlinkSync(f.companion, alias); }
+    catch (error) {
+      if (['EPERM', 'ENOTSUP'].includes(error.code)) {
+        t.skip('symlinks unavailable to this user');
+        return;
+      }
+      throw error;
+    }
+    const r = run(entry.command, f.file, '--tokenomics', alias);
+    assert.equal(r.status, 2, r.stderr);
+    assert.match(r.stderr, /regular, non-symlink file required/);
+    assert.doesNotMatch(r.stdout, /VALID/);
   });
 }
