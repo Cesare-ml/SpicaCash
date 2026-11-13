@@ -25,6 +25,10 @@ Status: **open design**. Nothing here authorizes a mint, sale, exchange listing,
 
 A minimal, configurable ERC-20 **prototype**, unit/fuzz tests and an Arbitrum Sepolia-only guarded deployment helper have been added on a draft branch. Stateful invariants, dependency installation, Solidity compilation, actual test execution and any deployment remain unverified/pending. Do not hard-code a final supply or recipient address before approval.
 
+## Structured governance review
+
+The optional offline validator and the intentionally empty tokenomics draft are documented in [Tokenomics governance](TOKENOMICS_GOVERNANCE.md). **No economic quantities or multisig signers are approved**. The validator is not a substitute for financial, security, independent audit or legal review.
+
 ## Decisions not made yet
 
 1. Confirm the canonical chain after comparing Arbitrum and Base in practice.
