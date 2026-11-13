@@ -2,7 +2,7 @@
 // Offline CLI input tests; synthetic drafts only. No wallets or network.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -101,3 +101,41 @@ test('standalone tokenomics CLI rejects duplicate fields nested in the plan', t 
   assert.equal(r.status, 2, r.stderr);
   assert.match(r.stderr, /duplicate JSON object key/);
 });
+
+for (const entry of commands) {
+  test(entry.name + ' rejects a document larger than 1 MiB before JSON parsing', t => {
+    const f = fixture(t);
+    writeFileSync(f.file, Buffer.alloc(1024 * 1024 + 1, 0x20));
+    const r = run(entry.command, f.file);
+    assert.equal(r.status, 2, r.stderr);
+    assert.match(r.stderr, /exceeds 1 MiB limit/);
+    assert.doesNotMatch(r.stdout, /VALID/);
+  });
+
+  test(entry.name + ' refuses a symlinked input instead of following it', t => {
+    const f = fixture(t);
+    writeFileSync(f.companion, entry.draft);
+    try { symlinkSync(f.companion, f.file); }
+    catch (error) {
+      if (['EPERM', 'ENOTSUP'].includes(error.code)) {
+        t.skip('symlinks unavailable to this user');
+        return;
+      }
+      throw error;
+    }
+    const r = run(entry.command, f.file);
+    assert.equal(r.status, 2, r.stderr);
+    assert.match(r.stderr, /regular, non-symlink file required/);
+  });
+}
+
+for (const entry of commands.filter(x => x.name !== 'tokenomics')) {
+  test(entry.name + ' refuses oversized companion tokenomics input', t => {
+    const f = fixture(t);
+    writeFileSync(f.file, entry.draft);
+    writeFileSync(f.companion, Buffer.alloc(1024 * 1024 + 1, 0x20));
+    const r = run(entry.command, f.file, '--tokenomics', f.companion);
+    assert.equal(r.status, 2, r.stderr);
+    assert.match(r.stderr, /exceeds 1 MiB limit/);
+  });
+}
