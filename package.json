@@ -11,9 +11,12 @@
     "test:invariant": "forge test --match-test invariant_ -vv",
     "test:abi-guard": "node --test test/node/abi-check.test.mjs",
     "test:deploy-guard": "bash test/shell/deploy-guard.test.sh",
-    "test:offline": "npm run test:abi-guard && npm run test:deploy-guard && npm run test:rpc-url && npm run test:rpc-deploy-guard",
+    "test:offline": "npm run test:abi-guard && npm run test:deploy-guard && npm run test:rpc-url && npm run test:rpc-deploy-guard && npm run test:foundry-evidence",
     "test:rpc-url": "node --test test/node/rpc-url.test.mjs",
-    "test:rpc-deploy-guard": "bash test/shell/rpc-url-guard.test.sh"
+    "test:rpc-deploy-guard": "bash test/shell/rpc-url-guard.test.sh",
+    "test:foundry-evidence": "node --test test/node/foundry-evidence.test.mjs",
+    "check:foundry-invariants": "node scripts/check-foundry-invariants.mjs",
+    "verify:local": "bash scripts/verify-local.sh"
   },
   "dependencies": {
     "@openzeppelin/contracts": "5.4.0"
