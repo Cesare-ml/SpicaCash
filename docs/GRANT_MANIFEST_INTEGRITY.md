@@ -83,6 +83,14 @@ npm run test:grant-inventory
 
 This is an **opt-in** directory check; omitting `--inventory-dir` explicitly reports that the inventory was not checked. For final reviews, use the strict option and separately verify that the selected folder represents the complete intended proposal scope.
 
+## Unambiguous JSON semantics
+
+The offline manifest loader now rejects **duplicate object properties at any nesting level** in the manifest, referenced grant batches, and referenced tokenomics JSON. This includes distinct textual spellings which decode to the same key (for example, a literal key and its `\\u`-escaped equivalent). Standard `JSON.parse` otherwise silently keeps the last occurrence, which can conceal contradictory authority or amount fields from human review.
+
+The decoder also refuses malformed UTF-8 instead of silently replacing invalid sequences, caps nesting at 128 levels, and still relies on native `JSON.parse` to validate full JSON syntax. These checks operate on the same raw file bytes that the SHA-256 digest pins. An invalid document fails review without approving or issuing anything.
+
+Run `npm run test:review-json` for the ten direct parser tests and six manifest integration tests, or `npm run test:offline` for the full local offline chain. These rules apply to the **hashed manifest review workflow**; other independent draft-validation CLIs should not be assumed to reject duplicate keys until migrated to the shared decoder.
+
 ## Descriptor-bound, size-limited JSON reads
 
 The manifest loader opens each local JSON file once and reads its bytes through the **opened descriptor** instead of separately trusting a size check followed by an unrestricted path-based read. It uses an upper bound of **1 MiB per file** (the manifest, every batch and tokenomics JSON), reads no more than 1 MiB + 1 byte, and rejects non-regular files, oversized data and files whose descriptor metadata or observed byte count change during the read. On platforms with `O_NOFOLLOW`, it also refuses a final-path symlink swapped in between the precheck and the open. No network access, token transfer or signing is involved.
