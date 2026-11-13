@@ -16,6 +16,8 @@ This is a public, pre-launch crypto-asset project. **There is no official deploy
 - Do **not** deploy to mainnet, mint real assets, move funds, create a liquidity pool, list a token, connect real user wallets, or publish actual launch contract addresses without separate explicit authorization.
 - Never request, print, commit or expose private keys, seed phrases, API secrets or signing credentials.
 - No automated deployments and **no GitHub Actions** for this project.
+- RPC URL validation for the Sepolia helper is a local HTTPS syntax gate, **not** evidence of trustworthy endpoint identity. Do not print or commit real provider URLs, credentials, or RPC query tokens.
+- Run `npm run test:rpc-url` and `npm run test:rpc-deploy-guard` when changing testnet RPC handling. All tests must remain fully mocked/offline.
 - Do not connect SpicaCash to VirgoStars AI credits, credit purchases, conversions or checkout in the initial release.
 - Prefer minimal and verifiable standard-contract components; no fee-on-transfer, hidden mint functions, owner blacklists or speculative marketing claims.
 - For financial/security-sensitive changes, request review; provide exact tests actually run. Never claim an audit based on self-tests.
