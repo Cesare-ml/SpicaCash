@@ -7,9 +7,9 @@ import { validateContributorGrants } from './contributor-grants-core.mjs';
 import { reconcileGrantBatches } from './grant-batches-core.mjs';
 
 const args = process.argv.slice(2);
-const usage = 'Usage: node scripts/check-grant-manifest.mjs <manifest.json> [--require-proposal] [--inventory-dir <relative-folder>]';
+const usage = 'Usage: node scripts/check-grant-manifest.mjs <manifest.json> [--require-proposal] [--inventory-dir <relative-folder>] [--expected-manifest-sha256 <64-lowercase-hex>]';
 const paths = [];
-let requireProposal = false, inventoryDir = null, invalid = false;
+let requireProposal = false, inventoryDir = null, expectedManifestSha256 = null, invalid = false;
 
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '--require-proposal' && !requireProposal) {
@@ -17,6 +17,10 @@ for (let i = 0; i < args.length; i++) {
   } else if (args[i] === '--inventory-dir' && inventoryDir === null &&
              i + 1 < args.length && !args[i + 1].startsWith('--')) {
     inventoryDir = args[++i];
+  } else if (args[i] === '--expected-manifest-sha256' &&
+             expectedManifestSha256 === null && i + 1 < args.length &&
+             /^[a-f0-9]{64}$/.test(args[i + 1])) {
+    expectedManifestSha256 = args[++i];
   } else if (args[i].startsWith('--')) {
     invalid = true;
   } else {
@@ -27,7 +31,7 @@ if (invalid || paths.length !== 1) {
   console.error(usage);
   process.exitCode = 2;
 } else {
-  const manifest = loadGrantManifest(paths[0], { requireProposal });
+  const manifest = loadGrantManifest(paths[0], { requireProposal, ...(expectedManifestSha256 === null ? {} : { expectedManifestSha256 }) });
   if (!manifest.valid) {
     console.error('INVALID grant manifest (no issuance authorized):');
     for (const error of manifest.errors) console.error(' - ' + error);
@@ -53,6 +57,8 @@ if (invalid || paths.length !== 1) {
           'VALID review-only manifest; SHA-256 checks passed. NOT approved for issuance, payment or AI-credit conversion.'
         );
         console.log('Status: ' + manifest.status);
+        console.log('Manifest SHA-256: ' + manifest.manifestSha256 +
+                    ' (review fingerprint only; not a signature or authorization)');
         console.log('Verified batches: ' + result.batchCount);
         console.log('Proposed grants: ' + result.proposalCount);
         for (const [key, value] of Object.entries(result.totals)) {
