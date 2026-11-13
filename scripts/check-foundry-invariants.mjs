@@ -21,17 +21,44 @@ export function checkInvariantEvidence(raw) {
   }
   const report = raw.replace(/\x1b\[[0-9;]*m/g, '').replace(/\r/g, '');
   const errors = [];
-  // Require the expected suite, not an unrelated successful contract test.
-  const header = /^\s*(?:Ran|Running)\s+\d+\s+tests?\s+for\s+test\/SpicaCashInvariant\.t\.sol:SpicaCashInvariantTest\b/m;
-  if (!header.test(report)) errors.push('SpicaCashInvariantTest suite header missing');
+  // The selected Forge command should report exactly one suite with five tests.
+  // Do not combine PASS markers from an unrelated or partial test run.
+  const suites = [...report.matchAll(/^[ \t]*(?:Ran|Running)\s+(\d+)\s+tests?\s+for\s+(\S+)\s*$/gm)];
+  const expectedSuite = 'test/SpicaCashInvariant.t.sol:SpicaCashInvariantTest';
+  if (!suites.some((suite) => suite[2] === expectedSuite)) {
+    errors.push('SpicaCashInvariantTest suite header missing');
+  }
+  if (suites.length !== 1) errors.push('expected exactly one Foundry test suite');
+  if (suites.length === 1 && suites[0][2] === expectedSuite && suites[0][1] !== '5') {
+    errors.push('expected exactly five tests in SpicaCashInvariantTest');
+  }
   if (/^\s*\[FAIL\]/m.test(report)) errors.push('Forge output includes failing tests');
-  if (!/(?:Suite|Test) result:\s*ok\.\s*\d+\s+passed;\s*0\s+failed\b/m.test(report)) {
-    errors.push('success summary with zero failed tests missing');
+
+  // Match a complete summary line, including skipped-test accounting. An
+  // unrelated "ok" summary, extra suite or incomplete run must never pass.
+  const summaryLines = [...report.matchAll(/^[ \t]*(?:Suite|Test) result:[^\n]*$/gm)];
+  const summary = summaryLines.length === 1
+    ? /^[ \t]*(?:Suite|Test) result:\s*ok\.\s*(\d+)\s+passed;\s*(\d+)\s+failed(?:;\s*(\d+)\s+skipped)?(?:;\s*finished\b.*)?\s*$/.exec(summaryLines[0][0])
+    : null;
+  if (!summary || summary[1] !== '5' || summary[2] !== '0' ||
+      (summary[3] !== undefined && summary[3] !== '0')) {
+    errors.push('success summary with exactly five passed and zero failed/skipped tests missing');
+  }
+
+  const scopedReport = suites.length === 1 && summaryLines.length === 1 &&
+    suites[0].index < summaryLines[0].index
+    ? report.slice(suites[0].index, summaryLines[0].index)
+    : '';
+  if ((report.match(/^[ \t]*\[PASS\]/gm) || []).length !== 5) {
+    errors.push('expected exactly five passing markers in full Forge output');
+  }
+  if ((scopedReport.match(/^\s*\[PASS\]/gm) || []).length !== 5) {
+    errors.push('expected exactly five passing markers inside the selected suite');
   }
 
   for (const name of requiredSmoke) {
     const pattern = new RegExp(`^\\s*\\[PASS\\]\\s+${name}\\(\\)`, 'gm');
-    const matches = [...report.matchAll(pattern)];
+    const matches = [...scopedReport.matchAll(pattern)];
     if (matches.length !== 1) errors.push(`${name}: expected exactly one passing result`);
   }
   for (const name of requiredInvariants) {
@@ -39,7 +66,7 @@ export function checkInvariantEvidence(raw) {
       `^\\s*\\[PASS\\]\\s+${name}\\(\\)\\s+\\(runs:\\s*(\\d+),\\s*calls:\\s*(\\d+),\\s*reverts:\\s*(\\d+)\\)`,
       'gm'
     );
-    const matches = [...report.matchAll(pattern)];
+    const matches = [...scopedReport.matchAll(pattern)];
     if (matches.length !== 1) {
       errors.push(`${name}: expected exactly one passing invariant campaign with metrics`);
       continue;
