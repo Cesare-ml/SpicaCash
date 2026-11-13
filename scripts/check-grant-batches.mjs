@@ -5,6 +5,7 @@ import { readSmallBytes } from './read-small-file.mjs';
 import { assertDistinctBatchFiles } from './distinct-batch-files.mjs';
 import { parseReviewJson } from './parse-review-json.mjs';
 import { validateContributorGrants } from './contributor-grants-core.mjs';
+import { validateTokenomics } from './tokenomics-core.mjs';
 import { reconcileGrantBatches } from './grant-batches-core.mjs';
 
 const usage = 'Usage: node scripts/check-grant-batches.mjs [--tokenomics <proposal.json>] [--require-proposal] <batch-a.json> [batch-b.json ...]';
@@ -37,9 +38,14 @@ if (invalid || paths.length === 0 || paths.length > 64) {
     }));
     const tokenomics = tokenomicsFile === null
       ? null : parseReviewJson(readSmallBytes(tokenomicsFile));
-    const result = reconcileGrantBatches(
-      batches, tokenomics, validateContributorGrants, { requireProposal }
-    );
+    // Check any supplied economics even if all grant batches are empty drafts.
+    // Otherwise an unsafe, well-formed tokenomics document goes unnoticed.
+    const economicsCheck = tokenomics === null ? null : validateTokenomics(tokenomics);
+    const result = economicsCheck !== null && !economicsCheck.valid
+      ? { valid: false, errors: economicsCheck.errors.map(e => 'tokenomics.' + e) }
+      : reconcileGrantBatches(
+        batches, tokenomics, validateContributorGrants, { requireProposal }
+      );
     if (!result.valid) {
       console.error('INVALID grant batches (no token distribution approved):');
       for (const error of result.errors) console.error(' - ' + error);
