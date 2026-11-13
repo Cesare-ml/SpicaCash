@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Read-only manifest integrity checks; no GitHub, wallet or chain access.
 import { createHash } from 'node:crypto';
+import { parseReviewJson } from './parse-review-json.mjs';
 import { closeSync, constants, fstatSync, lstatSync, openSync, readSync, realpathSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 
@@ -61,7 +62,7 @@ function readSmallBytes(path) {
 
 function readSmallJson(path) {
   const bytes = readSmallBytes(path);
-  return { bytes, value: JSON.parse(bytes.toString('utf8')) };
+  return { bytes, value: parseReviewJson(bytes) };
 }
 
 function relativeJsonPath(value) {
@@ -110,7 +111,7 @@ export function loadGrantManifest(manifestPath, options = {}) {
         return result;
       }
     }
-    manifest = JSON.parse(bytes.toString('utf8'));
+    manifest = parseReviewJson(bytes);
   } catch (err) {
     failure('manifest', 'cannot read JSON: ' + err.message);
     return result;
