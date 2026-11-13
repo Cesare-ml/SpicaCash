@@ -1,0 +1,66 @@
+// SPDX-License-Identifier: MIT
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { loadGrantManifest } from '../../scripts/grant-manifest-core.mjs';
+
+const digest = bytes => createHash('sha256').update(bytes).digest('hex');
+const batch = '{"status":"draft","grants":[]}\n';
+function fixture(t, batchBytes = Buffer.from(batch)) {
+  const dir = mkdtempSync(join(tmpdir(), 'spica-review-json-'));
+  t.after(() => rmSync(dir, { recursive:true, force:true }));
+  writeFileSync(join(dir,'batch.json'), batchBytes);
+  const manifest = {
+    schemaVersion:1,status:'draft',executionAuthorized:false,tokenomics:null,
+    batches:[{path:'batch.json',sha256:digest(batchBytes)}]
+  };
+  const path = join(dir, 'manifest.json');
+  writeFileSync(path, JSON.stringify(manifest));
+  return { dir, path, manifest };
+}
+
+test('valid pinned draft remains loadable',t=>{
+  const f = fixture(t);
+  const r = loadGrantManifest(f.path);
+  assert.equal(r.valid,true,r.errors.join('; '));
+  assert.equal(r.batches[0].plan.grants.length,0);
+});
+test('duplicate manifest authority keys fail even when JSON.parse would choose last',t=>{
+  const f=fixture(t);
+  const text=JSON.stringify(f.manifest).replace('"executionAuthorized":false',
+    '"executionAuthorized":true,"executionAuthorized":false');
+  writeFileSync(f.path,text);
+  const r=loadGrantManifest(f.path);
+  assert.equal(r.valid,false);
+  assert.match(r.errors.join('; '),/duplicate JSON object key/);
+});
+test('duplicate keys inside hash-matching batch fail',t=>{
+  const f=fixture(t,Buffer.from('{"status":"proposal","status":"draft","grants":[]}'));
+  const r=loadGrantManifest(f.path);
+  assert.equal(r.valid,false);
+  assert.match(r.errors.join('; '),/duplicate JSON object key/);
+});
+test('UTF-8 corruption in hash-matching batch fails',t=>{
+  const f=fixture(t,Buffer.from([123,34,115,116,97,116,117,115,34,58,34,100,114,97,102,116,34,44,34,120,34,58,34,255,34,125]));
+  const r=loadGrantManifest(f.path);
+  assert.equal(r.valid,false);
+  assert.match(r.errors.join('; '),/encoded|UTF-8|valid/i);
+});
+test('a mismatched independent manifest pin still short-circuits parsing',t=>{
+  const f=fixture(t);
+  writeFileSync(f.path,'{"a":1,"a":2}');
+  const r=loadGrantManifest(f.path,{expectedManifestSha256:'0'.repeat(64)});
+  assert.deepEqual(r.errors,['manifest.sha256: review snapshot digest mismatch']);
+});
+test('equivalent escaped manifest keys are also duplicates',t=>{
+  const f=fixture(t);
+  const text=JSON.stringify(f.manifest).replace('"status":"draft"',
+    '"status":"draft","\\u0073tatus":"draft"');
+  writeFileSync(f.path,text);
+  const r=loadGrantManifest(f.path);
+  assert.equal(r.valid,false);
+  assert.match(r.errors.join('; '),/duplicate JSON object key/);
+});
