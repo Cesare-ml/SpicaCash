@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: MIT
-// Enforce review if SpicaCash's compiled public interface changes.
-// Run after `forge build`: node scripts/check-abi.mjs
+// Reject unreviewed changes to the *compiled* SpicaCash public ABI.
+// This does not audit bytecode, roles, storage, token balances or dependencies.
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -17,50 +17,87 @@ try {
 } catch (error) {
   fail(`cannot read ${artifactPath}: ${error.message}`);
 }
-
 if (!Array.isArray(artifact.abi)) fail('artifact must contain an ABI array');
 
+// Ethereum ERC-20 functions. Require their return types and mutability too,
+// rather than merely matching the method names and input types.
 const expectedFunctions = new Map([
-  ['allowance(address,address)', 'view'],
-  ['approve(address,uint256)', 'nonpayable'],
-  ['balanceOf(address)', 'view'],
-  ['decimals()', 'view'],
-  ['name()', 'view'],
-  ['symbol()', 'view'],
-  ['totalSupply()', 'view'],
-  ['transfer(address,uint256)', 'nonpayable'],
-  ['transferFrom(address,address,uint256)', 'nonpayable'],
+  ['allowance(address,address)', ['view', 'uint256']],
+  ['approve(address,uint256)', ['nonpayable', 'bool']],
+  ['balanceOf(address)', ['view', 'uint256']],
+  ['decimals()', ['view', 'uint8']],
+  ['name()', ['view', 'string']],
+  ['symbol()', ['view', 'string']],
+  ['totalSupply()', ['view', 'uint256']],
+  ['transfer(address,uint256)', ['nonpayable', 'bool']],
+  ['transferFrom(address,address,uint256)', ['nonpayable', 'bool']],
+]);
+
+// These ERC-20 event names, argument types and indexed positions are part of
+// offchain wallet/indexer interoperability. Do not allow silent event drift.
+const expectedEvents = new Map([
+  ['Approval(address,address,uint256)', [true, true, false]],
+  ['Transfer(address,address,uint256)', [true, true, false]],
 ]);
 
 const signature = (item) =>
   `${item.name}(${(item.inputs || []).map((input) => input.type).join(',')})`;
+const functionNames = new Set();
+const eventNames = new Set();
+let constructorCount = 0;
 
-const seen = new Set();
 for (const item of artifact.abi) {
+  if (!item || typeof item !== 'object' || Array.isArray(item)) {
+    fail('invalid ABI entry');
+  }
   if (item.type === 'fallback' || item.type === 'receive') {
     fail(`unexpected ${item.type} entry`);
   }
-  if (item.type !== 'function') continue;
-  const name = signature(item);
-  if (!expectedFunctions.has(name)) fail(`unexpected callable function: ${name}`);
-  if (seen.has(name)) fail(`duplicate callable function: ${name}`);
-  if (item.stateMutability !== expectedFunctions.get(name)) {
-    fail(`unexpected mutability for ${name}: ${item.stateMutability}`);
+  if (item.type === 'function') {
+    if (!Array.isArray(item.inputs) || !Array.isArray(item.outputs)) {
+      fail('function ABI must explicitly specify inputs and outputs');
+    }
+    const name = signature(item);
+    if (!expectedFunctions.has(name)) fail(`unexpected callable function: ${name}`);
+    if (functionNames.has(name)) fail(`duplicate callable function: ${name}`);
+    const [mutability, output] = expectedFunctions.get(name);
+    if (item.stateMutability !== mutability) {
+      fail(`unexpected mutability for ${name}: ${item.stateMutability}`);
+    }
+    if (item.outputs.length !== 1 || item.outputs[0]?.type !== output) {
+      fail(`unexpected return type for ${name}: expected ${output}`);
+    }
+    functionNames.add(name);
+  } else if (item.type === 'event') {
+    if (!Array.isArray(item.inputs)) fail('event inputs must be an array');
+    const name = signature(item);
+    if (!expectedEvents.has(name)) fail(`unexpected or malformed event: ${name}`);
+    if (eventNames.has(name)) fail(`duplicate event: ${name}`);
+    if (item.anonymous !== false) fail(`event must not be anonymous: ${name}`);
+    const indexed = expectedEvents.get(name);
+    if (item.inputs.length !== indexed.length ||
+        item.inputs.some((input, index) => input.indexed !== indexed[index])) {
+      fail(`unexpected event indexed flags: ${name}`);
+    }
+    eventNames.add(name);
+  } else if (item.type === 'constructor') {
+    constructorCount++;
+    if (item.stateMutability !== 'nonpayable') fail('constructor must be nonpayable');
+    if (!Array.isArray(item.inputs) ||
+        item.inputs.map((input) => input.type).join(',') !== 'address,uint256') {
+      fail('constructor must take initialHolder and initialSupplyBaseUnits');
+    }
+  } else if (item.type !== 'error') {
+    // Solidity compiler may emit ERC-6093 or contract-specific errors. They do
+    // not create callable methods. Unknown ABI entry kinds are not tolerated.
+    fail(`unexpected ABI entry type: ${item.type}`);
   }
-  seen.add(name);
 }
-
 for (const name of expectedFunctions.keys()) {
-  if (!seen.has(name)) fail(`missing standard ERC-20 function: ${name}`);
+  if (!functionNames.has(name)) fail(`missing standard ERC-20 function: ${name}`);
 }
-
-const constructors = artifact.abi.filter((item) => item.type === 'constructor');
-if (constructors.length !== 1) fail('expected exactly one constructor');
-if (constructors[0].stateMutability !== 'nonpayable') {
-  fail('constructor must be nonpayable');
+for (const name of expectedEvents.keys()) {
+  if (!eventNames.has(name)) fail(`missing standard ERC-20 event: ${name}`);
 }
-if ((constructors[0].inputs || []).map((input) => input.type).join(',') !== 'address,uint256') {
-  fail('constructor must take initialHolder and initialSupplyBaseUnits');
-}
-
-console.log(`PASS: SpicaCash ABI has ${seen.size} expected ERC-20 functions and no extra callable methods`);
+if (constructorCount !== 1) fail('expected exactly one constructor');
+console.log(`PASS: SpicaCash ABI has ${functionNames.size} standard ERC-20 functions, ${eventNames.size} events, exact output types and no extra callable methods`);
