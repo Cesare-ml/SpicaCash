@@ -22,13 +22,19 @@ const SENSITIVE_NAMES = new Set([
   'NODE_OPTIONS', 'npm_config_node_options', 'NPM_CONFIG_NODE_OPTIONS',
   'ETH_RPC_URL', 'ARBITRUM_SEPOLIA_RPC_URL',
   'FOUNDRY_FORK_URL', 'FOUNDRY_RPC_URL', 'FOUNDRY_ACCOUNT',
-  'SPICA_CONFIRM_TESTNET_DEPLOY'
-]);
+  'SPICA_CONFIRM_TESTNET_DEPLOY',
+  // Bash sources BASH_ENV before executing verify-local.sh; exported shell
+  // functions can shadow trusted commands. Git/NPM/loader options can also
+  // alter subprocess behavior before any repository policy check can run.
+  // Normalize standalone sensitive names for Windows/case-varied env inputs.
+  'BASH_ENV', 'ENV', 'CDPATH', 'SHELLOPTS', 'BASHOPTS'
+].map(name => name.toUpperCase()));
+const BLOCKED_CHILD_PREFIX = /^(?:FOUNDRY_|DAPP_|GIT_|NPM_CONFIG_|NODE_|BASH_FUNC_|LD_|DYLD_)/i;
 
 export function cleanVerificationEnv(source) {
-  const env = {};
+  const env = Object.create(null);
   for (const [key, value] of Object.entries(source)) {
-    if (SENSITIVE_NAMES.has(key) || /^(?:FOUNDRY_|DAPP_)/i.test(key)) continue;
+    if (SENSITIVE_NAMES.has(key.toUpperCase()) || BLOCKED_CHILD_PREFIX.test(key)) continue;
     env[key] = value;
   }
   env.NO_COLOR = '1';
