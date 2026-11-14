@@ -57,6 +57,17 @@ node scripts/check-grant-manifest.mjs path/to/manifest.json \
   --expected-manifest-sha256 <independently-reviewed-64-character-sha256>
 ```
 
+For a deliberate three-safeguard check, add the optional `--pinned-proposal-review` flag. It **requires all three** `--require-proposal`, `--inventory-dir <flat-folder>` and `--expected-manifest-sha256 <trusted-digest>`; omitting any returns usage exit code 2 before reading the manifest. Existing commands remain compatible without this opt-in flag:
+
+```bash
+node scripts/check-grant-manifest.mjs path/to/manifest.json \
+  --pinned-proposal-review --require-proposal \
+  --inventory-dir review-batches \
+  --expected-manifest-sha256 <independently-reviewed-64-character-sha256>
+```
+
+This mode does not independently establish where the expected digest came from, who approved it, whether the inventory covers folders outside the requested scope or whether contributions are eligible. It does **not** authorize token issuance or payment. The corresponding tests are in `test/node/grant-manifest.test.mjs`.
+
 A matching digest permits the usual **read-only checks** to continue; a mismatch fails validation. Invalid/missing digest arguments fail with usage exit code 2. Without the option, the CLI remains compatible with existing draft workflows and simply prints the actual manifest digest. The programmatic `loadGrantManifest()` API also accepts `expectedManifestSha256` and returns `manifestSha256`.
 
 **Important:** the digest is a fingerprint, **not a signature or approval**. Copying it directly from the same untrusted manifest or checker run does not establish authenticity. Obtain the approved value separately (for example, from a trusted, reviewed Git commit or independently verified review record). The loader reads at most 1 MiB through a verified file descriptor (POSIX `O_NOFOLLOW` where available), compares pre-open and opened file metadata (device, inode, size, mtime and ctime), then uses a one-byte overflow probe and a second descriptor metadata check after reading to reject observed modifications. `O_NONBLOCK` where supported also prevents a swapped named pipe from blocking the open indefinitely. File handles close on success or failure. This reduces symlink-swap and unbounded-read exposure, but is **not** a guarantee against all concurrent filesystem races, especially on Windows; review in a controlled, immutable checkout. The loader checks the independently supplied digest against raw manifest bytes **before JSON parsing or opening any manifest-listed files**. A mismatch stops the review without traversing those paths. Even a pinned manifest does not prove that the declared folder is the complete intended grant corpus or that any contributor is eligible. Because raw bytes are hashed, even whitespace-only formatting changes require a newly reviewed digest. No grants, payments or tokens are issued.
@@ -104,4 +115,4 @@ This is an **opt-in** directory check; omitting `--inventory-dir` explicitly rep
 
 ## Validation gates
 
-The 37 Node tests in `test/node/grant-manifest.test.mjs` cover default and synthetic proposals, tampered file hashes, unsafe file paths, duplicate references, Symlink denial, cross-batch over-allocation and CLI authorization disclaimers. Run `npm run test:safe-reader`, `npm run test:grant-manifest`, `npm run test:grant-inventory` and `npm run test:offline` in a clean repository checkout and document actual test output before merge. Solidity compilation and audit are separate, still mandatory before an onchain trial.
+The 44 Node tests in `test/node/grant-manifest.test.mjs` cover default and synthetic proposals, tampered file hashes, unsafe file paths, duplicate references, Symlink denial, cross-batch over-allocation and CLI authorization disclaimers. Run `npm run test:safe-reader`, `npm run test:grant-manifest`, `npm run test:grant-inventory` and `npm run test:offline` in a clean repository checkout and document actual test output before merge. Solidity compilation and audit are separate, still mandatory before an onchain trial.

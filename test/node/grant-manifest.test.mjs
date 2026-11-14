@@ -278,3 +278,69 @@ test('strict inventory rejects missing folder and missing option argument',t=>{
   assert.equal(missingArg.status,2);
   assert.match(missingArg.stderr,/Usage:/);
 });
+
+test('pinned review refuses missing safeguards before manifest validation',t=>{
+  const f=groupedProposal(t);
+  const digest=sha256Hex(readFileSync(f.path));
+  const cases=[
+    ['--require-proposal','--inventory-dir','review-batches'],
+    ['--require-proposal','--expected-manifest-sha256',digest],
+    ['--inventory-dir','review-batches','--expected-manifest-sha256',digest],
+    []
+  ];
+  for(const args of cases){
+    const r=run(f.path,'--pinned-proposal-review',...args);
+    assert.equal(r.status,2,r.stderr);
+    assert.match(r.stderr,/Usage:/);
+    assert.doesNotMatch(r.stdout,/VALID/);
+  }
+});
+test('pinned review succeeds with valid proposal, caller-supplied pin and complete scoped inventory',t=>{
+  const f=groupedProposal(t);
+  const digest=sha256Hex(readFileSync(f.path));
+  const r=run(f.path,'--pinned-proposal-review','--require-proposal',
+    '--inventory-dir','review-batches','--expected-manifest-sha256',digest);
+  assert.equal(r.status,0,r.stderr);
+  assert.match(r.stdout,/Pinned proposal review checks completed/);
+  assert.match(r.stdout,/digest provenance NOT authenticated/);
+  assert.match(r.stdout,/NOT approved for issuance/);
+});
+test('pinned review rejects mismatched manifest digest',t=>{
+  const f=groupedProposal(t);
+  const r=run(f.path,'--pinned-proposal-review','--require-proposal',
+    '--inventory-dir','review-batches','--expected-manifest-sha256','0'.repeat(64));
+  assert.equal(r.status,1,r.stdout);
+  assert.match(r.stderr,/review snapshot digest mismatch/);
+});
+test('pinned review rejects unlisted local batch despite matching manifest pin',t=>{
+  const f=groupedProposal(t);
+  const digest=sha256Hex(readFileSync(f.path));
+  writeFileSync(join(f.dir,'review-batches','unlisted.json'),'{}\n');
+  const r=run(f.path,'--pinned-proposal-review','--require-proposal',
+    '--inventory-dir','review-batches','--expected-manifest-sha256',digest);
+  assert.equal(r.status,1,r.stdout);
+  assert.match(r.stderr,/unlisted JSON batch file/);
+});
+test('pinned review rejects draft even with all required options',t=>{
+  const f=fixture(t),digest=sha256Hex(readFileSync(f.path));
+  const r=run(f.path,'--pinned-proposal-review','--require-proposal',
+    '--inventory-dir','.', '--expected-manifest-sha256',digest);
+  assert.equal(r.status,1,r.stdout);
+  assert.match(r.stderr,/review proposal is required/);
+});
+test('pinned review rejects repeated mode option as usage error',t=>{
+  const f=groupedProposal(t),digest=sha256Hex(readFileSync(f.path));
+  const r=run(f.path,'--pinned-proposal-review','--pinned-proposal-review',
+    '--require-proposal','--inventory-dir','review-batches',
+    '--expected-manifest-sha256',digest);
+  assert.equal(r.status,2,r.stderr);
+  assert.match(r.stderr,/Usage:/);
+});
+
+test('pinned mode checks required flags before trying to open a missing manifest',t=>{
+  const absent=join(temp(t),'does-not-exist.json');
+  const r=run(absent,'--pinned-proposal-review','--require-proposal');
+  assert.equal(r.status,2,r.stderr);
+  assert.match(r.stderr,/Usage:/);
+  assert.doesNotMatch(r.stderr,/cannot read JSON|ENOENT/);
+});
