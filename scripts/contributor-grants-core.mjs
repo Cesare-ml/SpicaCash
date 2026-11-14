@@ -17,11 +17,15 @@ export function validateContributorGrants(plan, tokenomicsPlan = null, options =
     return true;
   };
   const units = (value, path) => {
-    if (typeof value !== 'string' || !/^[1-9][0-9]*$/.test(value)) {
+    if (typeof value !== 'string') {
       fail(path, 'expected positive exact base-10 integer string'); return null;
     }
-    // Prevent parsing arbitrarily long attacker-controlled strings as BigInts.
+    // Bound untrusted inputs before both regular-expression matching and BigInt.
+    // uint256 requires at most 78 decimal digits.
     if (value.length > 78) { fail(path, 'exceeds uint256'); return null; }
+    if (!/^[1-9][0-9]*$/.test(value)) {
+      fail(path, 'expected positive exact base-10 integer string'); return null;
+    }
     const amount = BigInt(value);
     if (amount > MAX_UINT256) { fail(path, 'exceeds uint256'); return null; }
     return amount;
