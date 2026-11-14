@@ -56,6 +56,29 @@ test('an empty draft is valid but is NOT a complete proposal', () => {
   assert.equal(draft.product.aiCreditConversionEnabled, false);
 });
 
+
+test('allocation rationale accepts exactly 20 and 1000 characters', () => {
+  const plan = syntheticProposal();
+  for (const size of [20, 1000]) {
+    plan.allocations[0].rationale = 'A'.repeat(size);
+    const report = validateTokenomics(plan, { requireProposal: true });
+    assert.equal(report.valid, true, report.errors.join('\n'));
+  }
+});
+
+test('allocation rationale rejects 19, 1001 and huge whitespace strings', () => {
+  const plan = syntheticProposal();
+  for (const rationale of [
+    'A'.repeat(19), 'A'.repeat(1001),
+    'A'.repeat(100_000), ' '.repeat(100_000)
+  ]) {
+    plan.allocations[0].rationale = rationale;
+    const report = validateTokenomics(plan, { requireProposal: true });
+    assert.equal(report.valid, false);
+    assert.match(report.errors.join('\n'), /allocations\[0\]\.rationale: requires 20 to 1000 characters/);
+  }
+});
+
 test('synthetic numerically balanced proposal passes document validation', () => {
   const report = validateTokenomics(syntheticProposal(), { requireProposal: true });
   assert.equal(report.valid, true, report.errors.join('\n'));
