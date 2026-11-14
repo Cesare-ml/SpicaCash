@@ -38,17 +38,47 @@ test('refuses unsafe or unexpected browser source rather than claiming success',
   }
 });
 
+test('refuses missing or extra assertions despite a PASS label', () => {
+  for (const assertions of [30, 51, 60, 62, 100]) {
+    const result = '<pre id="spica-browser-smoke-result">' +
+      JSON.stringify({ status: 'PASS', assertions, failures: [] }) + '</pre>';
+    assert.throws(() => parseSmokeOutput(result), /Malformed or incomplete/);
+  }
+});
+
+test('refuses duplicate smoke markers, including one fake PASS', () => {
+  const marker = '<pre id="spica-browser-smoke-result">' +
+    JSON.stringify({ status: 'PASS', assertions: 61, failures: [] }) + '</pre>';
+  assert.throws(() => parseSmokeOutput(marker + marker), /Duplicate browser smoke-test/);
+  assert.throws(() => parseSmokeOutput('<div>' + marker + '</div>' + marker),
+    /Duplicate browser smoke-test/);
+});
+
+test('refuses unexpected evidence fields and invalid failure names', () => {
+  for (const evidence of [
+    { status: 'PASS', assertions: 61, failures: [], authorized: true },
+    { status: 'FAIL', assertions: 61, failures: [''] },
+    { status: 'FAIL', assertions: 61, failures: ['x'.repeat(201)] },
+    { status: 'FAIL', assertions: 61, failures: Array(62).fill('failure') },
+    { status: 'PASS', assertions: 61, failures: [], extra: 'unknown' }
+  ]) {
+    const output = '<pre id="spica-browser-smoke-result">' +
+      JSON.stringify(evidence) + '</pre>';
+    assert.throws(() => parseSmokeOutput(output), /Malformed or incomplete/);
+  }
+});
+
 test('parses the strict real-browser success signal', () => {
   const dom = '<html><body><pre id="spica-browser-smoke-result">' +
-    JSON.stringify({ status: 'PASS', assertions: 51, failures: [] }) +
+    JSON.stringify({ status: 'PASS', assertions: 61, failures: [] }) +
     '</pre></body></html>';
   assert.deepEqual(parseSmokeOutput(dom),
-    { status: 'PASS', assertions: 51, failures: [] });
+    { status: 'PASS', assertions: 61, failures: [] });
 });
 
 test('preserves named assertion failures and refuses malformed evidence', () => {
   const failure = '<pre id="spica-browser-smoke-result">' +
-    JSON.stringify({ status: 'FAIL', assertions: 51, failures: ['Bob final balance'] }) +
+    JSON.stringify({ status: 'FAIL', assertions: 61, failures: ['Bob final balance'] }) +
     '</pre>';
   assert.deepEqual(parseSmokeOutput(failure).failures, ['Bob final balance']);
   for (const dom of [
@@ -57,11 +87,11 @@ test('preserves named assertion failures and refuses malformed evidence', () => 
     '<pre id="spica-browser-smoke-result">' +
       JSON.stringify({ status: 'PASS', assertions: 2, failures: [] }) + '</pre>',
     '<pre id="spica-browser-smoke-result">' +
-      JSON.stringify({ status: 'PASS', assertions: 51, failures: ['broken'] }) + '</pre>',
+      JSON.stringify({ status: 'PASS', assertions: 61, failures: ['broken'] }) + '</pre>',
     '<pre id="spica-browser-smoke-result">' +
-      JSON.stringify({ status: 'FAIL', assertions: 51, failures: [] }) + '</pre>',
+      JSON.stringify({ status: 'FAIL', assertions: 61, failures: [] }) + '</pre>',
     '<pre id="spica-browser-smoke-result">' +
-      JSON.stringify({ status: 'PASS', assertions: 51, failures: [] })
+      JSON.stringify({ status: 'PASS', assertions: 61, failures: [] })
   ]) {
     assert.throws(() => parseSmokeOutput(dom));
   }
