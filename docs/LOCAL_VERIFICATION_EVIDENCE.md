@@ -2,7 +2,7 @@
 
 SpicaCash remains **pre-launch research**. An isolated verification on a PC is useful evidence for engineering review, **not** an audit, not proof of an authentic Foundry binary and never permission to mint, deploy, distribute or market a real token.
 
-The offline-only tool `scripts/capture-local-verification.mjs` runs the already-reviewed `bash scripts/verify-local.sh` on a clean Git checkout and writes a small **local JSON receipt**. It does not capture full console output, wallet addresses, signing credentials, environment variable values or RPC URLs. It does not invoke a public network or deployment function. The existing verifier performs the compilation, tests, ABI and invariants.
+The offline-only tool `scripts/capture-local-verification.mjs` runs the already-reviewed `bash scripts/verify-local.sh` on a clean Git checkout and writes a small **local JSON receipt**. The wrapper sanitizes its **child process environment** before invoking Git, Foundry or Bash: in addition to RPC, account and Node/npm preload settings, it drops inherited `GIT_*`, `NPM_CONFIG_*`, `NODE_*`, `FOUNDRY_*`, `DAPP_*`, exported Bash functions, `BASH_ENV`, `ENV`, shell-option startup variables, and native loader `LD_*`/`DYLD_*` overrides. It retains ordinary tool discovery variables such as `PATH`, `HOME` and temporary directories. A locally installed toolchain that depends on custom `LD_LIBRARY_PATH` may need to be made self-contained or configured in a trusted environment before running. It does not capture full console output, wallet addresses, signing credentials, environment variable values or RPC URLs. It does not invoke a public network or deployment function. The existing verifier performs the compilation, tests, ABI and invariants.
 
 ## Windows 11 + WSL2 usage
 
@@ -50,10 +50,10 @@ The portable synthetic regression suite uses temp directories and mocked Git/For
 node --test test/node/local-verification-evidence.test.mjs
 ```
 
-It checks that passing, failing, missing-Forge and mid-run-modified scenarios are classified correctly; rejects dirty or wrong repositories, unsafe evidence directory symlinks and overwriting existing receipts; and ensures synthetic secret-bearing environment variables are removed before commands run. Mocked results **are not evidence that Foundry compiled the contract**.
+It checks that passing, failing, missing-Forge and mid-run-modified scenarios are classified correctly; rejects dirty or wrong repositories, unsafe evidence directory symlinks and overwriting existing receipts; and ensures synthetic Git, shell startup, npm, Node, loader and secret-bearing overrides are removed before every mocked child command runs. Mocked results **are not evidence that Foundry compiled the contract**.
 
 ## Review limits and next steps
 
-Before checking off [SC-02 in the launch roadmap](LAUNCH_READINESS.md), an independent reviewer must reproduce the verification from a fresh trusted checkout, check the actual invariant selector/call tables and record the toolchain and source revision. The receipt can assist comparison but is self-reported and does not authenticate the executable, compiler output, dependencies, source trust, or reviewer identity. A dedicated security audit and legal review are still required before any real-world issuance.
+Before checking off [SC-02 in the launch roadmap](LAUNCH_READINESS.md), an independent reviewer must reproduce the verification from a fresh trusted checkout, check the actual invariant selector/call tables and record the toolchain and source revision. The receipt can assist comparison but is self-reported and does not authenticate the executable, compiler output, dependencies, source trust, or reviewer identity. This filter cannot defend against a malicious executable already selected by `PATH`, an already-compromised parent Node process, host/global Git configuration, a hostile machine or altered binaries. Do not treat an environment-filter test as proof of trusted execution. A dedicated security audit and legal review are still required before any real-world issuance.
 
 The tool is not a scheduled automation, CI pipeline or GitHub Action. Run it manually only; do not use this feature to bypass the requirements in [AGENTS.md](../AGENTS.md).
