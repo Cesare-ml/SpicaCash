@@ -9,10 +9,13 @@ import { fileURLToPath } from 'node:url';
 import { captureEvidence, childEnvironment, digestRegularFile } from '../../scripts/capture-offline-evidence.mjs';
 
 const source = fileURLToPath(new URL('../../scripts/capture-offline-evidence.mjs', import.meta.url));
+const testSource = fileURLToPath(import.meta.url);
 const filenames = ['.npmrc', 'package.json', 'package-lock.json'];
 function fixture() {
   const dir = mkdtempSync(join(tmpdir(), 'spica-evidence-'));
   mkdirSync(join(dir, 'scripts'));
+  mkdirSync(join(dir, 'test', 'node'), { recursive: true });
+  copyFileSync(testSource, join(dir, 'test', 'node', 'offline-evidence.test.mjs'));
   copyFileSync(source, join(dir, 'scripts', 'capture-offline-evidence.mjs'));
   for (const file of filenames) writeFileSync(join(dir, file), file + '\n');
   writeFileSync(join(dir, 'scripts', 'check-dependency-lock.mjs'), "console.log('policy OK');\n");
@@ -36,7 +39,9 @@ test('captures real clean Git provenance, source hashes and both child command o
     assert.equal(report.authorization, 'NONE');
     assert.match(report.source.commitSha, /^[a-f0-9]{40}$/u);
     assert.equal(report.source.clean, true);
-    assert.equal(Object.keys(report.source.sha256).length, 5);
+    assert.equal(Object.keys(report.source.sha256).length, 7);
+    assert.match(report.source.sha256['scripts/capture-offline-evidence.mjs'], /^[a-f0-9]{64}$/u);
+    assert.match(report.source.sha256['test/node/offline-evidence.test.mjs'], /^[a-f0-9]{64}$/u);
     assert.deepEqual(report.checks.map(x => x.id), ['DEPENDENCY_POLICY', 'OFFLINE_NODE']);
     assert.match(report.checks[0].stdout, /policy OK/u);
     assert.match(report.checks[1].stdout, /suite OK/u);
@@ -147,5 +152,39 @@ test('runner failures have distinct FAILED status, captured stderr and no author
     assert.equal(report.releaseStatus, 'NOT_AUTHORIZED');
     assert.equal(report.checks[1].exitCode, 3);
     assert.match(report.checks[1].stderr, /suite rejected/u);
+  } finally { cleanup(dir); }
+});
+
+test('refuses a nested directory even if Git finds a clean parent repository', () => {
+  const dir = fixture();
+  try {
+    const nested = join(dir, 'nested');
+    mkdirSync(join(nested, 'scripts'), { recursive: true });
+    mkdirSync(join(nested, 'test', 'node'), { recursive: true });
+    for (const path of ['scripts/capture-offline-evidence.mjs',
+      'test/node/offline-evidence.test.mjs', 'scripts/run-offline-node.mjs',
+      'scripts/check-dependency-lock.mjs', ...filenames]) {
+      const destination = join(nested, path);
+      copyFileSync(join(dir, path), destination);
+    }
+    execFileSync('git', ['-C', dir, 'add', '.']);
+    execFileSync('git', ['-C', dir, '-c', 'user.name=Spica Test',
+      '-c', 'user.email=spica@test.invalid', 'commit', '-qm', 'nested files']);
+    const report = captureEvidence(nested);
+    assert.equal(report.status, 'INCOMPLETE');
+    assert.match(report.failure, /Git worktree root/u);
+    assert.equal(report.checks.length, 0);
+  } finally { cleanup(dir); }
+});
+
+test('the reporter and its regression test file are included in source digests', () => {
+  const dir = fixture();
+  try {
+    const report = captureEvidence(dir);
+    assert.equal(report.status, 'PASSED_NODE_ONLY');
+    assert.equal(report.source.sha256['scripts/capture-offline-evidence.mjs'],
+      digestRegularFile(join(dir, 'scripts/capture-offline-evidence.mjs')));
+    assert.equal(report.source.sha256['test/node/offline-evidence.test.mjs'],
+      digestRegularFile(join(dir, 'test/node/offline-evidence.test.mjs')));
   } finally { cleanup(dir); }
 });
