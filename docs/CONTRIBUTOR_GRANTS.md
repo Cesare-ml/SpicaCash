@@ -27,7 +27,7 @@ The grants document selects tokenomicsBucketId, which must refer to an allocatio
 
 ## Offline checks
 
-- Uses exact positive decimal strings in **18-decimal token base units**, with uint256 overflow protection. No floats.
+- Uses exact positive decimal strings in **18-decimal token base units**, with uint256 overflow protection. Rejects values longer than 78 characters **before** regex matching or `BigInt` parsing; invalid short strings and above-`uint256` values fail closed. No floats.
 - Requires unique grant IDs and unique canonical GitHub PR URLs (case-insensitive duplicate check), a sufficiently detailed rationale, and positive vesting duration (1–120 months) with a cliff between 0 and duration.
 - Checks that combined proposed grants do not exceed the selected contributor-category allocation; they need not exhaust it. Caps records at 1,000 per document.
 - Every explicitly supplied companion tokenomics document is validated even if the grant document is an **empty draft** (both in the exported validator and in the CLI); unsafe deployment/sale/AI-credit flags and inconsistent allocation math fail closed. A nonempty grant proposal additionally requires companion tokenomics with requireProposal=true. A valid companion document alone never awards any tokens.
