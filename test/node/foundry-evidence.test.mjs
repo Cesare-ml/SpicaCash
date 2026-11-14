@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { writeFileSync, mkdtempSync, rmSync, mkdirSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -118,4 +118,69 @@ test('CLI works with evidence file and fails on missing file', () => {
     assert.equal(bad.status, 1);
     assert.match(bad.stderr, /cannot read Forge output/);
   } finally { rmSync(dir, { recursive:true, force:true }); }
+});
+
+test('CLI accepts a valid Forge transcript exactly at the 1 MiB file limit', t => {
+  const dir = mkdtempSync(join(tmpdir(), 'spica-forge-1mib-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const path = join(dir, 'at-limit.txt');
+  const sample = fixture();
+  const padding = 1024 * 1024 - Buffer.byteLength(sample);
+  assert.ok(padding > 0);
+  writeFileSync(path, sample + ' '.repeat(padding));
+  const r = spawnSync(process.execPath, ['scripts/check-foundry-invariants.mjs', path], { encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /PASS: 3 invariant campaigns/);
+});
+
+test('CLI rejects Forge evidence above 1 MiB without echoing the file', t => {
+  const dir = mkdtempSync(join(tmpdir(), 'spica-forge-oversize-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const path = join(dir, 'oversize.txt');
+  writeFileSync(path, Buffer.alloc(1024 * 1024 + 1, 65));
+  const r = spawnSync(process.execPath, ['scripts/check-foundry-invariants.mjs', path], { encoding: 'utf8' });
+  assert.equal(r.status, 1);
+  assert.equal(r.stdout, '');
+  assert.match(r.stderr, /Invariant evidence failed: cannot read Forge output/);
+  assert.doesNotMatch(r.stderr, /AAAAAA/);
+});
+
+test('CLI refuses directories masquerading as Forge reports', t => {
+  const dir = mkdtempSync(join(tmpdir(), 'spica-forge-directory-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const path = join(dir, 'report.txt');
+  mkdirSync(path);
+  const r = spawnSync(process.execPath, ['scripts/check-foundry-invariants.mjs', path], { encoding: 'utf8' });
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /cannot read Forge output/);
+});
+
+test('CLI refuses symlinked Forge report files', t => {
+  const dir = mkdtempSync(join(tmpdir(), 'spica-forge-symlink-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const original = join(dir, 'original.txt');
+  const alias = join(dir, 'alias.txt');
+  writeFileSync(original, fixture());
+  try { symlinkSync(original, alias); }
+  catch (error) {
+    if (['EPERM', 'ENOTSUP', 'EACCES'].includes(error.code)) {
+      t.skip('symlinks unavailable in test environment');
+      return;
+    }
+    throw error;
+  }
+  const r = spawnSync(process.execPath, ['scripts/check-foundry-invariants.mjs', alias], { encoding: 'utf8' });
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /cannot read Forge output/);
+});
+
+test('CLI refuses invalid UTF-8 instead of silently substituting characters', t => {
+  const dir = mkdtempSync(join(tmpdir(), 'spica-forge-utf8-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const path = join(dir, 'invalid.txt');
+  writeFileSync(path, Buffer.concat([Buffer.from(fixture(), 'utf8'), Buffer.from([0xc3, 0x28])]));
+  const r = spawnSync(process.execPath, ['scripts/check-foundry-invariants.mjs', path], { encoding: 'utf8' });
+  assert.equal(r.status, 1);
+  assert.equal(r.stdout, '');
+  assert.match(r.stderr, /cannot read Forge output/);
 });
