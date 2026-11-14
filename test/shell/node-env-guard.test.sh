@@ -29,7 +29,7 @@ cat > "$work/mockbin/npm" <<'MOCK'
 printf '%s\n' "$*" >> "$SPICA_NPM_CALLS"
 case "$*" in
   'ci --ignore-scripts --no-audit --no-fund') exit 0 ;;
-  '--node-options= --ignore-scripts run test:offline') exit 79 ;;
+  '--node-options= --script-shell=/bin/sh --ignore-scripts run test:offline') exit 79 ;;
   *) exit 91 ;;
 esac
 MOCK
@@ -56,7 +56,7 @@ if bash "$work/project/scripts/verify-local.sh" > "$work/verify.out" 2>&1; then
   echo 'FAIL: mock npm failure was accepted' >&2; exit 1
 fi
 [[ ! -e "$SPICA_PRELOAD_MARKER" ]] || { echo 'FAIL: verifier executed injected Node preload' >&2; exit 1; }
-[[ "$(cat "$SPICA_NPM_CALLS")" == '--node-options= --ignore-scripts run test:offline' ]]
+[[ "$(cat "$SPICA_NPM_CALLS")" == '--node-options= --script-shell=/bin/sh --ignore-scripts run test:offline' ]]
 grep -Fq 'Gate 1/5' "$work/verify.out"
 pass=$((pass+1))
 
@@ -76,5 +76,41 @@ rm -f "$SPICA_PRELOAD_MARKER"
 )
 [[ ! -e "$SPICA_PRELOAD_MARKER" ]] || { echo 'FAIL: npm test child executed injected preload' >&2; exit 1; }
 [[ -f "$work/npm-fixture/explicit-test" ]] || { cat "$work/npm.out" >&2; echo 'FAIL: explicit npm test never ran' >&2; exit 1; }
+pass=$((pass+1))
+
+# npm's script-shell setting runs a user-chosen shell for *named* scripts even
+# if --ignore-scripts disables lifecycle hooks. Demonstrate the risk using a
+# harmless custom shell that only leaves a marker before delegating to /bin/sh.
+cat > "$work/untrusted-script-shell" <<'SHELL'
+#!/bin/sh
+printf 'inherited npm shell invoked\n' > "$SPICA_UNTRUSTED_SHELL_MARKER"
+exec /bin/sh "$@"
+SHELL
+chmod +x "$work/untrusted-script-shell"
+export SPICA_UNTRUSTED_SHELL_MARKER="$work/untrusted-shell-invoked"
+rm -f "$SPICA_UNTRUSTED_SHELL_MARKER" "$work/npm-fixture/explicit-test"
+(
+  cd "$work/npm-fixture"
+  NODE_OPTIONS='' NPM_CONFIG_NODE_OPTIONS='' npm_config_node_options='' \
+    npm_config_script_shell="$work/untrusted-script-shell" \
+    "$real_npm" --node-options='' --ignore-scripts run test:offline > "$work/unsafe-shell.out" 2>&1
+)
+[[ -f "$SPICA_UNTRUSTED_SHELL_MARKER" && -f "$work/npm-fixture/explicit-test" ]] || {
+  echo 'FAIL: inherited npm script-shell risk was not reproduced' >&2; exit 1
+}
+pass=$((pass+1))
+
+# Explicit /bin/sh must override the injected npm shell while still running
+# the intended test command. No network access, package install or signing.
+rm -f "$SPICA_UNTRUSTED_SHELL_MARKER" "$work/npm-fixture/explicit-test"
+(
+  cd "$work/npm-fixture"
+  NODE_OPTIONS='' NPM_CONFIG_NODE_OPTIONS='' npm_config_node_options='' \
+    npm_config_script_shell="$work/untrusted-script-shell" \
+    "$real_npm" --node-options='' --script-shell=/bin/sh --ignore-scripts run test:offline > "$work/safe-shell.out" 2>&1
+)
+[[ ! -e "$SPICA_UNTRUSTED_SHELL_MARKER" && -f "$work/npm-fixture/explicit-test" ]] || {
+  echo 'FAIL: explicit /bin/sh did not override inherited npm script-shell' >&2; exit 1
+}
 pass=$((pass+1))
 printf 'PASS: %s inherited Node preload guard scenarios\n' "$pass"
