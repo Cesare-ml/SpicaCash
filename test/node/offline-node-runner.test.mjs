@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { REQUIRED_NODE_TESTS, planOfflineNodeSteps, runOfflineNodeSteps, cleanNodeChildEnv } from '../../scripts/run-offline-node.mjs';
+import { REQUIRED_NODE_TESTS, planOfflineNodeSteps, runOfflineNodeSteps, cleanNodeChildEnv, STEP_TIMEOUT_MS } from '../../scripts/run-offline-node.mjs';
 
 const dirent = (name, regular = true) => ({ name, isFile: () => regular });
 const requiredEntries = (extra = []) => [...REQUIRED_NODE_TESTS.map(name => dirent(name)), ...extra];
@@ -97,6 +97,32 @@ test('real Node child cannot resolve CommonJS from inherited NODE_PATH', () => {
   } finally {
     rmSync(foreign, { recursive: true, force: true });
   }
+});
+
+test('bounds policy, full Node suite and offline draft subprocess durations', () => {
+  const plan = planOfflineNodeSteps('repo', requiredEntries());
+  const requests = [];
+  const result = runOfflineNodeSteps('repo', plan, (bin, args, options) => {
+    requests.push(options.timeout);
+    return { status: 0 };
+  });
+  assert.deepEqual(result, { ok: true });
+  assert.deepEqual(requests, [
+    STEP_TIMEOUT_MS.policy, STEP_TIMEOUT_MS.tests,
+    STEP_TIMEOUT_MS.draft, STEP_TIMEOUT_MS.draft,
+    STEP_TIMEOUT_MS.draft, STEP_TIMEOUT_MS.draft
+  ]);
+  assert.ok(STEP_TIMEOUT_MS.tests >= STEP_TIMEOUT_MS.policy);
+  assert.ok(Object.values(STEP_TIMEOUT_MS).every(value =>
+    Number.isSafeInteger(value) && value > 0 && value <= 1_800_000));
+});
+
+test('times out a blocked child instead of claiming offline verification passed', () => {
+  const result = runOfflineNodeSteps(process.cwd(),
+    [{ label: 'reviewed dependency policy', args: ['-e', 'while (true) {}'] }],
+    (bin, args, options) => spawnSync(bin, args,
+      { ...options, timeout: 40, windowsHide: true, encoding: 'utf8', stdio: 'pipe' }));
+  assert.deepEqual(result, { ok: false, failed: 'reviewed dependency policy' });
 });
 
 test('runs every step without a shell and reports success only after all steps', () => {
