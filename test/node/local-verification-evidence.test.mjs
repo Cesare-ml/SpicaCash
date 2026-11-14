@@ -155,6 +155,21 @@ test('unexpected Git hash and malformed dates are rejected before Forge runs', t
   assert.throws(() => captureLocalVerification({ root, run: badHash, env: poisonedEnv, now: TIME }), /Unrecognized commit hash/);
 });
 
+test('changes to inputs during the verification invalidate an otherwise green result', t => {
+  const root = fixture(t);
+  const { run: regular } = mockedCommands(root);
+  const run = (command, args, options) => {
+    const result = regular(command, args, options);
+    if (command === 'bash') writeFileSync(join(root, 'foundry.toml'), 'MUTATED\n');
+    return result;
+  };
+  const { record } = captureLocalVerification({ root, run, env: poisonedEnv, now: TIME });
+  assert.equal(record.verifierExitCode, 0);
+  assert.equal(record.inputsStableAfterRun, false);
+  assert.equal(record.verificationStatus, 'INVALIDATED');
+  assert.equal(record.releaseAuthorized, false);
+});
+
 test('exclusive write prevents replacing an existing evidence receipt', t => {
   const root = fixture(t);
   const { run } = mockedCommands(root);
