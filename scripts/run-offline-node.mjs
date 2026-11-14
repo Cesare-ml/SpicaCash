@@ -25,6 +25,7 @@ export const REQUIRED_NODE_TESTS = Object.freeze([
   'grant-batches.test.mjs',
   'grant-inventory.test.mjs',
   'grant-manifest.test.mjs',
+  'launch-readiness.test.mjs',
   'offline-node-runner.test.mjs',
   'parse-review-json.test.mjs',
   'proposal-cli-integration.test.mjs',
