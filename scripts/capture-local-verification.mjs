@@ -109,12 +109,22 @@ export function captureLocalVerification({
       { cwd: project, env: safeEnv, inherit: true })
     : { ok: false, status: null, signal: null };
 
-  const status = !forge.ok ? 'BLOCKED' : verification.ok ? 'PASS' : 'FAIL';
+  // A successful exit code is not evidence when the checked-in inputs
+  // changed while the gate was executing. Recheck even on failure.
+  const afterStatus = checkedText(run, 'git',
+    ['status', '--porcelain=v1', '--untracked-files=normal'], project, safeEnv);
+  const afterHashes = inputHashes(project);
+  const inputsStable = afterStatus === '' && INPUTS.every(
+    name => hashes[name] === afterHashes[name]
+  );
+  const status = !inputsStable ? 'INVALIDATED'
+    : !forge.ok ? 'BLOCKED' : verification.ok ? 'PASS' : 'FAIL';
   const record = {
     schema: 'spicacash.local-verification.v1',
     executedAtUTC: timestamp,
     gitCommit: commit,
     workingTreeCleanBeforeRun: true,
+    inputsStableAfterRun: inputsStable,
     nodeVersion,
     forgeVersion: safeForgeVersion,
     platform,
