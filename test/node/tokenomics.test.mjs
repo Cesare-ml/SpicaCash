@@ -165,6 +165,27 @@ test('excessively long supply strings are rejected without attempting BigInt con
   assert.ok(report.errors.some((error) => error.includes('exceeds uint256')));
 });
 
+test('1000 synthetic distinct allocation buckets remain within the review limit', () => {
+  const plan = syntheticProposal();
+  plan.token.totalSupplyBaseUnits = '1000';
+  plan.allocations = Array.from({ length: 1000 }, (_, i) => ({
+    id: 'community-' + i, category: 'community',
+    amountBaseUnits: '1', rationale: 'Synthetic allocation for bounds regression tests only',
+    vestingPolicy: 'none', vestingMonths: 0
+  }));
+  const report = validateTokenomics(plan, { requireProposal: true });
+  assert.equal(report.valid, true, report.errors.join('\n'));
+});
+
+test('1001 allocations fail before touching any untrusted entry', () => {
+  const plan = syntheticProposal();
+  const forbidden = { get id() { throw new Error('oversized allocation array was traversed'); } };
+  plan.allocations = Array(1001).fill(forbidden);
+  const report = validateTokenomics(plan, { requireProposal: true });
+  assert.equal(report.valid, false);
+  assert.match(report.errors.join('\n'), /allocations: maximum 1000 allocation entries/);
+});
+
 test('malformed top-level documents do not throw', () => {
   for (const value of [null, [], 'not-an-object', 4]) {
     const report = validateTokenomics(value);
