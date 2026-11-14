@@ -146,6 +146,116 @@ contract SpicaCashTest {
         require(token.totalSupply() == TEST_SUPPLY, "supply changed");
     }
 
+    // Boundary-case tests for the reviewed OpenZeppelin ERC-20 inheritance.
+    // These are Solidity tests and require real Foundry execution before
+    // being called verified. They never deploy a production token.
+
+    function testMinimumPositiveSupplyCanMoveInFull() public {
+        SpicaCash token = new SpicaCash(address(this), 1);
+        require(token.totalSupply() == 1, "minimum total supply");
+        require(token.transfer(RECEIVER, 1), "full minimum transfer failed");
+        require(token.balanceOf(address(this)) == 0, "minimum holder balance");
+        require(token.balanceOf(RECEIVER) == 1, "minimum receiver balance");
+        require(token.totalSupply() == 1, "minimum supply changed");
+    }
+
+    function testMaximumUint256SupplyCanBeConstructed() public {
+        SpicaCash token = new SpicaCash(address(this), type(uint256).max);
+        require(token.totalSupply() == type(uint256).max, "maximum supply");
+        require(token.balanceOf(address(this)) == type(uint256).max, "maximum holder balance");
+        require(token.balanceOf(RECEIVER) == 0, "unexpected initial receiver balance");
+    }
+
+    function testZeroValueAndSelfTransfersConserveSupply() public {
+        SpicaCash token = _token();
+        require(token.transfer(address(this), TEST_SUPPLY), "self transfer failed");
+        require(token.transfer(RECEIVER, 0), "zero transfer failed");
+        require(token.balanceOf(address(this)) == TEST_SUPPLY, "self transfer changed balance");
+        require(token.balanceOf(RECEIVER) == 0, "zero transfer changed receiver");
+        require(token.totalSupply() == TEST_SUPPLY, "self transfer changed supply");
+    }
+
+    function testZeroAddressSpenderIsRejected() public {
+        SpicaCash token = _token();
+        try token.approve(address(0), 7) returns (bool) {
+            revert("zero address spender accepted");
+        } catch (bytes memory reason) {
+            require(
+                _revertSelector(reason) == IERC20Errors.ERC20InvalidSpender.selector,
+                "unexpected spender error"
+            );
+        }
+        require(token.allowance(address(this), address(0)) == 0, "invalid approval persisted");
+        require(token.totalSupply() == TEST_SUPPLY, "supply changed after rejected approval");
+    }
+
+    function testFailedTransferFromToZeroPreservesAllowance() public {
+        SpicaCash token = _token();
+        TokenActor actor = new TokenActor();
+        require(token.approve(address(actor), 10), "approve failed");
+        try actor.pull(token, address(this), address(0), 7) returns (bool) {
+            revert("transferFrom to zero accepted");
+        } catch (bytes memory reason) {
+            require(
+                _revertSelector(reason) == IERC20Errors.ERC20InvalidReceiver.selector,
+                "unexpected receiver error"
+            );
+        }
+        // _spendAllowance runs before _transfer: a reverted transaction must
+        // roll back the temporary allowance decrease as well as balances.
+        require(token.allowance(address(this), address(actor)) == 10, "allowance lost on revert");
+        require(token.balanceOf(address(this)) == TEST_SUPPLY, "balance changed on revert");
+        require(token.totalSupply() == TEST_SUPPLY, "supply changed on revert");
+    }
+
+    function testFailedTransferFromInsufficientBalancePreservesAllowance() public {
+        SpicaCash token = _token();
+        TokenActor actor = new TokenActor();
+        require(token.approve(address(actor), 5), "approve failed");
+        require(token.transfer(RECEIVER, TEST_SUPPLY), "funding transfer failed");
+        try actor.pull(token, address(this), OTHER, 5) returns (bool) {
+            revert("insufficient balance transferFrom accepted");
+        } catch (bytes memory reason) {
+            require(
+                _revertSelector(reason) == IERC20Errors.ERC20InsufficientBalance.selector,
+                "unexpected balance error"
+            );
+        }
+        require(token.allowance(address(this), address(actor)) == 5, "allowance lost on revert");
+        require(token.balanceOf(address(this)) == 0, "owner regained tokens");
+        require(token.balanceOf(RECEIVER) == TEST_SUPPLY, "receiver lost tokens");
+        require(token.balanceOf(OTHER) == 0, "unexpected third-party transfer");
+        require(token.totalSupply() == TEST_SUPPLY, "supply changed on revert");
+    }
+
+    function testAllowanceCanBeReplacedAndRevoked() public {
+        SpicaCash token = _token();
+        TokenActor actor = new TokenActor();
+        require(token.approve(address(actor), 5), "first approval failed");
+        require(token.approve(address(actor), 9), "replacement approval failed");
+        require(token.allowance(address(this), address(actor)) == 9, "allowance not replaced");
+        require(token.approve(address(actor), 0), "revocation failed");
+        require(token.allowance(address(this), address(actor)) == 0, "allowance not revoked");
+        try actor.pull(token, address(this), RECEIVER, 1) returns (bool) {
+            revert("revoked allowance still spendable");
+        } catch (bytes memory reason) {
+            require(
+                _revertSelector(reason) == IERC20Errors.ERC20InsufficientAllowance.selector,
+                "unexpected revoked-allowance error"
+            );
+        }
+        require(token.balanceOf(RECEIVER) == 0, "recipient received revoked tokens");
+        require(token.totalSupply() == TEST_SUPPLY, "supply changed");
+    }
+
+    function testFuzz_SelfTransferPreservesSupplyAndBalance(uint96 input) public {
+        SpicaCash token = _token();
+        uint256 amount = uint256(input) % (TEST_SUPPLY + 1);
+        require(token.transfer(address(this), amount), "fuzz self transfer failed");
+        require(token.balanceOf(address(this)) == TEST_SUPPLY, "fuzz self transfer changed holder");
+        require(token.totalSupply() == TEST_SUPPLY, "fuzz self transfer changed supply");
+    }
+
     function testFuzz_TransferConservesSupplyAndBalances(uint96 input) public {
         SpicaCash token = _token();
         uint256 amount = uint256(input) % (TEST_SUPPLY + 1);
