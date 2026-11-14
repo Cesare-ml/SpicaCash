@@ -43,6 +43,7 @@ Expected behavior: The first command accepts the **empty draft** and says it is 
 - Either status may record a provisional `network.candidate`. It is never a chain deployment approval.
 - A `proposal` requires exact positive base-unit amounts, fully balanced allocations and a proposed multisig policy. This is mathematical validation, not a financial endorsement.
 - `uint256` inputs use canonical decimal strings of **at most 78 digits**; oversized strings fail before `BigInt` conversion, and the actual `uint256` maximum is enforced.
+- `allocations` is limited to **1000 entries per review document**. Over-limit arrays are rejected before their entries are traversed by the direct library API or converted to `BigInt`. This is an input-processing safety bound, **not** an approved token allocation count, cap table or policy commitment.
 - `reviews.security` and `reviews.legal` are self-reported planning fields, **not proof of completed audits**.
 - The controls were ported from the separate draft safety PR #4 into the newest stacked development branch, with the original source and test file preserved byte-for-byte.
 
