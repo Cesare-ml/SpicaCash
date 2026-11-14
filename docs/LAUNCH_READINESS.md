@@ -1,0 +1,51 @@
+# SpicaCash launch readiness: open tasks and acceptance gates
+
+**Status (2026-11-14): pre-launch research, not a released or deployed token.**
+This is a tracked worklist, not approval for issuance, fundraising, distribution, signing or deployment. All boxes below are **open** unless explicitly updated with linked evidence. Do not infer completion from a merge commit or a draft's syntactic validity.
+
+The repo already contains an experimental fixed-supply ERC-20 (`src/SpicaCash.sol`), 17 mandatory Node regression-suite files, Solidity tests, research-only tokenomics/grant validators and a guarded Arbitrum Sepolia helper. No official chain, issuance quantity, initial holder, allocation, audit, testnet/mainnet contract address or real market has been approved. The historical 163/163 offline check came from a partial source reconstruction: **the entire current consolidated checkout and real Forge suite have not been verified together**.
+
+## P0 — trustworthy local demonstration (no chain transactions)
+
+- [ ] **SC-01 / clean Windows clone and onboarding.** On Windows 11 + PowerShell, clone `main` and document prerequisites (Git, Node >=20). Run `node scripts/check-dependency-lock.mjs` *before any npm script*; clear inherited Node/npm preload options as documented in `AGENTS.md`. Run `node scripts/run-offline-node.mjs`. **Done when:** exact commit SHA, versions, stdout/stderr and exit codes are captured on a clean checkout; failures are resolved rather than hidden.
+- [ ] **SC-02 / full integrated offline verification.** In a trusted WSL2/Linux checkout run `bash scripts/bootstrap-deps.sh` then `bash scripts/verify-local.sh`, with preinstalled Foundry, solc 0.8.24 and pinned OpenZeppelin dependency. Run the complete Node/Bash suite and Forge compile, tests, ABI check, 3 real invariant campaigns, 2 handler smoke tests. **Done when:** logs and source/lock hashes are recorded, all gates pass; invariant selector metrics (`move`, `approve`, `pull`) are manually reviewed. Mock-only or old 163/163 results do **not** satisfy this gate.
+- [ ] **SC-03 / local transaction demonstration.** Create a deterministic, clearly marked **local-only** workflow on an ephemeral EVM dev chain with synthetic accounts and toy amounts: deployment, balances, transfer, approve/transferFrom, token metadata and error paths. Never connect user wallets or broadcast to a public RPC. **Done when:** documented reproduction works from a new checkout and asserts balances/supply before and after each simulated operation.
+- [ ] **SC-04 / optional PC viewer.** Consider a small offline/local-only UI displaying simulated addresses, SPICA balances and transfer traces; no real wallet connection, no deploy buttons, no trading UI. **Done when:** accessible Windows instructions and screenshots exist and UI reads only the local development chain. This is *optional* for release, but useful for evaluation.
+- [ ] **SC-05 / harden reproducibility.** Capture dependencies, platform limitations, required compiler version, static analysis, negative tests, known threats and reproducible artifacts. Keep GitHub Actions disabled. **Done when:** a second reviewer reproduces the same results from a clean checkout.
+
+## P1 — economic purpose and governance decisions (no distributions)
+
+- [ ] **SC-06 / evidence-based purpose.** Publish a plain-language problem statement and compare holding SPICA to simply using euro, fiat payments, stablecoins or nontransferable contribution points. Validate proposed demand with prospective *users*; see [value hypothesis](VALUE_PROPOSITION.md). **Done when:** at least one specific, legally reviewed use that requires or benefits from a transferable token is demonstrated; publish contrary findings too. **Do not launch solely for speculative price expectations.**
+- [ ] **SC-07 / network selection.** Compare Arbitrum One (candidate) versus Base with up-to-date deployment/transfer costs, UX, decentralization/security assumptions, explorer verification, account and multisig support. Select **one** canonical chain only after review. **Done when:** signed-off rationale and test evidence are published. Arbitrum Sepolia is a testnet candidate, not the final decision.
+- [ ] **SC-08 / supply and allocations.** Decide whether issuance is justified, then propose total supply, contributor/community/treasury/team allocations, release schedule, vesting and any actual holder rights. **Done when:** independently reviewed and justified numbers balance exactly and a `status: "proposal"` passes validation; `config/tokenomics.draft.json` stays without made-up values until then. Approval is separate from validator success.
+- [ ] **SC-09 / custody and treasury.** Propose independently controlled multisig signers, quorum, hardware-key/security processes, initial recipient, emergency/lost-key recovery, public reporting and conflicts of interest. Review beneficiary vesting and custody separation. **Done when:** policy, roles and incident runbook are approved and independently reviewed; never put identities, credentials, keys or wallet secrets in this repo.
+- [ ] **SC-10 / contributor grant policy.** Define how completed, accepted open-source contributions are independently verified; eligibility, duplicates, Sybil defenses, appeals, per-period budgets and public accounting. Existing validators are review-only and cannot grant tokens or authenticate PR acceptance. **Done when:** audited policy and sample offline reconciliation exist; no real recipient or payout yet.
+- [ ] **SC-11 / legal/compliance gate.** Obtain qualified Italy/EU assessment of asset classification and rights, MiCA public-offer/admission rules (including white-paper/notification/communications where applicable), consumer risk disclosures, tax, sanctions/AML and intellectual-property/name/ticker checks. Exemptions are fact-dependent; do not assume 'utility token' or 'free token' means unregulated. **Done when:** documented professional opinion, accountable entity and necessary filing/marketing plan are established. References: [ESMA Article 4](https://www.esma.europa.eu/publications-and-data/interactive-single-rulebook/mica/article-4-offers-public-crypto-assets-other), [Article 5](https://www.esma.europa.eu/publications-and-data/interactive-single-rulebook/mica/article-5-admission-trading-crypto-assets), [Article 6](https://www.esma.europa.eu/publications-and-data/interactive-single-rulebook/mica/article-6-content-and-form-crypto-asset).
+
+## P2 — independent review and explicitly authorized testnet
+
+- [ ] **SC-12 / external security review.** Independent contract/dependency/treasury threat assessment, findings triage, remediations, re-tests, reproducible verified ABI/bytecode, and a public residual-risk register. **Done when:** external report and fix evidence are public; self-tests are not an audit.
+- [ ] **SC-13 / public testnet pilot only after separate authorization.** If approved, trial the guarded Arbitrum Sepolia helper with a **test-only** treasury and nonvaluable tokens; verify chain ID, deployed contract source, holders, transfer/allowance behavior, explorer and UX. No mainnet wallet or funds, no real allocations or real-value marketing. **Done when:** addresses, receipts, reproducible contract verification and incident drills are reviewed. No automatic deployment or GitHub Actions.
+- [ ] **SC-14 / transparent launch communications.** Prepare plain-language risk warnings, verified official contract-address publication process, anti-impersonator guidance, true token rights, distribution schedule and any legal white paper. **Done when:** disclosures are independently checked, align with the approved actual functionality, and never predict return or guaranteed liquidity.
+
+## P3 — mainnet decision and operations (explicit authorization required)
+
+- [ ] **SC-15 / separate go/no-go decision.** Review evidence from SC-01–03, 05–14 and explicitly decide whether public issuance is justified. **No launch** if demonstrable demand/use, legal readiness, independent security review, governance or validated testnet is missing. Preserve a documented no-launch option.
+- [ ] **SC-16 / controlled production deployment (NOT authorized here).** Only after separate explicit human approval: deterministic verified contract, correct audited constructor args, approved multisig recipient and chain; independently confirm bytecode, supply and publicly disclosed official address. No scripts or instructions in this plan authorize executing transactions.
+- [ ] **SC-17 / market and post-launch operations (NOT authorized here).** If lawful and warranted, assess third-party custody/access/liquidity proposals with risk, consumer disclosures and market-manipulation controls; never suggest a guaranteed listing or price. Maintain treasury reporting, community accountability, incident handling and post-launch monitoring.
+
+## Decision gates
+
+| Gate | Evidence required | Current status |
+| --- | --- | --- |
+| G1: engineering | Full current clean-checkout Node/Bash + real Foundry suite, reproducibility | **Not verified** |
+| G2: purpose + economics | Validated user need, approved rights/supply/distribution and secure treasury | **Not decided** |
+| G3: risk + law | Independent security report and qualified regulatory/legal assessment | **Not completed** |
+| G4: testnet | Explicit authorization and externally verified public-testnet pilot | **Not completed** |
+| G5: launch | Separate written go/no-go plus all earlier gates | **Not authorized** |
+
+## Review protocol
+
+For every checked box, record the responsible reviewer, date, tested commit, evidence location (issue, PR, report), known limits and follow-up. Do not mark progress complete based solely on this document, an LLM summary, a tokenomics validator result or merge history. Keep `AGENTS.md`, `docs/TOKEN_DESIGN.md`, `docs/TOKENOMICS_GOVERNANCE.md` and `docs/PROTOTYPE.md` as the operative source of safety constraints.
+
+**Hard boundaries:** no real wallets/keys in GitHub, no issuance, no payment/credit conversion with VirgoStars AI credits in v1, no public sales or liquidity and no GitHub Actions at this stage.
