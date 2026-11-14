@@ -86,12 +86,21 @@ test('inherits no NODE_OPTIONS or npm node-options in spawned checks', () => {
   } finally { cleanup(dir); }
 });
 
-test('rejects symlink input files and refuses to run verification', () => {
+test('rejects symlink input files and refuses to run verification', (t) => {
   const dir = fixture();
   try {
     const link = join(dir, 'package-lock.json');
     rmSync(link);
-    symlinkSync(join(dir, 'package.json'), link);
+    try {
+      symlinkSync(join(dir, 'package.json'), link);
+    } catch (error) {
+      // Unprivileged Windows Git/Node environments may deny symlink creation.
+      if (process.platform === 'win32' && ['EPERM', 'EACCES'].includes(error?.code)) {
+        t.skip('Windows file symlink privilege unavailable');
+        return;
+      }
+      throw error;
+    }
     assert.throws(() => digestRegularFile(link), /regular file/u);
     const report = captureEvidence(dir);
     assert.equal(report.status, 'INCOMPLETE');
