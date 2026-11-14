@@ -172,3 +172,7 @@ SpicaCash is not an AI-credit payment method and cannot be used to buy VirgoStar
 - Explicitly authorize any public/mainnet deployment in a later decision.
 
 Arbitrum Sepolia reference: https://developer.arbitrum.io/chain-info
+
+## Consolidated offline grant review (research only)
+
+The integrated research tree now also provides review-only tokenomics validation, contributor grants, bounded JSON parsing, batch reconciliation, SHA-256 manifest checks, and a reference OpenZeppelin vesting test. Consult [governance](TOKENOMICS_GOVERNANCE.md), [contributor grants](CONTRIBUTOR_GRANTS.md), [batch reconciliation](GRANT_BATCH_RECONCILIATION.md), [manifest safeguards](GRANT_MANIFEST_INTEGRITY.md), and [vesting research](VESTING_REFERENCE.md). None authorizes payouts, contract issuance, conversion to VirgoStars AI credits, or chain deployment. The previously reported **163/163** checks relate to the original ERC-20 security test set and **do not establish that the newly consolidated full suite passes**; that requires a fresh run and independently installed Foundry.

@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "status": "draft",
+  "executionAuthorized": false,
+  "tokenomics": null,
+  "batches": [
+    {
+      "path": "contributor-grants.draft.json",
+      "sha256": "bdd5b88459cc47c507d1082b59c55888835f3402f5c5117292e535132fc7a506"
+    }
+  ]
+}

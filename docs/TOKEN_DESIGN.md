@@ -23,7 +23,11 @@ Status: **open design**. Nothing here authorizes a mint, sale, exchange listing,
 - **Treasury:** multisignature-controlled allocation with independently published address, rules and onchain vesting for any team allocation; no private keys in repositories.
 - **Distributions:** no onchain rewards system in v0. Design a separate, reviewed allocation process based on accepted contributions with abuse prevention before considering payouts.
 
-A minimal, configurable ERC-20 **prototype**, unit/fuzz tests and an Arbitrum Sepolia-only guarded deployment helper have been added on a draft branch. Stateful invariants, dependency installation, Solidity compilation, actual test execution and any deployment remain unverified/pending. Do not hard-code a final supply or recipient address before approval.
+A minimal, configurable ERC-20 **prototype**, unit/fuzz tests and an Arbitrum Sepolia-only guarded deployment helper have been integrated as experimental source code on `main`. Stateful invariants, dependency installation, Solidity compilation, actual test execution and any deployment remain unverified/pending. Do not hard-code a final supply or recipient address before approval.
+
+## Structured governance review
+
+The optional offline validator and the intentionally empty tokenomics draft are documented in [Tokenomics governance](TOKENOMICS_GOVERNANCE.md). **No economic quantities or multisig signers are approved**. The validator is not a substitute for financial, security, independent audit or legal review.
 
 ## Decisions not made yet
 

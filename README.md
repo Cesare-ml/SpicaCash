@@ -21,7 +21,7 @@ Why not pick Polygon by default? Polygon PoS has a separate validator/security m
 
 ## Experimental ERC-20 prototype
 
-The initial Solidity implementation, unit/fuzz test suite and guarded Arbitrum Sepolia helper are in a draft development branch, **not released or deployed**.
+The initial Solidity implementation, unit/fuzz test suite and guarded Arbitrum Sepolia helper have been consolidated on **main** as experimental source code, **not a released or deployed token**.
 
 - [Prototype and local instructions](docs/PROTOTYPE.md)
 - Contract: `src/SpicaCash.sol` (simple fixed supply, no owner or privileged minting)
@@ -43,6 +43,57 @@ The verifier explicitly selects `/bin/sh` for npm's script runner so inherited `
 **Local verification gate:** After installing Node.js, Foundry and dependencies, use `bash scripts/verify-local.sh` (Bash/WSL2), not plain `npm run verify:local`: an unreviewed pre-run hook could execute before npm invokes the verifier if local npm configuration has been overridden. This runs offline tests, a fresh Forge build, compiled ABI checks, the Solidity suite, and a strict invariant-campaign evidence check. It **does not deploy** or authorize issuing tokens. All Forge build/test stages use **`--offline`** and require the configured Solidity compiler to be installed locally; they do not fetch compiler versions during verification. **Latest complete offline validation (14 November 2026): 163/163 passed**, exit code 0, on the source-verified local reconstruction with the three newly changed files matched to GitHub blob hashes. Two additional real-npm tests reproduce and block inherited `script-shell` command injection. This includes npm lifecycle, dependency-lock, ABI, testnet guard, RPC validation, synthetic Foundry output parsing, and mock verification-stage checks. This was not a full Git clone. Real Solidity compilation, compiler-derived ABI inspection and Foundry unit/fuzz/invariant campaigns **remain unrun** (Forge/solc unavailable); see [prototype validation status](docs/PROTOTYPE.md).
 
 The initial supply is not chosen and no on-chain address has been assigned. Do not treat any `SPICA` token shown elsewhere as official.
+
+## Tokenomics and governance research
+
+No supply, allocation percentages, wallet addresses, or final treasury signer arrangement have been chosen. The non-deployable draft is [`config/tokenomics.draft.json`](config/tokenomics.draft.json).
+
+- [Tokenomics and treasury governance](docs/TOKENOMICS_GOVERNANCE.md)
+- Offline draft validation: `npm run check:tokenomics`
+- Independent Node tests: `npm run test:tokenomics`
+- This is **planning only**, not approval to issue, sell, distribute or trade SPICA.
+
+## Contributor grant review (offline, no payouts)
+
+The [contributor grant design](docs/CONTRIBUTOR_GRANTS.md) introduces a review-only validator for hypothetical open-source contributions. Entries reference GitHub pull requests and a separate **proposed** contributor allocation. Nothing is granted or distributed automatically; GitHub evidence is not fetched or verified by the validator.
+
+- Empty default: `config/contributor-grants.draft.json` (no beneficiaries, amounts or addresses)
+- Check draft: `npm run check:grants`
+- Run 37 deterministic tests: `npm run test:grants`
+- All offline checks including the Bash deploy-guard suite: `npm run test:offline`
+- Windows PowerShell / cross-platform **Node-only** suite: `npm run test:offline:node` (requires Node.js 20+; runs every `test/node/*.test.mjs` test plus all four checked-in draft validation CLIs, without Bash). This **does not** run the shell deployment guard, compiled ABI check, Solidity/Foundry tests, or any audit. Run the omitted gates separately before approving a release.
+- **Not** a token-for-AI-compute program; **not** usable to buy VirgoStars AI credits.
+
+## Reference vesting tests (research only)
+
+Our [OpenZeppelin VestingWallet research](docs/VESTING_REFERENCE.md) includes six Solidity tests for the standard vesting schedule, not a new deployable vesting contract. Ownership remains transferable and late deposits can unlock immediately. No real token or payments exist.
+
+Run `npm run test:vesting` on a configured Foundry machine (not yet executed here).
+
+## Cross-batch reward proposal accounting
+
+The [offline grant batch reconciler](docs/GRANT_BATCH_RECONCILIATION.md) catches repeated PR evidence across independent proposal files and proposed totals that exceed one contributor allocation. It performs **no payment**, GitHub verification, wallet interaction or authorization.
+
+- `npm run check:grant-batches` — check the default **empty draft** only
+- `npm run test:grant-batches` — run synthetic cross-batch regression tests
+
+Standalone `check:tokenomics`, `check:grants` and `check:grant-batches` use the same strict JSON decoder as the pinned-manifest review. Every JSON input (including companion tokenomics files) is read through the descriptor-backed reader, limited to **1 MiB per file**, and rejects symlink aliases. When either standalone grant CLI receives an optional tokenomics file, it **validates that companion plan even when the grant input is an empty draft**, refusing unsafe deployment flags or AI-credit conversion rather than silently ignoring it. The exported contributor-grants validator now enforces the same rule for direct library calls and batch reconciliation; a supplied valid economic plan is never token issuance approval. Standalone inputs are **not** SHA-256-authenticated. Use `npm run test:strict-cli-json` for CLI regression coverage. The multi-batch CLI also rejects multiple path aliases or hard links for the same physical batch (where inode identity is available); run `npm run test:batch-identity` for filesystem regressions.
+
+## Hashed grant proposal manifest (review-only)
+
+The [SHA-256 manifest integrity check](docs/GRANT_MANIFEST_INTEGRITY.md) detects modified batch files, rejects duplicate physical batch aliases (including supported hard links), and requires a versioned, explicit list of the proposal files being reconciled. It **cannot prove** that no batch was intentionally omitted, that any GitHub contribution is eligible, or that token issuance is authorized.
+
+- `npm run check:grant-manifest` — validate the committed empty draft and its exact checksum
+- `npm run test:grant-manifest` — run synthetic integrity and safety tests
+- `npm run test:review-json` — reject duplicate keys, malformed UTF-8, lone Unicode surrogates and ambiguous grant-review JSON; verify file hashes before parsing
+- `npm run test:grant-inventory` — check for unlisted JSON batches and unsafe directory paths
+- `npm run test:proposal-cli-integration` — test real tokenomics and grant validators with synthetic proposals, including cross-batch budget and duplicate PR protections and validation of optional economics on empty drafts
+- `--inventory-dir review-batches` (CLI option) — verify every lowercase `.json` file in a dedicated flat review folder is listed; reject nested folders, symlinks and case-variant `.JSON` extensions; abort if the folder contains more than 128 total entries
+- `--expected-manifest-sha256 <digest>` (CLI option) — independently pin the **raw manifest** for a read-only review; SHA-256 is not a signature or issuance authorization
+
+- `--pinned-proposal-review` (optional CLI mode) — fail with usage error unless `--require-proposal`, `--inventory-dir` and `--expected-manifest-sha256` are all present. Intended to avoid accidentally skipping a review safeguard; it is **not** an approval or evidence that the supplied digest came from an independent reviewer.
+
+**Consolidation note (14 Nov 2026).** This combines the grant-review and tokenomics research stack with the newer, more restrictive ERC-20 tests and local safety checks. The previous **163/163** offline result covers the ERC-20 prototype snapshot only. The newly combined grant/review suite, Solidity compilation, vesting tests, real fuzz/invariant campaigns and an independent audit are **not verified**; no supply, wallet, treasury signer or deployment is approved.
 
 ## Roadmap
 
