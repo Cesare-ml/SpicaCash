@@ -61,8 +61,8 @@ The [contributor grant design](docs/CONTRIBUTOR_GRANTS.md) introduces a review-o
 - Check draft: `npm run check:grants`
 - Run 37 deterministic tests: `npm run test:grants`
 - All offline checks including the Bash deploy-guard suite: `npm run test:offline`
-- Windows PowerShell / cross-platform **Node-only** suite: `npm run test:offline:node` (requires Node.js 20+; runs every `test/node/*.test.mjs` test plus all four checked-in draft validation CLIs, without Bash). This **does not** run the shell deployment guard, compiled ABI check, Solidity/Foundry tests, or any audit. Run the omitted gates separately before approving a release.
-- The Node-only runner refuses to report success if any of the 13 baseline security/test suites is missing or renamed; it also rejects case-colliding test filenames. New `test/node/*.test.mjs` suites run automatically, but security-critical new suites must also be added to `REQUIRED_NODE_TESTS` in `scripts/run-offline-node.mjs`. This is a completeness guard, not source integrity or authenticity verification.
+- Windows PowerShell / cross-platform **Node-only** suite: `npm run test:offline:node` (requires Node.js 20+; checks the reviewed dependency policy first, then runs every `test/node/*.test.mjs` test plus all four checked-in draft validation CLIs, without Bash). This **does not** run the shell deployment guard, compiled ABI check, Solidity/Foundry tests, or any audit. Run the omitted gates separately before approving a release.
+- The Node-only runner refuses to report success if any of the 17 baseline security/test suites is missing or renamed; it also rejects case-colliding test filenames. New `test/node/*.test.mjs` suites run automatically, but security-critical new suites must also be added to `REQUIRED_NODE_TESTS` in `scripts/run-offline-node.mjs`. This is a completeness guard, not source integrity or authenticity verification.
 - **Not** a token-for-AI-compute program; **not** usable to buy VirgoStars AI credits.
 
 ## Reference vesting tests (research only)
@@ -96,7 +96,7 @@ The [SHA-256 manifest integrity check](docs/GRANT_MANIFEST_INTEGRITY.md) detects
 
 **Consolidation note (14 Nov 2026).** This combines the grant-review and tokenomics research stack with the newer, more restrictive ERC-20 tests and local safety checks. The previous **163/163** offline result covers the ERC-20 prototype snapshot only. The newly combined grant/review suite, Solidity compilation, vesting tests, real fuzz/invariant campaigns and an independent audit are **not verified**; no supply, wallet, treasury signer or deployment is approved.
 
-**Portable Node verification (experimental):** `npm run test:offline:node` now refuses to run if any of the **17** checked-in baseline Node regression suites is missing. It also rejects case-variant `.test.mjs` suffixes and case-insensitive filename collisions, while still discovering additional canonical suites. This does not replace the Bash guards, Foundry tests, or a complete clean-checkout test run.
+**Portable Node verification (experimental):** `npm run test:offline:node` checks the dependency policy first and refuses to run if any of the **17** checked-in baseline Node regression suites is missing. It also rejects case-variant `.test.mjs` suffixes and case-insensitive filename collisions, while still discovering additional canonical suites. The in-runner check does **not** prevent npm pre-run hooks from executing before it starts. Run `node scripts/check-dependency-lock.mjs` independently **before invoking npm** in a trusted environment. It does not replace the Bash guards, Foundry tests, or a complete clean-checkout test run.
 
 ## Roadmap
 
