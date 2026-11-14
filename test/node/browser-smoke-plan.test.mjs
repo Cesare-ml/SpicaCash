@@ -44,10 +44,10 @@ test('refuses unsafe or unexpected browser source rather than claiming success',
 
 test('parses the strict real-browser success signal', () => {
   const dom = '<html><body><pre id="spica-browser-smoke-result">' +
-    JSON.stringify({ status: 'PASS', assertions: 51, failures: [] }) +
+    JSON.stringify({ status: 'PASS', assertions: 97, failures: [] }) +
     '</pre></body></html>';
   assert.deepEqual(parseSmokeOutput(dom),
-    { status: 'PASS', assertions: 51, failures: [] });
+    { status: 'PASS', assertions: 97, failures: [] });
 });
 
 test('preserves named assertion failures and refuses malformed evidence', () => {
@@ -69,6 +69,49 @@ test('preserves named assertion failures and refuses malformed evidence', () => 
   ]) {
     assert.throws(() => parseSmokeOutput(dom));
   }
+});
+
+test('PASS requires exactly all 97 keyboard-enabled viewer assertions', () => {
+  const report = (assertions) => '<pre id="spica-browser-smoke-result">' +
+    JSON.stringify({ status: 'PASS', assertions, failures: [] }) + '</pre>';
+  assert.deepEqual(parseSmokeOutput(report(97)),
+    { status: 'PASS', assertions: 97, failures: [] });
+  for (const count of [-1, 0, 30, 51, 61, 96, 98, 1000, 97.5, '97']) {
+    assert.throws(() => parseSmokeOutput(report(count)), /Malformed or incomplete/);
+  }
+});
+
+test('a duplicate or pre-injected browser result cannot masquerade as PASS', () => {
+  const marker = '<pre id="spica-browser-smoke-result">' +
+    JSON.stringify({ status: 'PASS', assertions: 97, failures: [] }) + '</pre>';
+  assert.throws(() => parseSmokeOutput(marker + marker), /Duplicate browser/);
+  assert.throws(() => parseSmokeOutput(marker +
+    '<pre id="spica-browser-smoke-result">' +
+    JSON.stringify({ status: 'FAIL', assertions: 12, failures: ['late exception'] }) +
+    '</pre>'), /Duplicate browser/);
+  const preInjected = html.replace('</body>', marker + '</body>');
+  assert.throws(() => createSmokeHtml(preInjected), /Refusing to test/);
+});
+
+test('the parser rejects extra fields, missing keys and malformed failure details', () => {
+  const report = (value) => '<pre id="spica-browser-smoke-result">' +
+    JSON.stringify(value) + '</pre>';
+  for (const payload of [
+    { status: 'PASS', assertions: 97, failures: [], ignored: true },
+    { status: 'PASS', assertions: 97 },
+    ['PASS', 97, []],
+    { status: 'FAIL', assertions: 20, failures: [] },
+    { status: 'FAIL', assertions: 20, failures: [''] },
+    { status: 'FAIL', assertions: 20, failures: ['x'.repeat(201)] },
+    { status: 'FAIL', assertions: 20, failures: Array(98).fill('failure') },
+    { status: 'PASS', assertions: 97, failures: ['hidden failure'] }
+  ]) {
+    assert.throws(() => parseSmokeOutput(report(payload)), /Malformed or incomplete/);
+  }
+  // Retain actionable errors if an exception interrupted the actual browser run.
+  assert.deepEqual(parseSmokeOutput(report({
+    status: 'FAIL', assertions: 12, failures: ['early DOM exception']
+  })), { status: 'FAIL', assertions: 12, failures: ['early DOM exception'] });
 });
 
 test('discovers Windows browser installs and supports explicit overrides', () => {

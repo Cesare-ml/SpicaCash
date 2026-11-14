@@ -11,6 +11,9 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const VIEWER_PATH = join(ROOT, 'demo', 'index.html');
 const RESULT_ID = 'spica-browser-smoke-result';
+// Fixed independent acceptance threshold for the keyboard-enabled DOM harness.
+// Update only after reviewing every added or removed assertion.
+const EXPECTED_ASSERTIONS = 97;
 
 // Inline harness runs AFTER the viewer's own script, in an ephemeral COPY.
 // Does not change or add a script to the shipped demo/index.html.
@@ -102,7 +105,8 @@ export function createSmokeHtml(html) {
       !html.includes('<script id="spica-local-logic">') ||
       !html.includes("connect-src 'none'") ||
       (html.match(/<\/body>/gi) || []).length !== 1 ||
-      html.includes('spica-browser-smoke-harness')) {
+      html.includes('spica-browser-smoke-harness') ||
+      html.includes(RESULT_ID)) {
     throw new Error('Refusing to test an unexpected or already modified viewer document');
   }
   return html.replace(/<\/body>/i, HARNESS + '\n</body>');
@@ -113,14 +117,23 @@ export function parseSmokeOutput(dom) {
   const prefix = '<pre id="' + RESULT_ID + '">';
   const pos = dom.indexOf(prefix);
   if (pos < 0) throw new Error('Browser did not run the smoke-test harness');
+  if (dom.indexOf(prefix, pos + prefix.length) !== -1) {
+    throw new Error('Duplicate browser smoke-test results');
+  }
   const end = dom.indexOf('</pre>', pos + prefix.length);
   if (end < 0) throw new Error('Browser smoke-test result was truncated');
   const value = JSON.parse(dom.slice(pos + prefix.length, end));
-  if (value === null || typeof value !== 'object' ||
-      !Number.isInteger(value.assertions) || value.assertions < 30 ||
-      !Array.isArray(value.failures) || !value.failures.every(x => typeof x === 'string') ||
+  if (value === null || typeof value !== 'object' || Array.isArray(value) ||
+      Object.keys(value).length !== 3 ||
+      !['status', 'assertions', 'failures'].every(key => Object.hasOwn(value, key)) ||
+      !Number.isInteger(value.assertions) || value.assertions < 0 ||
+      value.assertions > EXPECTED_ASSERTIONS ||
+      !Array.isArray(value.failures) || value.failures.length > EXPECTED_ASSERTIONS ||
+      !value.failures.every(x => typeof x === 'string' && x.length > 0 && x.length <= 200) ||
       !['PASS', 'FAIL'].includes(value.status) ||
-      (value.status === 'PASS') !== (value.failures.length === 0)) {
+      (value.status === 'PASS' &&
+        (value.assertions !== EXPECTED_ASSERTIONS || value.failures.length !== 0)) ||
+      (value.status === 'FAIL' && value.failures.length === 0)) {
     throw new Error('Malformed or incomplete browser smoke-test result');
   }
   return value;
