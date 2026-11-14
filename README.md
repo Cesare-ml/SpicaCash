@@ -29,7 +29,7 @@ The initial Solidity implementation, unit/fuzz test suite and guarded Arbitrum S
 - Solidity test coverage: 20 unit/fuzz tests plus 3 handler invariants and 2 smoke tests; eight unit/fuzz cases were added on 14 November 2026 and **have not yet run without Foundry**
 - License: MIT for code; VirgoStars marks and identity are not licensed for impersonation (see [NOTICE](NOTICE))
 
-**Dependency integrity:** The committed npm lockfile pins `@openzeppelin/contracts@5.4.0` to a reviewed SHA-512 digest. The repository also sets `ignore-scripts=true` in `.npmrc` and pins the reviewed npm commands in the lock-policy checker. Use this order in a clean checkout, **before running any npm script**:
+**Dependency integrity:** The committed npm lockfile pins `@openzeppelin/contracts@5.4.0` to a reviewed SHA-512 digest. The dependency-policy verifier also requires an exact `engines: {"node": ">=20"}` constraint in **both** `package.json` and the lockfile root entry; removing, changing or extending either engine declaration fails review. The repository also sets `ignore-scripts=true` in `.npmrc` and pins the reviewed npm commands in the lock-policy checker. Use this order in a clean checkout, **before running any npm script**:
 
 ```bash
 bash scripts/bootstrap-deps.sh
