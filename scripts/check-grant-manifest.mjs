@@ -7,13 +7,16 @@ import { validateContributorGrants } from './contributor-grants-core.mjs';
 import { reconcileGrantBatches } from './grant-batches-core.mjs';
 
 const args = process.argv.slice(2);
-const usage = 'Usage: node scripts/check-grant-manifest.mjs <manifest.json> [--require-proposal] [--inventory-dir <relative-folder>] [--expected-manifest-sha256 <64-lowercase-hex>]';
+const usage = 'Usage: node scripts/check-grant-manifest.mjs <manifest.json> [--require-proposal] [--inventory-dir <relative-folder>] [--expected-manifest-sha256 <64-lowercase-hex>] [--pinned-proposal-review]';
 const paths = [];
-let requireProposal = false, inventoryDir = null, expectedManifestSha256 = null, invalid = false;
+let requireProposal = false, inventoryDir = null, expectedManifestSha256 = null;
+let pinnedProposalReview = false, invalid = false;
 
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '--require-proposal' && !requireProposal) {
     requireProposal = true;
+  } else if (args[i] === '--pinned-proposal-review' && !pinnedProposalReview) {
+    pinnedProposalReview = true;
   } else if (args[i] === '--inventory-dir' && inventoryDir === null &&
              i + 1 < args.length && !args[i + 1].startsWith('--')) {
     inventoryDir = args[++i];
@@ -26,6 +29,11 @@ for (let i = 0; i < args.length; i++) {
   } else {
     paths.push(args[i]);
   }
+}
+// This opt-in review mode prevents accidentally omitting one of three
+// complementary safeguards. A supplied SHA-256 is NOT proof of approval.
+if (pinnedProposalReview && (!requireProposal || inventoryDir === null || expectedManifestSha256 === null)) {
+  invalid = true;
 }
 if (invalid || paths.length !== 1) {
   console.error(usage);
@@ -70,6 +78,9 @@ if (invalid || paths.length !== 1) {
                       ' JSON files, all present in manifest.');
         } else {
           console.log('Scoped inventory NOT checked; unlisted files may exist.');
+        }
+        if (pinnedProposalReview) {
+          console.log('Pinned proposal review checks completed; digest provenance NOT authenticated and no issuance approved.');
         }
         console.log('Manifest completeness outside the checked folder, GitHub evidence and signer identity NOT verified.');
       }
