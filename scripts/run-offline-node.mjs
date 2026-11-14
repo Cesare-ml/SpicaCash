@@ -15,6 +15,13 @@ const DRAFT_CHECKS = [
 
 export function planOfflineNodeSteps(root, entries) {
   if (!Array.isArray(entries)) throw new Error('test directory entries required');
+  // Case-variant suffixes are easy to overlook on case-insensitive systems
+  // (notably Windows). Refuse a partial test run instead of silently skipping
+  // a file named e.g. security.test.MJS or security.TEST.mjs.
+  if (entries.some(entry => /\.test\.mjs$/i.test(entry.name) &&
+      !entry.name.endsWith('.test.mjs'))) {
+    throw new Error('Node test filenames must use lowercase .test.mjs');
+  }
   const tests = entries.filter(entry => entry.name.endsWith('.test.mjs'));
   if (tests.some(entry => !entry.isFile())) {
     throw new Error('all .test.mjs entries must be regular files');
