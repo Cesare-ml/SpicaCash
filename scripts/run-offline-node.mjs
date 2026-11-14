@@ -88,11 +88,22 @@ export function cleanNodeChildEnv(source = process.env) {
   return safe;
 }
 
+// A blocked preflight or draft check must not stall the reviewer indefinitely.
+// Node's full test suite can require more time on Windows and slow CI machines.
+export const STEP_TIMEOUT_MS = Object.freeze({
+  policy: 120_000,
+  tests: 1_800_000,
+  draft: 120_000,
+});
+
 export function runOfflineNodeSteps(root, steps, execute = spawnSync, sourceEnv = process.env) {
   const env = cleanNodeChildEnv(sourceEnv);
   for (const step of steps) {
+    const timeout = step.label === 'all Node regression tests' ? STEP_TIMEOUT_MS.tests
+      : step.label === 'reviewed dependency policy' ? STEP_TIMEOUT_MS.policy
+      : STEP_TIMEOUT_MS.draft;
     const response = execute(process.execPath, step.args,
-      { cwd: root, stdio: 'inherit', shell: false, env });
+      { cwd: root, stdio: 'inherit', shell: false, env, timeout });
     if (response?.error) throw response.error;
     if (response?.status !== 0) {
       return { ok: false, failed: step.label };
