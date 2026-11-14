@@ -109,6 +109,7 @@ The [SHA-256 manifest integrity check](docs/GRANT_MANIFEST_INTEGRITY.md) detects
 ## Documentation
 
 - [Launch readiness and open tasks](docs/LAUNCH_READINESS.md) — 17 unresolved, evidence-gated engineering, economic, testnet, legal and launch tasks. A consolidated Git history is not release verification.
+- [Local EVM demonstration (Windows/WSL2)](docs/LOCAL_DEMO.md) — sample ERC-20 deployment, balances, transfer, approval, delegated transfer and revoked approval using disposable synthetic accounts. Source prepared; real Forge execution pending.
 - [Value proposition and falsification criteria](docs/VALUE_PROPOSITION.md) — proposed differentiation, evidence needed for non-speculative demand, comparisons to alternatives and reasons **not** to issue a token.
 
 - [Network evaluation](docs/NETWORK_EVALUATION.md) — research, trade-offs and references.
