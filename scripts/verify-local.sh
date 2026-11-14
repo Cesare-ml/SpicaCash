@@ -20,8 +20,11 @@ unset ETH_RPC_URL ARBITRUM_SEPOLIA_RPC_URL FOUNDRY_FORK_URL FOUNDRY_RPC_URL
 unset SPICA_CONFIRM_TESTNET_DEPLOY FOUNDRY_ACCOUNT
 export NO_COLOR=1
 
+# Check package scripts, install policy and tarball integrity *before* npm can
+# run pre/post hooks. The explicit npm flag overrides inherited config.
+node scripts/check-dependency-lock.mjs
 printf 'Gate 1/5: offline Node/Bash tests\n'
-npm run test:offline
+npm --ignore-scripts run test:offline
 printf 'Gate 2/5: compile fresh Solidity artifacts\n'
 forge build --offline --force
 printf 'Gate 3/5: inspect the real compiled SpicaCash ABI\n'
