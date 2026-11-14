@@ -27,7 +27,7 @@ Run `node --test test/node/offline-evidence.test.mjs` for the helper's regressio
 
 ## What the JSON records
 
-- Git commit SHA, verified Git-worktree-root location, Git clean/dirty state and SHA-256 of **seven files**: the package policy, lockfile, `.npmrc`, dependency checker, Node runner, the evidence collector itself and its regression test.
+- Git commit SHA, verified Git-worktree-root location, Git clean/dirty state and SHA-256 of **seven files**: the package policy, lockfile, `.npmrc`, dependency checker, Node runner, the evidence collector itself and its regression test. Each file is read for hashing in bounded 64 KiB chunks, rejecting any file larger than 1 MiB, including files that grow after preflight. The file descriptor's size, identity, and modification timestamps are compared before and after reading; these are best-effort guards rather than an atomic snapshot of a mutable filesystem.
 - OS/architecture, Node.js version, UTC timestamp.
 - **First** the dependency-policy check, **then** the Node-only offline regression runner. Each has a numeric exit code and captured stdout/stderr, or a process failure indicator. Subprocesses do not invoke a shell, have a bounded output buffer, and filter inherited Git metadata/configuration overrides (`GIT_*`), Node/npm execution options (`NODE_*`/`NPM_CONFIG_*`), Foundry/Dapp settings, Bash startup/exported-function variables, native-loader overrides (`LD_*`/`DYLD_*`), and selected RPC/signing controls. The five prior Node/npm compatibility overrides remain present only as **empty strings**. Tool discovery variables such as `PATH`, `HOME` and `TEMP` are retained.
 - A *second* checkout integrity check after tests, to reject source mutations while the checks ran.
