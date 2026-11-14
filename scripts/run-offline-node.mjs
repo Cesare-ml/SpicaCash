@@ -18,7 +18,10 @@ const DRAFT_CHECKS = [
 export const REQUIRED_NODE_TESTS = Object.freeze([
   'abi-check.test.mjs',
   'contributor-grants.test.mjs',
+  'dependency-lock.test.mjs',
   'distinct-batch-files.test.mjs',
+  'foundry-evidence.test.mjs',
+  'foundry-format.test.mjs',
   'grant-batches.test.mjs',
   'grant-inventory.test.mjs',
   'grant-manifest.test.mjs',
@@ -27,6 +30,7 @@ export const REQUIRED_NODE_TESTS = Object.freeze([
   'proposal-cli-integration.test.mjs',
   'read-small-file.test.mjs',
   'review-json-manifest.test.mjs',
+  'rpc-url.test.mjs',
   'strict-cli-json.test.mjs',
   'tokenomics.test.mjs',
 ]);
