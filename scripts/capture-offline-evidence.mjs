@@ -3,7 +3,7 @@
 // Local read-only Node verification evidence. Never deploys, signs or connects to a chain.
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { closeSync, fstatSync, lstatSync, openSync, readFileSync, constants } from 'node:fs';
+import { closeSync, fstatSync, lstatSync, openSync, readSync, constants } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -44,16 +44,38 @@ export function childEnvironment(source = process.env) {
 }
 
 export function digestRegularFile(path) {
+  // lstat + O_NOFOLLOW reject ordinary final-component symlinks where supported.
+  // Metadata snapshots cannot prevent arbitrary mutation on a hostile filesystem.
   if (!lstatSync(path).isFile()) throw new Error('required source is not a regular file');
-  const fd = openSync(path, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
+  const flags = constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0) |
+    (constants.O_NONBLOCK ?? 0);
+  const fd = openSync(path, flags);
   try {
-    const stat = fstatSync(fd);
-    if (!stat.isFile() || stat.size > MAX_FILE_BYTES) {
+    const before = fstatSync(fd, { bigint: true });
+    if (!before.isFile() || before.size > BigInt(MAX_FILE_BYTES)) {
       throw new Error('required source missing, oversized or not regular');
     }
-    const content = readFileSync(fd);
-    if (content.length !== stat.size) throw new Error('source size changed during read');
-    return createHash('sha256').update(content).digest('hex');
+    const hash = createHash('sha256');
+    const chunk = Buffer.allocUnsafe(64 * 1024);
+    let bytesRead = 0;
+    while (true) {
+      // Never read more than the configured maximum plus one diagnostic byte.
+      // This prevents a growing file from bypassing the initial size check.
+      const available = Math.min(chunk.length, MAX_FILE_BYTES + 1 - bytesRead);
+      const length = readSync(fd, chunk, 0, available, null);
+      if (length === 0) break;
+      bytesRead += length;
+      if (bytesRead > MAX_FILE_BYTES) throw new Error('required source exceeds 1 MiB during read');
+      hash.update(chunk.subarray(0, length));
+    }
+    const after = fstatSync(fd, { bigint: true });
+    if (!after.isFile() || BigInt(bytesRead) !== before.size ||
+        after.size !== before.size || after.dev !== before.dev ||
+        after.ino !== before.ino || after.mtimeNs !== before.mtimeNs ||
+        after.ctimeNs !== before.ctimeNs) {
+      throw new Error('required source changed during read');
+    }
+    return hash.digest('hex');
   } finally {
     closeSync(fd);
   }

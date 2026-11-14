@@ -3,6 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, appendFileSync, copyFileSync, rmSync, symlinkSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -88,6 +89,43 @@ test('inherits no NODE_OPTIONS or npm node-options in spawned checks', () => {
     assert.equal(report.status, 'PASSED_NODE_ONLY');
     assert.match(report.checks[1].stdout, /NODE_OPTIONS=;NPM=\s*/u);
     assert.equal(childEnvironment({ NODE_OPTIONS: '--import=evil', npm_config_node_options: '--require=evil' }).NODE_OPTIONS, '');
+  } finally { cleanup(dir); }
+});
+
+test('accepts an exactly 1 MiB regular source and computes its complete SHA-256', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'spica-digest-boundary-'));
+  try {
+    const path = join(dir, 'input.bin');
+    const payload = Buffer.alloc(1024 * 1024, 0x5a);
+    writeFileSync(path, payload);
+    assert.equal(digestRegularFile(path), createHash('sha256').update(payload).digest('hex'));
+  } finally { cleanup(dir); }
+});
+
+test('rejects source files exceeding 1 MiB before calculating a digest', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'spica-digest-too-large-'));
+  try {
+    const path = join(dir, 'input.bin');
+    writeFileSync(path, Buffer.alloc(1024 * 1024 + 1, 0x7a));
+    assert.throws(() => digestRegularFile(path), /oversized or not regular/);
+  } finally { cleanup(dir); }
+});
+
+test('hashes empty and small regular files without an unbounded read', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'spica-digest-small-'));
+  try {
+    const path = join(dir, 'input.bin');
+    for (const bytes of [Buffer.alloc(0), Buffer.from('SPICA: offline fixture', 'utf8')]) {
+      writeFileSync(path, bytes);
+      assert.equal(digestRegularFile(path), createHash('sha256').update(bytes).digest('hex'));
+    }
+  } finally { cleanup(dir); }
+});
+
+test('rejects directory inputs before opening a descriptor for hashing', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'spica-digest-directory-'));
+  try {
+    assert.throws(() => digestRegularFile(dir), /not a regular file/);
   } finally { cleanup(dir); }
 });
 
