@@ -77,7 +77,7 @@ test('refuses case-variant Node test suffixes before running any test', () => {
   for (const filename of ['hidden.test.MJS', 'hidden.TEST.mjs', 'hidden.Test.Mjs']) {
     assert.throws(() => planOfflineNodeSteps('repo', requiredEntries([
       dirent(filename)
-    ])), /Node test filenames must use lowercase \\.test\\.mjs/);
+    ])), /Node test filenames must use lowercase \.test\.mjs/);
   }
   // Notes and unrelated files are not test suites.
   assert.equal(planOfflineNodeSteps('repo', requiredEntries([
