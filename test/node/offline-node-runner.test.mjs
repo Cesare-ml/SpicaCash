@@ -73,9 +73,21 @@ test('refuses case-colliding test names (Windows-compatible behavior)', () => {
   ])), /ambiguous case-insensitive Node test filename/);
 });
 
+test('refuses case-variant Node test suffixes before running any test', () => {
+  for (const filename of ['hidden.test.MJS', 'hidden.TEST.mjs', 'hidden.Test.Mjs']) {
+    assert.throws(() => planOfflineNodeSteps('repo', requiredEntries([
+      dirent(filename)
+    ])), /Node test filenames must use lowercase \\.test\\.mjs/);
+  }
+  // Notes and unrelated files are not test suites.
+  assert.equal(planOfflineNodeSteps('repo', requiredEntries([
+    dirent('README.MD'), dirent('notes.TXT'),
+  ])).length, 5);
+});
+
 test('required suite list is present in the actual repository test folder', () => {
   const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
   const entries = readdirSync(join(root, 'test', 'node'), { withFileTypes: true });
   assert.doesNotThrow(() => planOfflineNodeSteps(root, entries));
-  assert.ok(REQUIRED_NODE_TESTS.length >= 13);
+  assert.equal(REQUIRED_NODE_TESTS.length, 17);
 });
