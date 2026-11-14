@@ -24,7 +24,7 @@ const reviewedScripts = Object.freeze({
   "test:invariant": "forge test --match-test invariant_ -vv",
   "test:abi-guard": "node --test test/node/abi-check.test.mjs",
   "test:deploy-guard": "bash test/shell/deploy-guard.test.sh",
-  "test:offline": "npm run test:dependency-lock && npm run test:abi-guard && npm run test:deploy-guard && npm run test:rpc-url && npm run test:rpc-deploy-guard && npm run test:foundry-evidence && npm run test:local-gate && npm run test:foundry-format",
+  "test:offline": "npm run test:dependency-lock && npm run test:abi-guard && npm run test:deploy-guard && npm run test:rpc-url && npm run test:rpc-deploy-guard && npm run test:foundry-evidence && npm run test:local-gate && npm run test:foundry-format && npm run test:bootstrap",
   "test:rpc-url": "node --test test/node/rpc-url.test.mjs",
   "test:rpc-deploy-guard": "bash test/shell/rpc-url-guard.test.sh",
   "test:foundry-evidence": "node --test test/node/foundry-evidence.test.mjs",
@@ -32,7 +32,8 @@ const reviewedScripts = Object.freeze({
   "verify:local": "bash scripts/verify-local.sh",
   "test:local-gate": "bash test/shell/verify-local-guard.test.sh",
   "test:foundry-format": "node --test test/node/foundry-format.test.mjs",
-  "test:dependency-lock": "node --test test/node/dependency-lock.test.mjs"
+  "test:dependency-lock": "node --test test/node/dependency-lock.test.mjs",
+  "test:bootstrap": "bash test/shell/bootstrap-deps.test.sh"
 });
 const reviewedManifestFields = new Set([
   'name', 'version', 'private', 'description', 'scripts', 'dependencies', 'engines',
