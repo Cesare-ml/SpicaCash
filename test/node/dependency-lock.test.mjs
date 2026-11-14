@@ -51,10 +51,17 @@ rejects('reject changed tarball digest', (_p, l) => { l.packages['node_modules/@
 rejects('reject missing SHA-512 digest', (_p, l) => { delete l.packages['node_modules/@openzeppelin/contracts'].integrity; }, /SHA-512 integrity/);
 rejects('reject legacy dependency entries', (_p, l) => { l.dependencies = { random: '1.0.0' }; }, /legacy dependency/);
 rejects('reject corrupt lockfile structure', (_p, l) => { l.packages = []; }, /exactly root/);
-test('CLI checks current repository lock successfully', () => {
-  const run = spawnSync(process.execPath, [resolve(project, 'scripts/check-dependency-lock.mjs')], { encoding: 'utf8', cwd: '/tmp' });
-  assert.equal(run.status, 0, run.stderr);
-  assert.match(run.stdout, /PASS: @openzeppelin\/contracts@5\.4\.0/);
+test('CLI validates the repository from an unrelated portable directory containing spaces', () => {
+  const outside = mkdtempSync(join(tmpdir(), 'spicacash unrelated cwd '));
+  try {
+    const run = spawnSync(process.execPath, [resolve(project, 'scripts/check-dependency-lock.mjs')], {
+      encoding: 'utf8', cwd: outside
+    });
+    assert.equal(run.status, 0, run.stderr);
+    assert.match(run.stdout, /PASS: @openzeppelin\/contracts@5\.4\.0/);
+  } finally {
+    rmSync(outside, { recursive: true, force: true });
+  }
 });
 
 // npm lifecycle hooks execute during ordinary `npm ci` unless ignore-scripts is
