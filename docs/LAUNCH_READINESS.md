@@ -3,7 +3,7 @@
 **Status (2026-11-14): pre-launch research, not a released or deployed token.**
 This is a tracked worklist, not approval for issuance, fundraising, distribution, signing or deployment. All boxes below are **open** unless explicitly updated with linked evidence. Do not infer completion from a merge commit or a draft's syntactic validity.
 
-The repo already contains an experimental fixed-supply ERC-20 (`src/SpicaCash.sol`), 17 mandatory Node regression-suite files, Solidity tests, research-only tokenomics/grant validators and a guarded Arbitrum Sepolia helper. No official chain, issuance quantity, initial holder, allocation, audit, testnet/mainnet contract address or real market has been approved. The historical 163/163 offline check came from a partial source reconstruction: **the entire current consolidated checkout and real Forge suite have not been verified together**.
+The repo already contains an experimental fixed-supply ERC-20 (`src/SpicaCash.sol`), 18 mandatory Node regression-suite files, Solidity tests, research-only tokenomics/grant validators and a guarded Arbitrum Sepolia helper. No official chain, issuance quantity, initial holder, allocation, audit, testnet/mainnet contract address or real market has been approved. The historical 163/163 offline check came from a partial source reconstruction: **the entire current consolidated checkout and real Forge suite have not been verified together**.
 
 ## Offline status report (descriptive only)
 
