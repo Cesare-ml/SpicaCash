@@ -49,7 +49,9 @@ export function validateTokenomics(p, options={}) {
       if(typeof a.id!=='string'||! /^[a-z][a-z0-9-]{1,63}$/.test(a.id))err(path+'.id','invalid slug');
       else if(seen.has(a.id))err(path+'.id','duplicate id');else seen.add(a.id);
       if(!['community','ecosystem','contributors','treasury','team','liquidity','other'].includes(a.category))err(path+'.category','invalid category');
-      if(typeof a.rationale!=='string'||a.rationale.trim().length<20)err(path+'.rationale','at least 20 characters required');
+      // Limit direct-library input before whitespace scanning.
+      if(typeof a.rationale!=='string'||a.rationale.length>1000||a.rationale.trim().length<20)
+        err(path+'.rationale','requires 20 to 1000 characters');
       const n=units(a.amountBaseUnits,path+'.amountBaseUnits');if(n!==null)total+=n;
       if(!['none','onchain'].includes(a.vestingPolicy))err(path+'.vestingPolicy','must be none or onchain');
       if(!Number.isInteger(a.vestingMonths)||a.vestingMonths<0||a.vestingMonths>240)err(path+'.vestingMonths','integer 0-240 required');
