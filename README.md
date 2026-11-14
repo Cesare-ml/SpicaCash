@@ -47,7 +47,7 @@ The [contributor grant design](docs/CONTRIBUTOR_GRANTS.md) introduces a review-o
 - Check draft: `npm run check:grants`
 - Run 37 deterministic tests: `npm run test:grants`
 - All offline checks including the Bash deploy-guard suite: `npm run test:offline`
-- Windows PowerShell / cross-platform **Node-only** suite: `npm run test:offline:node` (requires Node.js 20+; runs every `test/node/*.test.mjs` test plus all four checked-in draft validation CLIs, without Bash). This **does not** run the shell deployment guard, compiled ABI check, Solidity/Foundry tests, or any audit. Run the omitted gates separately before approving a release.
+- Windows PowerShell / cross-platform **Node-only** suite: `npm run test:offline:node` (requires Node.js 20+; runs every `test/node/*.test.mjs` test plus all four checked-in draft validation CLIs, without Bash). The runner fails if any of the 13 baseline security/regression suites is missing, while automatically including additional `.test.mjs` files; changes to the baseline require code review. This **does not** run the shell deployment guard, compiled ABI check, Solidity/Foundry tests, or any audit. Run the omitted gates separately before approving a release.
 - **Not** a token-for-AI-compute program; **not** usable to buy VirgoStars AI credits.
 
 ## Reference vesting tests (research only)
