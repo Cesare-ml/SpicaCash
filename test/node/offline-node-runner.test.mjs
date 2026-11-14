@@ -73,6 +73,30 @@ test('refuses case-colliding test names (Windows-compatible behavior)', () => {
   ])), /ambiguous case-insensitive Node test filename/);
 });
 
+test('consolidated security suites are mandatory', () => {
+  for (const name of [
+    'dependency-lock.test.mjs', 'foundry-evidence.test.mjs',
+    'foundry-format.test.mjs', 'rpc-url.test.mjs',
+  ]) {
+    assert.ok(REQUIRED_NODE_TESTS.includes(name), name);
+    assert.throws(
+      () => planOfflineNodeSteps('repo',
+        requiredEntries().filter(entry => entry.name !== name)),
+      error => error.message.includes('missing required Node test suites: ' + name),
+      name,
+    );
+  }
+});
+
+test('refuses a mixed-case test suffix even if all required suites are present', () => {
+  for (const name of ['hidden.test.MJS', 'hidden.TEST.mjs', 'hidden.Test.Mjs']) {
+    assert.throws(() => planOfflineNodeSteps('repo',
+      requiredEntries([dirent(name)])), /lowercase \.test\.mjs/);
+  }
+  assert.equal(planOfflineNodeSteps('repo',
+    requiredEntries([dirent('README.MD')])).length, 5);
+});
+
 test('required suite list is present in the actual repository test folder', () => {
   const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
   const entries = readdirSync(join(root, 'test', 'node'), { withFileTypes: true });
