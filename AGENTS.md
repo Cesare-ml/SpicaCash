@@ -76,6 +76,8 @@ This is a public, pre-launch crypto-asset project. **There is no official deploy
 
 - The merged grant-review tools add Node/Bash checks that have **not** been rerun end-to-end together with the ERC-20 guard suite. Do not claim `main` is release-verified until a complete clean checkout passes both offline scripts and all Foundry/Solidity tests.
 
+- The portable Node verification baseline contains **17 mandatory `.test.mjs` suites**, including the hardened ERC-20 dependency, Foundry-output and RPC tests. Do not remove or rename any mandatory suite without explicit review. Refuse case-variant `.test.MJS`/`.TEST.mjs` suffixes and case-insensitive duplicate test filenames before running subprocesses; continue to discover additional canonical `.test.mjs` suites. This is only a completeness guard, not a proof that a test ran or passed.
+
 ## Pull request checklist
 
 - State the goal, threat-model impact, and exact files changed.
