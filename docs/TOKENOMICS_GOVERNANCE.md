@@ -44,6 +44,7 @@ Expected behavior: The first command accepts the **empty draft** and says it is 
 - A `proposal` requires exact positive base-unit amounts, fully balanced allocations and a proposed multisig policy. This is mathematical validation, not a financial endorsement.
 - `uint256` inputs use canonical decimal strings of **at most 78 digits**; oversized strings fail before `BigInt` conversion, and the actual `uint256` maximum is enforced.
 - The validator allows **at most 128 allocations** in a tokenomics document, whether invoked via the CLI or directly as a library. Oversized arrays fail before their entries are traversed; this bound is for predictable offline review and does not approve any allocation or supply.
+- Each allocation rationale must contain **20 to 1000 characters** (minimum 20 after trimming). The maximum is checked before trimming, including for direct library callers; this is an input-processing bound, not an economic approval.
 - `reviews.security` and `reviews.legal` are self-reported planning fields, **not proof of completed audits**.
 - The controls were ported from the separate draft safety PR #4 into the newest stacked development branch, with the original source and test file preserved byte-for-byte.
 
