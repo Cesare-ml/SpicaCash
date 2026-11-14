@@ -20,7 +20,7 @@ unset NODE_OPTIONS npm_config_node_options NPM_CONFIG_NODE_OPTIONS
 node scripts/capture-local-verification.mjs
 ```
 
-If the repository is already cloned, update it with `git pull origin main` before running these commands. The working tree must be clean; local source/config/script edits or unexpected untracked files will block the receipt. The tool also checks for input mutations *after* the verification. It does not execute any Git commit, push, PR merge, installation, RPC call or blockchain transaction.
+If the repository is already cloned, update it with `git pull origin main` before running these commands. The working tree must be clean; local source/config/script edits or unexpected untracked files will block the receipt. The wrapper also compares each critical file's **current Git blob hash** against the corresponding `HEAD:path` blob, rather than trusting `git status` alone. This rejects locally modified inputs hidden by Git's `assume-unchanged` (and equivalent index flags) even if the checkout appears clean. It repeats this comparison after the verifier runs. The hash check uses the actual local Git executable, so a compromised Git binary, PATH, local Git object database or filesystem still falls outside the trust guarantee. The tool also checks for input mutations *after* the verification. It does not execute any Git commit, push, PR merge, installation, RPC call or blockchain transaction.
 
 When Foundry is installed, the wrapper displays `verify-local.sh` output directly in the terminal and stores a local file such as:
 
@@ -43,6 +43,8 @@ For a missing `forge`, the receipt says `BLOCKED`; for failing tests it says `FA
 The report deliberately contains **no** seed, password, key, account address, RPC URL, wallet balance, external contract address or price. Raw Forge output remains visible in your terminal, but is **not** written to disk by this script. If independent reviewers need the full invariant tables, record and inspect those manually and ensure any copy is checked for sensitive values before sharing.
 
 ## Test without Foundry or Git network access
+
+The regression suite includes a **real temporary Git repository** where a tracked Foundry profile is changed after setting `git update-index --assume-unchanged`. Git porcelain status remains empty in that fixture, but the committed-blob comparison refuses to create a new verification receipt. These are **local Git/Node integration checks with mocked Forge/Bash**, not real Solidity test runs.
 
 The portable synthetic regression suite uses temp directories and mocked Git/Forge/Bash commands. It runs without a browser, dependency install, network call or compiler:
 
