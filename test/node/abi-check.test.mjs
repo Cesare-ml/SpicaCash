@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync, appendFileSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -44,6 +44,64 @@ function check(abi) {
     return spawnSync(process.execPath, [scriptPath,artifact], {encoding:'utf8'});
   } finally { rmSync(directory,{recursive:true,force:true}); }
 }
+// 16 MiB is a conservative ceiling for the complete compiler artifact,
+// including metadata/bytecode. Trailing JSON whitespace is intentionally valid.
+test('compiled artifact exactly at 16 MiB is accepted', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'spica-abi-size-'));
+  try {
+    const path = join(directory, 'SpicaCash.json');
+    const json = JSON.stringify({ abi: standardAbi() });
+    const cap = 16 * 1024 * 1024;
+    writeFileSync(path, json);
+    appendFileSync(path, Buffer.alloc(cap - Buffer.byteLength(json), 0x20));
+    const result = spawnSync(process.execPath, [scriptPath, path], { encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+test('compiled artifact one byte above 16 MiB fails closed', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'spica-abi-size-'));
+  try {
+    const path = join(directory, 'SpicaCash.json');
+    writeFileSync(path, Buffer.alloc(16 * 1024 * 1024 + 1, 0x20));
+    const result = spawnSync(process.execPath, [scriptPath, path], { encoding: 'utf8' });
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /maximum 16 MiB/);
+    assert.doesNotMatch(result.stderr, /spica-abi-size-/);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+test('ABI checker refuses a directory in place of a regular artifact file', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'spica-abi-dir-'));
+  try {
+    const result = spawnSync(process.execPath, [scriptPath, directory], { encoding: 'utf8' });
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /regular file, maximum 16 MiB/);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+test('ABI checker refuses symlinked artifact paths on supported POSIX systems', t => {
+  if (process.platform === 'win32') {
+    t.skip('O_NOFOLLOW is platform-dependent');
+    return;
+  }
+  const directory = mkdtempSync(join(tmpdir(), 'spica-abi-link-'));
+  try {
+    const target = join(directory, 'original.json');
+    const alias = join(directory, 'linked.json');
+    writeFileSync(target, JSON.stringify({ abi: standardAbi() }));
+    symlinkSync(target, alias);
+    const result = spawnSync(process.execPath, [scriptPath, alias], { encoding: 'utf8' });
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /cannot read or parse compiled artifact/);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 function rejects(name, change, expectedError) {
   test(name, () => {
     const abi = standardAbi(); change(abi);
@@ -81,3 +139,19 @@ rejects('missing constructor fails',abi=>{abi.shift();},/expected exactly one co
 rejects('duplicate constructor fails',abi=>{abi.push(structuredClone(abi[0]));},/expected exactly one constructor/);
 rejects('malformed event inputs fail',abi=>{abi.find(x=>x.name==='Transfer').inputs=null;},/event inputs must be an array/);
 rejects('malformed ABI entry fails',abi=>{abi.push(null);},/invalid ABI entry/);
+
+test('valid JSON with a non-object root fails without leaking paths or stack traces', () => {
+  for (const source of ['null', 'false', '[]', '42', '"text"']) {
+    const directory = mkdtempSync(join(tmpdir(), 'spica-abi-root-'));
+    try {
+      const artifact = join(directory, 'private-artifact.json');
+      writeFileSync(artifact, source);
+      const run = spawnSync(process.execPath, [scriptPath, artifact], { encoding: 'utf8' });
+      assert.equal(run.status, 1, source);
+      assert.match(run.stderr, /artifact must contain an ABI array/, source);
+      assert.doesNotMatch(run.stderr, /private-artifact|spica-abi-root-|TypeError|file:\/\//, source);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  }
+});
