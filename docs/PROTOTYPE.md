@@ -1,6 +1,8 @@
 # SpicaCash ERC-20 prototype
 
-**Status: experimental, not audited, not deployed.** This source code must not be represented as a live VirgoStars cryptocurrency.
+**Status: experimental, not audited, not deployed.**
+
+**Latest offline verification (14 November 2026): 161/161 checks passed together**, including four new inherited Node-option injection checks. This is not a Solidity compilation or a security audit; Foundry/solc remain unavailable in the execution environment. This source code must not be represented as a live VirgoStars cryptocurrency.
 
 ## Contract
 
@@ -47,7 +49,7 @@ The committed npm v3 `package-lock.json` records **only** the direct dependency 
 
 The repository's `.npmrc` also sets `ignore-scripts=true` by default. The direct checker pins all reviewed npm script commands and rejects unapproved lifecycle hooks, npm overrides/workspaces/bundled packages, unexpected lockfile metadata and altered `.npmrc`. **38/38** Node regression checks passed locally, including two real offline `npm ci` trials using empty, dependency-free test fixtures; `npm install --package-lock-only --offline --ignore-scripts --no-audit --no-fund` also accepted the lockfile **without changing its bytes**. These checks do **not** prove an existing `node_modules` folder has not been modified; for a trusted build start from a clean directory, run the direct policy check, then use `npm ci --ignore-scripts --no-audit --no-fund`; review any changed lockfile or package scripts in a PR. The package was **not downloaded or installed here**, and neither a Foundry/Solidity build nor a live-chain test was performed.
 
-**Safe bootstrap update (14 Nov 2026).** Start from a clean checkout with `bash scripts/bootstrap-deps.sh`, which runs the direct lock/script-policy checker **before** invoking npm and then calls `npm ci --ignore-scripts --no-audit --no-fund`. The verification script likewise performs the direct policy check before calling `npm --ignore-scripts run test:offline`. Launch the verifier with **`bash scripts/verify-local.sh`** rather than unguarded `npm run verify:local`, so an injected npm `preverify:local` hook cannot execute before verification. Five bootstrap scenarios and ten verifier-gate scenarios **passed locally** using mocks and two real dependency-free npm offline fixtures; the full combined 157-case suite has **now passed** on a verified local reconstruction; installation of the real OpenZeppelin dependency and Foundry compilation have **not** been run here. No production operations were performed.
+**Safe bootstrap update (14 Nov 2026).** Start from a clean checkout with `bash scripts/bootstrap-deps.sh`, which runs the direct lock/script-policy checker **before** invoking npm and then calls `npm ci --ignore-scripts --no-audit --no-fund`. The verification script also removes inherited Node preload options, performs the direct policy check, and calls `npm --node-options='' --ignore-scripts run test:offline`. Launch the verifier with **`bash scripts/verify-local.sh`** rather than unguarded `npm run verify:local`, so an injected npm `preverify:local` hook cannot execute before verification. Five bootstrap scenarios and ten verifier-gate scenarios **passed locally** using mocks and two real dependency-free npm offline fixtures; the full combined 157-case suite has **now passed** on a verified local reconstruction; installation of the real OpenZeppelin dependency and Foundry compilation have **not** been run here. No production operations were performed.
 
 ### Full offline-suite verification — 14 November 2026
 
@@ -65,6 +67,18 @@ bash scripts/verify-local.sh
 
 **Blocked separately:** `bash scripts/verify-local.sh` returned exit code **2** with the explicit message that Foundry `forge` is not installed. Solidity compilation, runtime ERC-20 tests, real fuzz/invariant campaigns, the *compiled* ABI, and verification of actual deployed bytecode remain **unverified**. Neither `@openzeppelin/contracts` nor compiler binaries were downloaded for this exercise. This offline suite is **not** an audit or authorization to issue a token.
 
+### Node preload and npm environment hardening — 14 November 2026
+
+The project previously blocked npm lifecycle hooks but did not clear inherited `NODE_OPTIONS`. Node loads a `--require` module **before** the command-line script runs, so a preloaded module could execute before the dependency-checker preflight. Separately, `npm_config_node_options` can inject preload options into named npm test subprocesses even if the package scripts are trusted.
+
+- `scripts/bootstrap-deps.sh` and `scripts/verify-local.sh` now remove `NODE_OPTIONS`, `npm_config_node_options`, and `NPM_CONFIG_NODE_OPTIONS` before invoking any Node/npm command.
+- The verifier additionally passes `--node-options=''` to npm, overriding per-user/global npm configuration for test child processes.
+- The existing bootstrap and verifier mock tests assert that none of these injected variables survive; the new `test/shell/node-env-guard.test.sh` runs **four** checks: confirms a harmless preloader would execute without protection, verifies both entrypoints suppress it, and verifies real npm with `--node-options=''` resists the config-level injection.
+
+**Actually executed on 14 November 2026:** `bash -n` on the five changed/new Bash files; direct policy check PASS; the complete `npm --ignore-scripts run test:offline` on a locally reconstructed, GitHub-blob-matched source set exited **0 with 161/161 passing checks and zero failures**. A new local report has SHA-256 `28ce18a6fc09977df7d15fb30ea42ad87df2ba7ac2751f680a46762c116b50bc`. The four new executable/preload tests use only harmless local files and dependency-free npm fixtures.
+
+**Residual trust boundary:** these controls do not defend against a hostile PATH, modified Node/npm/Bash binaries, or environment startup facilities such as `BASH_ENV`. Use a clean, trusted machine. **Solidity compilation and actual Foundry test runs are still blocked** because `forge`, `solc` and the Solidity dependency are not installed here; passing offline tests does not authorize testnet or mainnet deployment.
+
 ## One-command local Solidity verification gate
 
 On a machine with Node.js 20+, Bash (WSL2 on Windows), Foundry, a **preinstalled local Solidity compiler 0.8.24**, and locally installed `@openzeppelin/contracts@5.4.0`, run:
@@ -76,7 +90,7 @@ bash scripts/verify-local.sh
 
 The script `scripts/verify-local.sh` is **offline-only for blockchain interactions**. It checks that `forge` and the OpenZeppelin ERC-20 dependency exist, removes inherited testnet/RPC/keystore variables from its environment, then runs these five gates sequentially:
 
-1. Direct dependency policy preflight, then `npm --ignore-scripts run test:offline` (**157 registered checks**, including 38 dependency-lock checks, 5 bootstrap checks, eight Foundry-format tests, 34 synthetic parser checks and 10 mocked verification-pipeline scenarios; all 157 passed together on 14 November 2026 in a source-verified local reconstruction).
+1. Clear inherited Node/npm preload options, run a direct dependency policy preflight, then `npm --node-options='' --ignore-scripts run test:offline` (**161 registered checks**, including four Node preload injection regressions, 38 dependency-lock checks, five bootstrap checks, eight Foundry-format tests, 34 synthetic parser tests and ten mocked verification-pipeline scenarios; all 161 passed together on 14 November 2026 in the SHA-verified source reconstruction).
 2. `forge build --offline --force` to compile fresh Solidity artifacts **without downloading a compiler**.
 3. `node scripts/check-abi.mjs` against the **actual compiled artifact**.
 4. `forge test --offline -vv` for the full unit, fuzz and invariant suite.
