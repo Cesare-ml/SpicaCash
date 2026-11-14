@@ -2,7 +2,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { summarizeLaunchReadiness } from '../../scripts/report-launch-readiness.mjs';
+
+const reportScript = fileURLToPath(new URL('../../scripts/report-launch-readiness.mjs', import.meta.url));
 
 const task = (index, checked = false) =>
   `- [${checked ? 'x' : ' '}] **SC-${String(index).padStart(2, '0')} / sample task.** Example`;
@@ -75,4 +79,25 @@ test('the actual current readiness roadmap follows the reviewed ID inventory', (
   assert.equal(report.totalTasks, 17);
   assert.equal(report.decisionGateCount, 5);
   assert.equal(report.releaseStatus, 'NOT_AUTHORIZED');
+});
+
+test('CLI emits valid JSON but never implies launch authorization', () => {
+  const result = spawnSync(process.execPath, [reportScript], {
+    encoding: 'utf8', env: { ...process.env, NODE_OPTIONS: '' }
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stderr, '');
+  const report = JSON.parse(result.stdout);
+  assert.equal(report.releaseStatus, 'NOT_AUTHORIZED');
+  assert.equal(report.evidenceVerified, false);
+  assert.equal(report.totalTasks, 17);
+});
+
+test('CLI rejects additional arguments without reading or authorizing anything', () => {
+  const result = spawnSync(process.execPath, [reportScript, 'unexpected'], {
+    encoding: 'utf8', env: { ...process.env, NODE_OPTIONS: '' }
+  });
+  assert.equal(result.status, 2);
+  assert.equal(result.stdout, '');
+  assert.match(result.stderr, /Usage: node scripts\/report-launch-readiness\.mjs/);
 });
