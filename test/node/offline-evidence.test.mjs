@@ -188,3 +188,59 @@ test('the reporter and its regression test file are included in source digests',
       digestRegularFile(join(dir, 'test/node/offline-evidence.test.mjs')));
   } finally { cleanup(dir); }
 });
+
+test('child environment filters Git, shell startup, loader and case-variant overrides', () => {
+  const hostile = {
+    PATH: '/trusted/bin', HOME: '/home/test', TEMP: '/tmp/test', LANG: 'C',
+    GIT_DIR: '/tmp/fake.git', Git_Work_Tree: '/tmp/other',
+    git_config_count: '1', GIT_INDEX_FILE: '/tmp/fake.index',
+    NPM_CONFIG_SCRIPT_SHELL: '/tmp/evil-sh', Node_Path: '/tmp/inject',
+    'bAsH_FuNc_git%%': '() { exit 0; }', BASH_ENV: '/tmp/evil-bash',
+    bAsH_oPtS: 'extdebug', ENV: '/tmp/evil-env', CDPATH: '/tmp',
+    DaPp_FfI: 'true', FOUNDRY_PROFILE: 'untrusted',
+    LD_PRELOAD: '/tmp/evil.so', dYlD_insert_libraries: '/tmp/evil.dylib',
+    eth_rpc_url: 'https://example.invalid/private', ARBITRUM_SEPOLIA_RPC_URL: 'secret',
+    SPICA_CONFIRM_TESTNET_DEPLOY: 'YES_ARBITRUM_SEPOLIA_ONLY',
+  };
+  const clean = childEnvironment(hostile);
+  for (const key of ['PATH', 'HOME', 'TEMP', 'LANG']) {
+    assert.equal(clean[key], hostile[key]);
+  }
+  for (const key of Object.keys(hostile).slice(4)) {
+    assert.equal(clean[key], key === 'NPM_CONFIG_SCRIPT_SHELL' ? '' : undefined,
+      'unsafe override inherited: ' + key);
+  }
+  for (const key of ['NODE_OPTIONS', 'npm_config_node_options',
+    'NPM_CONFIG_NODE_OPTIONS', 'npm_config_script_shell',
+    'NPM_CONFIG_SCRIPT_SHELL']) {
+    assert.equal(clean[key], '');
+  }
+});
+
+test('real CLI uses clean checkout even with hostile inherited Git redirection', () => {
+  const dir = fixture();
+  try {
+    const expected = execFileSync('git', ['-C', dir, 'rev-parse', 'HEAD'], {
+      encoding: 'utf8'
+    }).trim();
+    const result = spawnSync(process.execPath,
+      [join(dir, 'scripts', 'capture-offline-evidence.mjs')], {
+        cwd: dir, encoding: 'utf8',
+        env: {
+          ...process.env,
+          GIT_DIR: join(dir, 'absent-git-dir'),
+          GIT_WORK_TREE: join(dir, 'wrong-work-tree'),
+          GIT_INDEX_FILE: join(dir, 'bad-index-file'),
+          GIT_CONFIG_COUNT: '1',
+          GIT_CONFIG_KEY_0: 'core.fsmonitor',
+          GIT_CONFIG_VALUE_0: 'false',
+        }
+      });
+    assert.equal(result.status, 0, result.stderr);
+    const report = JSON.parse(result.stdout);
+    assert.equal(report.status, 'PASSED_NODE_ONLY');
+    assert.equal(report.source.commitSha, expected);
+    assert.equal(report.source.clean, true);
+    assert.equal(report.releaseStatus, 'NOT_AUTHORIZED');
+  } finally { cleanup(dir); }
+});
