@@ -24,7 +24,7 @@ const reviewedScripts = Object.freeze({
   "test:invariant": "forge test --match-test invariant_ -vv",
   "test:abi-guard": "node --test test/node/abi-check.test.mjs",
   "test:deploy-guard": "bash test/shell/deploy-guard.test.sh",
-  "test:offline": "npm run test:dependency-lock && npm run test:abi-guard && npm run test:deploy-guard && npm run test:rpc-url && npm run test:rpc-deploy-guard && npm run test:foundry-evidence && npm run test:local-gate && npm run test:foundry-format && npm run test:bootstrap && npm run test:node-env",
+  "test:offline": "npm run test:dependency-lock && npm run test:abi-guard && npm run test:deploy-guard && npm run test:rpc-url && npm run test:rpc-deploy-guard && npm run test:foundry-evidence && npm run test:local-gate && npm run test:foundry-format && npm run test:bootstrap && npm run test:node-env && npm run test:safe-reader && npm run test:tokenomics && npm run check:tokenomics && npm run test:grants && npm run check:grants && npm run test:grant-batches && npm run test:batch-identity && npm run check:grant-batches && npm run test:review-json && npm run test:strict-cli-json && npm run test:proposal-cli-integration && npm run test:grant-manifest && npm run check:grant-manifest && npm run test:grant-inventory",
   "test:rpc-url": "node --test test/node/rpc-url.test.mjs",
   "test:rpc-deploy-guard": "bash test/shell/rpc-url-guard.test.sh",
   "test:foundry-evidence": "node --test test/node/foundry-evidence.test.mjs",
@@ -34,7 +34,23 @@ const reviewedScripts = Object.freeze({
   "test:foundry-format": "node --test test/node/foundry-format.test.mjs",
   "test:dependency-lock": "node --test test/node/dependency-lock.test.mjs",
   "test:bootstrap": "bash test/shell/bootstrap-deps.test.sh",
-  "test:node-env": "bash test/shell/node-env-guard.test.sh"
+  "test:node-env": "bash test/shell/node-env-guard.test.sh",
+  "test:safe-reader": "node --test test/node/read-small-file.test.mjs",
+  "test:offline:node": "node scripts/run-offline-node.mjs",
+  "check:tokenomics": "node scripts/validate-tokenomics.mjs config/tokenomics.draft.json",
+  "test:tokenomics": "node --test test/node/tokenomics.test.mjs",
+  "check:grants": "node scripts/validate-contributor-grants.mjs config/contributor-grants.draft.json",
+  "test:grants": "node --test test/node/contributor-grants.test.mjs",
+  "test:vesting": "forge test --match-contract SpicaVestingTest -vv",
+  "check:grant-batches": "node scripts/check-grant-batches.mjs config/contributor-grants.draft.json",
+  "test:grant-batches": "node --test test/node/grant-batches.test.mjs",
+  "check:grant-manifest": "node scripts/check-grant-manifest.mjs config/grant-batches.draft.manifest.json",
+  "test:strict-cli-json": "node --test test/node/strict-cli-json.test.mjs",
+  "test:proposal-cli-integration": "node --test test/node/proposal-cli-integration.test.mjs",
+  "test:grant-manifest": "node --test test/node/grant-manifest.test.mjs",
+  "test:grant-inventory": "node --test test/node/grant-inventory.test.mjs",
+  "test:review-json": "node --test test/node/parse-review-json.test.mjs test/node/review-json-manifest.test.mjs",
+  "test:batch-identity": "node --test test/node/distinct-batch-files.test.mjs"
 });
 const reviewedManifestFields = new Set([
   'name', 'version', 'private', 'description', 'scripts', 'dependencies', 'engines',

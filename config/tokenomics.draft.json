@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "status": "draft",
+  "deploymentApproved": false,
+  "product": {
+    "aiCreditConversionEnabled": false,
+    "tokenSalesEnabled": false
+  },
+  "network": {
+    "candidate": "undecided"
+  },
+  "token": {
+    "name": "SpicaCash",
+    "symbol": "SPICA",
+    "decimals": 18,
+    "totalSupplyBaseUnits": null
+  },
+  "allocations": [],
+  "treasury": {
+    "status": "undecided",
+    "walletType": "multisig",
+    "signerCount": null,
+    "approvalThreshold": null
+  },
+  "reviews": {
+    "security": "not_started",
+    "legal": "not_started"
+  }
+}
