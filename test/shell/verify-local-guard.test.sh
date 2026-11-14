@@ -13,8 +13,9 @@ export MOCK_LOG="$work/tool-calls" MOCK_FAIL_STAGE=''
 cat > "$work/bin/npm" <<'MOCK'
 #!/usr/bin/env bash
 printf 'npm %s\n' "$*" >> "$MOCK_LOG"
+[[ -z "${NODE_OPTIONS:-}" && -z "${npm_config_node_options:-}" && -z "${NPM_CONFIG_NODE_OPTIONS:-}" ]] || exit 89
 [[ -z "${ETH_RPC_URL:-}" && -z "${ARBITRUM_SEPOLIA_RPC_URL:-}" && -z "${FOUNDRY_ACCOUNT:-}" ]] || exit 81
-[[ "$*" == '--ignore-scripts run test:offline' ]] || exit 82
+[[ "$*" == '--node-options= --ignore-scripts run test:offline' ]] || exit 82
 [[ "${MOCK_FAIL_STAGE:-}" != 'offline' ]] || exit 41
 MOCK
 cat > "$work/bin/forge" <<'MOCK'
@@ -35,6 +36,7 @@ MOCK
 cat > "$work/bin/node" <<'MOCK'
 #!/usr/bin/env bash
 printf 'node %s\n' "$*" >> "$MOCK_LOG"
+[[ -z "${NODE_OPTIONS:-}" && -z "${npm_config_node_options:-}" && -z "${NPM_CONFIG_NODE_OPTIONS:-}" ]] || exit 88
 [[ -z "${ETH_RPC_URL:-}" && -z "${ARBITRUM_SEPOLIA_RPC_URL:-}" && -z "${FOUNDRY_ACCOUNT:-}" ]] || exit 85
 case "${1:-}" in
   scripts/check-dependency-lock.mjs) [[ "${MOCK_FAIL_STAGE:-}" != 'policy' ]] || exit 47 ;;
@@ -73,6 +75,7 @@ export ETH_RPC_URL='https://rpc.example.test/SECRET_VALUE'
 export ARBITRUM_SEPOLIA_RPC_URL='https://rpc.example.test/SECRET_VALUE'
 export FOUNDRY_ACCOUNT='fake-key'
 export npm_config_ignore_scripts=false
+export NODE_OPTIONS='--trace-warnings' npm_config_node_options='--trace-deprecation' NPM_CONFIG_NODE_OPTIONS='--no-warnings'
 
 expect_stage_failure() {
   local stage="$1" last="$2" forbidden="$3"
@@ -90,8 +93,8 @@ expect_stage_failure() {
   fi
   pass=$((pass+1))
 }
-expect_stage_failure policy 'node scripts/check-dependency-lock.mjs' 'npm --ignore-scripts run test:offline'
-expect_stage_failure offline 'npm --ignore-scripts run test:offline' 'forge build --offline --force'
+expect_stage_failure policy 'node scripts/check-dependency-lock.mjs' 'npm --node-options= --ignore-scripts run test:offline'
+expect_stage_failure offline 'npm --node-options= --ignore-scripts run test:offline' 'forge build --offline --force'
 expect_stage_failure build 'forge build --offline --force' 'node scripts/check-abi.mjs'
 expect_stage_failure abi 'node scripts/check-abi.mjs' 'forge test --offline -vv'
 expect_stage_failure tests 'forge test --offline -vv' 'forge test --offline --match-contract SpicaCashInvariantTest -vv'
@@ -108,7 +111,7 @@ export MOCK_FAIL_STAGE=''
 bash "$work/project/scripts/verify-local.sh" > "$work/output" 2>&1
 [[ $(wc -l < "$MOCK_LOG") -eq 7 ]] || { cat "$MOCK_LOG" >&2; exit 1; }
 grep -Fxq 'node scripts/check-dependency-lock.mjs' "$MOCK_LOG"
-grep -Fxq 'npm --ignore-scripts run test:offline' "$MOCK_LOG"
+grep -Fxq 'npm --node-options= --ignore-scripts run test:offline' "$MOCK_LOG"
 grep -Fxq 'forge build --offline --force' "$MOCK_LOG"
 grep -Fxq 'node scripts/check-abi.mjs' "$MOCK_LOG"
 grep -Fxq 'forge test --offline -vv' "$MOCK_LOG"
