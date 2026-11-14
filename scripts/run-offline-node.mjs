@@ -13,6 +13,24 @@ const DRAFT_CHECKS = [
   ['grant manifest draft', 'check-grant-manifest.mjs', 'grant-batches.draft.manifest.json'],
 ];
 
+// A deleted or renamed security regression must never produce a green run.
+// Additional *.test.mjs files are still discovered automatically.
+export const REQUIRED_NODE_TESTS = Object.freeze([
+  'abi-check.test.mjs',
+  'contributor-grants.test.mjs',
+  'distinct-batch-files.test.mjs',
+  'grant-batches.test.mjs',
+  'grant-inventory.test.mjs',
+  'grant-manifest.test.mjs',
+  'offline-node-runner.test.mjs',
+  'parse-review-json.test.mjs',
+  'proposal-cli-integration.test.mjs',
+  'read-small-file.test.mjs',
+  'review-json-manifest.test.mjs',
+  'strict-cli-json.test.mjs',
+  'tokenomics.test.mjs',
+]);
+
 export function planOfflineNodeSteps(root, entries) {
   if (!Array.isArray(entries)) throw new Error('test directory entries required');
   const tests = entries.filter(entry => entry.name.endsWith('.test.mjs'));
@@ -21,6 +39,16 @@ export function planOfflineNodeSteps(root, entries) {
   }
   const names = tests.map(entry => entry.name).sort();
   if (names.length === 0) throw new Error('no Node test files found; refusing partial verification');
+  const folded = new Set();
+  for (const name of names) {
+    const key = name.toLowerCase();
+    if (folded.has(key)) throw new Error('ambiguous case-insensitive Node test filename: ' + name);
+    folded.add(key);
+  }
+  const missing = REQUIRED_NODE_TESTS.filter(name => !names.includes(name));
+  if (missing.length > 0) {
+    throw new Error('missing required Node test suites: ' + missing.join(', '));
+  }
   return [
     { label: 'all Node regression tests', args: ['--test', '--test-concurrency=4',
       ...names.map(name => join(root, 'test', 'node', name))] },

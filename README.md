@@ -62,6 +62,7 @@ The [contributor grant design](docs/CONTRIBUTOR_GRANTS.md) introduces a review-o
 - Run 37 deterministic tests: `npm run test:grants`
 - All offline checks including the Bash deploy-guard suite: `npm run test:offline`
 - Windows PowerShell / cross-platform **Node-only** suite: `npm run test:offline:node` (requires Node.js 20+; runs every `test/node/*.test.mjs` test plus all four checked-in draft validation CLIs, without Bash). This **does not** run the shell deployment guard, compiled ABI check, Solidity/Foundry tests, or any audit. Run the omitted gates separately before approving a release.
+- The Node-only runner refuses to report success if any of the 13 baseline security/test suites is missing or renamed; it also rejects case-colliding test filenames. New `test/node/*.test.mjs` suites run automatically, but security-critical new suites must also be added to `REQUIRED_NODE_TESTS` in `scripts/run-offline-node.mjs`. This is a completeness guard, not source integrity or authenticity verification.
 - **Not** a token-for-AI-compute program; **not** usable to buy VirgoStars AI credits.
 
 ## Reference vesting tests (research only)
