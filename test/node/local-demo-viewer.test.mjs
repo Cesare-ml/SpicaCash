@@ -66,6 +66,7 @@ test('step calculation is stateless and rejects invalid indices', () => {
 test('viewer uses 18-decimal units for human-readable token display', () => {
   assert.equal(formatTokens(1n * UNIT), '1');
   assert.equal(formatTokens(125n * UNIT), '125');
+  assert.equal(formatTokens(1000n * UNIT), '1.000');
   assert.equal(formatTokens(1n * UNIT + 1n), '1,000000000000000001');
   assert.equal(formatTokens(0n), '0');
 });
