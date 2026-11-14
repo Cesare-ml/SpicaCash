@@ -172,10 +172,10 @@ for (const [name, mutate] of [
   ['duplicate nested lockfile keys', dir => {
     const path = join(dir, 'package-lock.json');
     const original = readFileSync(path, 'utf8');
-    const ambiguous = original.replace('"lockfileVersion": 3,',
-      '"lockfileVersion": 1,  "lockfileVersion": 3,');
+    const ambiguous = original.replace('"version": "5.4.0",',
+      '"version": "0.0.1", "version": "5.4.0",');
     assert.notEqual(ambiguous, original);
-    assert.equal(JSON.parse(ambiguous).lockfileVersion, 3);
+    assert.equal(JSON.parse(ambiguous).packages['node_modules/@openzeppelin/contracts'].version, '5.4.0');
     writeFileSync(path, ambiguous);
   }],
   ['manifest file with UTF-8 BOM', dir => {
