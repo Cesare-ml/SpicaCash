@@ -11,6 +11,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const VIEWER_PATH = join(ROOT, 'demo', 'index.html');
 const RESULT_ID = 'spica-browser-smoke-result';
+const EXPECTED_ASSERTIONS = 61; // Full reviewed six-stage browser harness.
 
 // Inline harness runs AFTER the viewer's own script, in an ephemeral COPY.
 // Does not change or add a script to the shipped demo/index.html.
@@ -83,7 +84,8 @@ export function createSmokeHtml(html) {
       !html.includes('<script id="spica-local-logic">') ||
       !html.includes("connect-src 'none'") ||
       (html.match(/<\/body>/gi) || []).length !== 1 ||
-      html.includes('spica-browser-smoke-harness')) {
+      html.includes('spica-browser-smoke-harness') ||
+      html.includes(RESULT_ID)) {
     throw new Error('Refusing to test an unexpected or already modified viewer document');
   }
   return html.replace(/<\/body>/i, HARNESS + '\n</body>');
@@ -94,11 +96,15 @@ export function parseSmokeOutput(dom) {
   const prefix = '<pre id="' + RESULT_ID + '">';
   const pos = dom.indexOf(prefix);
   if (pos < 0) throw new Error('Browser did not run the smoke-test harness');
+  if (dom.indexOf(prefix, pos + prefix.length) !== -1) {
+    throw new Error('Multiple browser smoke-test results; refusing ambiguous evidence');
+  }
   const end = dom.indexOf('</pre>', pos + prefix.length);
   if (end < 0) throw new Error('Browser smoke-test result was truncated');
   const value = JSON.parse(dom.slice(pos + prefix.length, end));
   if (value === null || typeof value !== 'object' ||
-      !Number.isInteger(value.assertions) || value.assertions < 30 ||
+      Object.keys(value).sort().join(',') !== 'assertions,failures,status' ||
+      value.assertions !== EXPECTED_ASSERTIONS ||
       !Array.isArray(value.failures) || !value.failures.every(x => typeof x === 'string') ||
       !['PASS', 'FAIL'].includes(value.status) ||
       (value.status === 'PASS') !== (value.failures.length === 0)) {
