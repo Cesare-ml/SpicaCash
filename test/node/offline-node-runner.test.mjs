@@ -67,6 +67,17 @@ test('fails closed if any mandatory security regression suite is removed', () =>
   }
 });
 
+test('both offline viewer suites are mandatory and cannot be silently dropped', () => {
+  const viewerSuites = ['browser-smoke-plan.test.mjs', 'local-demo-viewer.test.mjs'];
+  for (const suite of viewerSuites) {
+    assert.ok(REQUIRED_NODE_TESTS.includes(suite), 'missing mandatory registration: ' + suite);
+    const without = requiredEntries().filter(entry => entry.name !== suite);
+    assert.throws(() => planOfflineNodeSteps('repo', without),
+      error => error.message.includes('missing required Node test suites: ' + suite),
+      'viewer regression cannot be skipped: ' + suite);
+  }
+});
+
 test('refuses case-colliding test names (Windows-compatible behavior)', () => {
   assert.throws(() => planOfflineNodeSteps('repo', requiredEntries([
     dirent('Tokenomics.test.mjs'),
@@ -89,5 +100,5 @@ test('required suite list is present in the actual repository test folder', () =
   const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
   const entries = readdirSync(join(root, 'test', 'node'), { withFileTypes: true });
   assert.doesNotThrow(() => planOfflineNodeSteps(root, entries));
-  assert.equal(REQUIRED_NODE_TESTS.length, 17);
+  assert.equal(REQUIRED_NODE_TESTS.length, 19);
 });
