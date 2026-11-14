@@ -26,6 +26,8 @@ export NO_COLOR=1
 # Check package scripts, install policy and tarball integrity *before* npm can
 # run pre/post hooks. The explicit npm flag overrides inherited config.
 node scripts/check-dependency-lock.mjs
+# Refuse modified compiler, fuzz/invariant settings or any RPC/fork profiles.
+node scripts/check-foundry-config.mjs
 printf 'Gate 1/5: offline Node/Bash tests\n'
 # Override user/global npm config that could inject NODE_OPTIONS or a hostile
 # script-shell executable into test child processes.

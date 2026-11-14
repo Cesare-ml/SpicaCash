@@ -20,6 +20,7 @@ export const REQUIRED_NODE_TESTS = Object.freeze([
   'contributor-grants.test.mjs',
   'dependency-lock.test.mjs',
   'distinct-batch-files.test.mjs',
+  'foundry-config-guard.test.mjs',
   'foundry-evidence.test.mjs',
   'foundry-format.test.mjs',
   'grant-batches.test.mjs',

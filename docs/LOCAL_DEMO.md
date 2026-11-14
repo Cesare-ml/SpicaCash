@@ -40,8 +40,11 @@ Amounts in the table are human-readable tokens; the Solidity assertions operate 
    node --version
    forge --version
    node scripts/check-dependency-lock.mjs
+   node scripts/check-foundry-config.mjs
    bash scripts/bootstrap-deps.sh
    ```
+
+   The new `check-foundry-config.mjs` preflight refuses an unreviewed compiler version, reduced fuzz/invariant budgets, altered OpenZeppelin remappings and added RPC/fork profiles. This is a **configuration check only**: it does not prove that Foundry or solc are installed or that Solidity tests pass.
 
    The bootstrap performs a dependency-policy check before an `npm ci --ignore-scripts` install. **Do not** run arbitrary `npm` scripts or `npm install` before the policy check. Use a clean, trusted checkout and toolchain. If `NODE_OPTIONS`, `npm_config_node_options` or `NPM_CONFIG_NODE_OPTIONS` are set, follow the clearing guidance in [`AGENTS.md`](../AGENTS.md) before invoking Node.
 
