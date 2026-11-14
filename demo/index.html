@@ -150,7 +150,7 @@
     }
 
     function formatTokens(baseUnits) {
-      const whole = (baseUnits / UNIT).toLocaleString("it-IT");
+      const whole = (baseUnits / UNIT).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
       const decimals = (baseUnits % UNIT).toString().padStart(18, "0").replace(/0+$/, "");
       return decimals ? whole + "," + decimals : whole;
     }
