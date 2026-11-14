@@ -165,6 +165,38 @@ test('excessively long supply strings are rejected without attempting BigInt con
   assert.ok(report.errors.some((error) => error.includes('exceeds uint256')));
 });
 
+
+test('exactly 128 synthetic allocations remain valid when their sum matches the supply', () => {
+  const plan = syntheticProposal();
+  plan.token.totalSupplyBaseUnits = '128';
+  plan.allocations = Array.from({ length: 128 }, (_, index) => ({
+    ...plan.allocations[0], id: 'allocation-' + index, amountBaseUnits: '1'
+  }));
+  const report = validateTokenomics(plan, { requireProposal: true });
+  assert.equal(report.valid, true, report.errors.join('\n'));
+});
+
+test('129 otherwise valid synthetic allocations are rejected before accounting', () => {
+  const plan = syntheticProposal();
+  plan.token.totalSupplyBaseUnits = '129';
+  plan.allocations = Array.from({ length: 129 }, (_, index) => ({
+    ...plan.allocations[0], id: 'allocation-' + index, amountBaseUnits: '1'
+  }));
+  const report = validateTokenomics(plan, { requireProposal: true });
+  assert.deepEqual(report.errors, ['allocations: maximum 128 entries']);
+});
+
+test('oversized direct API arrays fail closed without reading their elements', () => {
+  const plan = syntheticProposal();
+  const oversized = new Array(100_000);
+  Object.defineProperty(oversized, 0, {
+    get() { throw new Error('oversized allocation entries must not be traversed'); }
+  });
+  plan.allocations = oversized;
+  const report = validateTokenomics(plan, { requireProposal: true });
+  assert.deepEqual(report.errors, ['allocations: maximum 128 entries']);
+});
+
 test('malformed top-level documents do not throw', () => {
   for (const value of [null, [], 'not-an-object', 4]) {
     const report = validateTokenomics(value);

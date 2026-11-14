@@ -39,6 +39,7 @@ export function validateTokenomics(p, options={}) {
     }else supply=units(p.token.totalSupplyBaseUnits,'token.totalSupplyBaseUnits');
   }
   if(!Array.isArray(p.allocations))err('allocations','expected array');
+  else if(p.allocations.length>128)err('allocations','maximum 128 entries');
   else{
     if(p.status==='proposal'&&!p.allocations.length)err('allocations','proposal needs allocations');
     let total=0n;const seen=new Set();
