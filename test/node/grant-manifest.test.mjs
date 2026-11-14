@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,writeFileSync,readFileSync,rmSync,symlinkSync,mkdirSync,renameSync} from 'node:fs';
+import {mkdtempSync,writeFileSync,readFileSync,rmSync,symlinkSync,linkSync,mkdirSync,renameSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve,dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -253,4 +253,35 @@ test('strict inventory rejects missing folder and missing option argument',t=>{
   const missingArg=run(f.path,'--inventory-dir');
   assert.equal(missingArg.status,2);
   assert.match(missingArg.stderr,/Usage:/);
+});
+
+test('manifest refuses hard-linked aliases of one hashed batch (loader and CLI)', t => {
+  const f = fixture(t);
+  try {
+    linkSync(join(f.dir, 'grant.json'), join(f.dir, 'other.json'));
+  } catch (err) {
+    if (['EPERM', 'EACCES', 'ENOTSUP', 'EOPNOTSUPP'].includes(err.code)) {
+      t.skip('hard links not supported on this filesystem'); return;
+    }
+    throw err;
+  }
+  // Two different paths and matching individual hashes must not allow
+  // the same physical proposal document to be counted twice.
+  f.data.batches.push({path:'other.json', sha256:f.data.batches[0].sha256});
+  save(f.dir, f.data);
+  const report = loadGrantManifest(f.path);
+  assert.equal(report.valid, false);
+  assert.match(report.errors.join('\n'), /duplicate physical grant batch file/);
+  const processResult = run(f.path);
+  assert.equal(processResult.status, 1, processResult.stdout);
+  assert.match(processResult.stderr, /duplicate physical grant batch file/);
+});
+
+test('manifest permits two independent files with identical valid draft bytes', t => {
+  const f = fixture(t);
+  writeFileSync(join(f.dir, 'independent.json'), readFileSync(join(f.dir, 'grant.json')));
+  f.data.batches.push({path:'independent.json', sha256:f.data.batches[0].sha256});
+  const report = loadGrantManifest(save(f.dir, f.data));
+  assert.equal(report.valid, true, report.errors.join('\n'));
+  assert.equal(report.batches.length, 2);
 });
