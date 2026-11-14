@@ -43,7 +43,7 @@ node scripts/check-grant-manifest.mjs path/to/manifest.json --require-proposal
 
 The checked-in draft passes the first command but **must fail** `--require-proposal`.
 
-File paths must be relative to the manifest directory and end in `.json`. The loader refuses path traversal, absolute paths, symlink redirects, duplicated local paths, malformed/unexpected fields, digest mismatches, invalid statuses and files larger than 1 MiB. Maximum: 64 batches, each subject to the existing grant validator limits. It validates hashes **before** arithmetic and cross-file PR duplicate checks.
+File paths must be relative to the manifest directory and end in `.json`. The loader refuses path traversal, absolute paths, symlink redirects, duplicated local paths **and hard-linked aliases of the same physical batch** (where device/inode information is available), malformed/unexpected fields, digest mismatches, invalid statuses and files larger than 1 MiB. Maximum: 64 batches, each subject to the existing grant validator limits. It validates hashes **before** arithmetic and cross-file PR duplicate checks.
 
 ## Optional out-of-band review fingerprint
 
@@ -94,6 +94,7 @@ This is an **opt-in** directory check; omitting `--inventory-dir` explicitly rep
 ## Boundaries and remaining risks
 
 - **Completeness cannot be proved by the manifest itself.** An author could omit a batch entirely. Governance must separately confirm that the list is the agreed canonical set, e.g. by reviewing its committed Git revision and inventory.
+- The manifest also checks the physical identity of verified batches. Hard-linked aliases are rejected on filesystems reporting usable device/inode identities; on other platforms or mutable/network filesystems, this is best-effort and is not an atomic snapshot. Independently inspect the review folder.
 - SHA-256 detects changes relative to the listed digest; an attacker who edits the file *and* manifest can create a self-consistent dishonest proposal. Independent reviewers must inspect the committed content and authorship.
 - Public GitHub PR references remain unverified by this tool. Reviewers must confirm eligibility, merge/acceptance, conflicts of interest, ownership and anti-Sybil measures.
 - The validator does not check actual prior token distributions, onchain balances, actual vesting contracts or treasury state.
