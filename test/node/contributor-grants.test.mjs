@@ -85,6 +85,21 @@ rejects('rejects zero amount', (g) => { g.grants[0].amountBaseUnits = '0'; }, 'a
 rejects('rejects leading zero', (g) => { g.grants[0].amountBaseUnits = '0150'; }, 'amountBaseUnits');
 rejects('rejects uint256 overflow', (g) => { g.grants[0].amountBaseUnits = (1n << 256n).toString(); }, 'uint256');
 rejects('rejects infinite-length numeric input', (g) => { g.grants[0].amountBaseUnits = '9'.repeat(100000); }, 'uint256');
+rejects('rejects oversized nonnumeric strings before decimal scanning', (g) => {
+  g.grants[0].amountBaseUnits = 'x'.repeat(100000);
+}, 'exceeds uint256');
+rejects('rejects oversized decimal with an invalid trailing character', (g) => {
+  g.grants[0].amountBaseUnits = '9'.repeat(100000) + 'x';
+}, 'exceeds uint256');
+test('maximum uint256 integer reaches budget validation rather than failing numeric parsing', () => {
+  const grants = syntheticGrants();
+  grants.grants = grants.grants.slice(0, 1);
+  grants.grants[0].amountBaseUnits = ((1n << 256n) - 1n).toString();
+  const report = validateContributorGrants(grants, syntheticTokenomics(), { requireProposal: true });
+  assert.equal(report.valid, false);
+  assert.match(report.errors.join('\n'), /exceed the contributor bucket/);
+  assert.doesNotMatch(report.errors.join('\n'), /uint256/);
+});
 rejects('rejects negative cliff', (g) => { g.grants[0].cliffMonths = -1; }, 'cliffMonths');
 rejects('rejects cliff longer than vesting', (g) => { g.grants[0].cliffMonths = 30; }, 'cliffMonths');
 rejects('rejects absent vesting', (g) => { g.grants[0].vestingMonths = 0; }, 'vestingMonths');
