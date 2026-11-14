@@ -27,8 +27,9 @@ export NO_COLOR=1
 # run pre/post hooks. The explicit npm flag overrides inherited config.
 node scripts/check-dependency-lock.mjs
 printf 'Gate 1/5: offline Node/Bash tests\n'
-# Override user/global npm config that could inject NODE_OPTIONS into test child processes.
-npm --node-options='' --ignore-scripts run test:offline
+# Override user/global npm config that could inject NODE_OPTIONS or a hostile
+# script-shell executable into test child processes.
+npm --node-options='' --script-shell=/bin/sh --ignore-scripts run test:offline
 printf 'Gate 2/5: compile fresh Solidity artifacts\n'
 forge build --offline --force
 printf 'Gate 3/5: inspect the real compiled SpicaCash ABI\n'
