@@ -4,7 +4,7 @@ import { validateTokenomics } from './tokenomics-core.mjs';
 
 const MAX_UINT256 = (1n << 256n) - 1n;
 const SLUG = /^[a-z][a-z0-9-]{1,63}$/;
-const PUBLIC_PR_URL = /^https:\/\/github\.com\/[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?\/[A-Za-z0-9_.-]{1,100}\/pull\/[1-9][0-9]*$/;
+const PUBLIC_PR_URL = /^https:\/\/github\.com\/[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?\/[A-Za-z0-9_.-]{1,100}\/pull\/[1-9][0-9]{0,19}$/;
 const isObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 
 export function validateContributorGrants(plan, tokenomicsPlan = null, options = {}) {
@@ -53,14 +53,18 @@ export function validateContributorGrants(plan, tokenomicsPlan = null, options =
       if (typeof grant.id !== 'string' || !SLUG.test(grant.id)) fail(path + '.id', 'invalid slug');
       else if (ids.has(grant.id)) fail(path + '.id', 'duplicate grant ID');
       else ids.add(grant.id);
-      if (typeof grant.sourcePullRequest !== 'string' || !PUBLIC_PR_URL.test(grant.sourcePullRequest)) {
+      // Bound direct-library evidence references before regex and case folding.
+      if (typeof grant.sourcePullRequest !== 'string' || grant.sourcePullRequest.length > 240 ||
+          !PUBLIC_PR_URL.test(grant.sourcePullRequest)) {
         fail(path + '.sourcePullRequest', 'expected canonical GitHub pull request URL');
       } else {
         const key = grant.sourcePullRequest.toLowerCase();
         if (sources.has(key)) fail(path + '.sourcePullRequest', 'duplicate contribution reference');
         else sources.add(key);
       }
-      if (typeof grant.rationale !== 'string' || grant.rationale.trim().length < 40 || grant.rationale.length > 1000) {
+      // Check the maximum before trimming untrusted rationale text.
+      if (typeof grant.rationale !== 'string' || grant.rationale.length > 1000 ||
+          grant.rationale.trim().length < 40) {
         fail(path + '.rationale', 'requires 40 to 1000 characters');
       }
       const amount = units(grant.amountBaseUnits, path + '.amountBaseUnits');

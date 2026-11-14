@@ -17,6 +17,7 @@ const DRAFT_CHECKS = [
 // Additional *.test.mjs files are still discovered automatically.
 export const REQUIRED_NODE_TESTS = Object.freeze([
   'abi-check.test.mjs',
+  'browser-smoke-plan.test.mjs',
   'contributor-grants.test.mjs',
   'dependency-lock.test.mjs',
   'distinct-batch-files.test.mjs',
@@ -26,6 +27,9 @@ export const REQUIRED_NODE_TESTS = Object.freeze([
   'grant-batches.test.mjs',
   'grant-inventory.test.mjs',
   'grant-manifest.test.mjs',
+  'local-demo-viewer.test.mjs',
+  'local-verification-evidence.test.mjs',
+  'offline-evidence.test.mjs',
   'offline-node-runner.test.mjs',
   'parse-review-json.test.mjs',
   'proposal-cli-integration.test.mjs',
@@ -61,6 +65,8 @@ export function planOfflineNodeSteps(root, entries) {
     throw new Error('missing required Node test suites: ' + missing.join(', '));
   }
   return [
+    // Verify pinned dependencies and reviewed commands before invoking tests.
+    { label: 'reviewed dependency policy', args: [join(root, 'scripts', 'check-dependency-lock.mjs')] },
     { label: 'all Node regression tests', args: ['--test', '--test-concurrency=4',
       ...names.map(name => join(root, 'test', 'node', name))] },
     ...DRAFT_CHECKS.map(([label, script, config]) => ({
@@ -70,10 +76,23 @@ export function planOfflineNodeSteps(root, entries) {
   ];
 }
 
-export function runOfflineNodeSteps(root, steps, execute = spawnSync) {
+// Child Node processes must not inherit executable startup hooks or global
+// CommonJS module search paths. This cannot protect the parent Node startup.
+export function cleanNodeChildEnv(source = process.env) {
+  const safe = {};
+  for (const [name, value] of Object.entries(source)) {
+    const lower = name.toLowerCase();
+    if (lower === 'node_options' || lower === 'npm_config_node_options' || lower === 'node_path') continue;
+    safe[name] = value;
+  }
+  return safe;
+}
+
+export function runOfflineNodeSteps(root, steps, execute = spawnSync, sourceEnv = process.env) {
+  const env = cleanNodeChildEnv(sourceEnv);
   for (const step of steps) {
     const response = execute(process.execPath, step.args,
-      { cwd: root, stdio: 'inherit', shell: false });
+      { cwd: root, stdio: 'inherit', shell: false, env });
     if (response?.error) throw response.error;
     if (response?.status !== 0) {
       return { ok: false, failed: step.label };
@@ -93,7 +112,7 @@ function main() {
       process.exitCode = 1;
       return;
     }
-    console.log('Node-only offline checks passed. Bash deploy guards, Foundry tests and audit NOT run.');
+    console.log('Node-only offline checks and dependency policy passed. Bash deploy guards, Foundry tests and audit NOT run.');
   } catch (error) {
     console.error('Node-only offline checks could not complete: ' + error.message);
     process.exitCode = 1;

@@ -73,6 +73,39 @@ rejects('rejects same grant ID', (g) => { g.grants[1].id = g.grants[0].id; }, 'd
 rejects('rejects same PR independent of URL casing', (g) => {
   g.grants[1].sourcePullRequest = 'https://github.com/EXAMPLE-ORG/EXAMPLE-REPO/pull/12';
 }, 'duplicate contribution reference');
+test('accepts bounded synthetic GitHub PR identifiers and rationale lengths', () => {
+  const grants = syntheticGrants();
+  grants.grants[0].sourcePullRequest =
+    'https://github.com/example-org/example-repo/pull/' + '9'.repeat(20);
+  for (const length of [40, 1000]) {
+    grants.grants[0].rationale = 'A'.repeat(length);
+    const report = validateContributorGrants(grants, syntheticTokenomics(), { requireProposal: true });
+    assert.equal(report.valid, true, report.errors.join('\n'));
+  }
+});
+
+test('rejects excessive PR digits and massive evidence references', () => {
+  for (const digits of [21, 100_000]) {
+    const grants = syntheticGrants();
+    grants.grants[0].sourcePullRequest =
+      'https://github.com/example-org/example-repo/pull/' + '9'.repeat(digits);
+    const report = validateContributorGrants(grants, syntheticTokenomics(), { requireProposal: true });
+    assert.equal(report.valid, false);
+    assert.match(report.errors.join('\n'), /grants\[0\]\.sourcePullRequest/);
+  }
+});
+
+test('rejects oversized rationale and whitespace in direct library input', () => {
+  for (const rationale of ['A'.repeat(39), 'A'.repeat(1001),
+    'A'.repeat(100_000), ' '.repeat(100_000)]) {
+    const grants = syntheticGrants();
+    grants.grants[0].rationale = rationale;
+    const report = validateContributorGrants(grants, syntheticTokenomics(), { requireProposal: true });
+    assert.equal(report.valid, false);
+    assert.match(report.errors.join('\n'), /grants\[0\]\.rationale/);
+  }
+});
+
 rejects('rejects deceptive GitHub lookalike host', (g) => {
   g.grants[0].sourcePullRequest = 'https://github.com.evil.test/org/repo/pull/12';
 }, 'sourcePullRequest');
