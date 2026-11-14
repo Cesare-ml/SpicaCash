@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MIT
 // Fail closed when Foundry does not report an actually exercised invariant campaign.
 // This checks test-run output and selector metrics, not source, ABI or bytecode.
-import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
+import { readSmallBytes } from './read-small-file.mjs';
 
 const requiredInvariants = [
   'invariant_TotalSupplyRemainsFixed',
@@ -147,7 +147,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     process.exitCode = 2;
   } else {
     try {
-      const result = checkInvariantEvidence(readFileSync(path, 'utf8'));
+      // Read only a stable, regular, non-symlink file. UTF-8 must decode
+      // without replacements, or a corrupted report could look convincing.
+      const evidence = new TextDecoder('utf-8', { fatal: true }).decode(readSmallBytes(path));
+      const result = checkInvariantEvidence(evidence);
       if (!result.valid) {
         for (const problem of result.errors) console.error(`Invariant evidence failed: ${problem}`);
         process.exitCode = 1;
