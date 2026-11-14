@@ -84,6 +84,30 @@ test('same input file twice is rejected', () => {
   assert.equal(result.valid,false);
   assert.match(result.errors.join('\n'),/duplicate file name/);
 });
+test('case-variant batch names fail closed across Windows and Linux', () => {
+  const a=batch('grant-a',12,100),b=batch('grant-b',13,100);
+  b.name='GRANT-A.JSON';
+  const result=check([a,b]);
+  assert.equal(result.valid,false);
+  assert.match(result.errors.join('\n'),/duplicate file name \(case-insensitive\)/);
+});
+
+test('mixed-case unique batch names remain valid proposals', () => {
+  const a=batch('grant-a',12,100),b=batch('grant-b',13,100);
+  a.name='Grant-A.json';
+  b.name='GRANT-B.JSON';
+  const result=check([a,b],economics(),{requireProposal:true});
+  assert.equal(result.valid,true,result.errors.join('\n'));
+  assert.equal(result.proposalCount,2);
+});
+
+test('case variants of draft batch names are rejected without tokenomics', () => {
+  const one={name:'draft.json',plan:clone(draft)};
+  const two={name:'DRAFT.json',plan:clone(draft)};
+  const result=check([one,two],null);
+  assert.equal(result.valid,false);
+  assert.match(result.errors.join('\n'),/duplicate file name \(case-insensitive\)/);
+});
 test('mixing draft and proposal is rejected to avoid incomplete accounting', () => {
   const result=check([{name:'empty.json',plan:clone(draft)},batch('grant-a',12,100)]);
   assert.equal(result.valid,false);

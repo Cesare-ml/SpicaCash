@@ -23,8 +23,11 @@ export function reconcileGrantBatches(batches, tokenomics, validator, options = 
       error(path, "must have unique nonempty name and plan, no extra fields");
       continue;
     }
-    if (files.has(batch.name)) error(path+".name","duplicate file name");
-    else files.add(batch.name);
+    // Review outputs must not depend on case-sensitive vs. case-insensitive
+    // filesystem behavior. Treat names differing only by case as ambiguous.
+    const filenameKey = batch.name.toLowerCase();
+    if (files.has(filenameKey)) error(path+".name","duplicate file name (case-insensitive)");
+    else files.add(filenameKey);
     const plan = batch.plan;
     const check = validator(plan, tokenomics, {requireProposal:options.requireProposal === true});
     if (!check || check.valid !== true) {
