@@ -13,6 +13,11 @@ export MOCK_LOG="$work/tool-calls" MOCK_FAIL_STAGE=''
 cat > "$work/bin/npm" <<'MOCK'
 #!/usr/bin/env bash
 printf 'npm %s\n' "$*" >> "$MOCK_LOG"
+# No inherited Foundry/Dapptools config may reach any verification process.
+for unsafe_override in "${!FOUNDRY_@}" "${!DAPP_@}"; do
+  echo 'FAIL: inherited Foundry/Dapp override reached a tool' >&2
+  exit 90
+done
 [[ -z "${NODE_OPTIONS:-}" && -z "${npm_config_node_options:-}" && -z "${NPM_CONFIG_NODE_OPTIONS:-}" ]] || exit 89
 [[ -z "${ETH_RPC_URL:-}" && -z "${ARBITRUM_SEPOLIA_RPC_URL:-}" && -z "${FOUNDRY_ACCOUNT:-}" ]] || exit 81
 [[ "$*" == '--node-options= --script-shell=/bin/sh --ignore-scripts run test:offline' ]] || exit 82
@@ -21,6 +26,11 @@ MOCK
 cat > "$work/bin/forge" <<'MOCK'
 #!/usr/bin/env bash
 printf 'forge %s\n' "$*" >> "$MOCK_LOG"
+# No inherited Foundry/Dapptools config may reach any verification process.
+for unsafe_override in "${!FOUNDRY_@}" "${!DAPP_@}"; do
+  echo 'FAIL: inherited Foundry/Dapp override reached a tool' >&2
+  exit 90
+done
 [[ " $* " == *' --offline '* ]] || exit 87
 [[ -z "${ETH_RPC_URL:-}" && -z "${ARBITRUM_SEPOLIA_RPC_URL:-}" && -z "${FOUNDRY_ACCOUNT:-}" ]] || exit 83
 case "$*" in
@@ -36,6 +46,11 @@ MOCK
 cat > "$work/bin/node" <<'MOCK'
 #!/usr/bin/env bash
 printf 'node %s\n' "$*" >> "$MOCK_LOG"
+# No inherited Foundry/Dapptools config may reach any verification process.
+for unsafe_override in "${!FOUNDRY_@}" "${!DAPP_@}"; do
+  echo 'FAIL: inherited Foundry/Dapp override reached a tool' >&2
+  exit 90
+done
 [[ -z "${NODE_OPTIONS:-}" && -z "${npm_config_node_options:-}" && -z "${NPM_CONFIG_NODE_OPTIONS:-}" ]] || exit 88
 [[ -z "${ETH_RPC_URL:-}" && -z "${ARBITRUM_SEPOLIA_RPC_URL:-}" && -z "${FOUNDRY_ACCOUNT:-}" ]] || exit 85
 case "${1:-}" in
@@ -78,6 +93,13 @@ export FOUNDRY_ACCOUNT='fake-key'
 export npm_config_ignore_scripts=false
 export npm_config_script_shell='/tmp/untrusted-shell' NPM_CONFIG_SCRIPT_SHELL='/tmp/untrusted-shell'
 export NODE_OPTIONS='--trace-warnings' npm_config_node_options='--trace-deprecation' NPM_CONFIG_NODE_OPTIONS='--no-warnings'
+# Test config-key overrides that Foundry would otherwise honor after TOML review.
+# These are synthetic hostile values; never insert real wallet/RPC credentials.
+export FOUNDRY_PROFILE='unreviewed-profile' FOUNDRY_CONFIG='/tmp/unreviewed.toml'
+export FOUNDRY_FUZZ_RUNS='1' FOUNDRY_INVARIANT_RUNS='1'
+export FOUNDRY_FFI='true' FOUNDRY_SRC='untrusted-contracts'
+export DAPP_TEST_FUZZ_RUNS='1' DAPP_FFI='true' DAPP_REMAPPINGS='untrusted/'
+
 
 expect_stage_failure() {
   local stage="$1" last="$2" forbidden="$3"
@@ -122,6 +144,11 @@ grep -Fxq 'forge test --offline -vv' "$MOCK_LOG"
 grep -Fxq 'forge test --offline --match-contract SpicaCashInvariantTest -vv' "$MOCK_LOG"
 grep -Fq 'node scripts/check-foundry-invariants.mjs ' "$MOCK_LOG"
 grep -Fq 'PASS: local offline + Solidity' "$work/output"
+# Confirm that sanitization is active across the successful mocked pipeline.
+# All three tool mocks reject every inherited FOUNDRY_* and DAPP_* variable.
+if grep -Fq 'inherited Foundry/Dapp override' "$work/output"; then
+  echo 'FAIL: Foundry environment override was not sanitized' >&2; exit 1
+fi
 if grep -Fq 'SECRET_VALUE' "$work/output" || grep -Eq '^forge (create|script|broadcast)' "$MOCK_LOG"; then
   echo 'FAIL: leaked token or attempted deployment' >&2; exit 1
 fi

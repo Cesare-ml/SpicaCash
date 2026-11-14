@@ -21,6 +21,15 @@ command -v forge >/dev/null || { echo 'FAIL: Foundry forge is not installed; Sol
 # Do not let inherited RPC/wallet env vars cause a fork or real testnet action.
 unset ETH_RPC_URL ARBITRUM_SEPOLIA_RPC_URL FOUNDRY_FORK_URL FOUNDRY_RPC_URL
 unset SPICA_CONFIRM_TESTNET_DEPLOY FOUNDRY_ACCOUNT
+# Foundry accepts FOUNDRY_* and DAPP_* environment overrides with precedence
+# over foundry.toml. Inherited flags could weaken fuzz runs, switch profiles,
+# enable FFI or redirect source/dependency paths despite the config preflight.
+# Clear ALL matching variable names using Bash builtins, without printing any
+# potentially sensitive values or spawning a tool before the safety checks.
+for foundry_override in "${!FOUNDRY_@}" "${!DAPP_@}"; do
+  unset "$foundry_override"
+done
+unset foundry_override
 export NO_COLOR=1
 
 # Check package scripts, install policy and tarball integrity *before* npm can

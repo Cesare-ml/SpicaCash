@@ -97,6 +97,12 @@ The project previously blocked npm lifecycle hooks but did not clear inherited `
 
 **Residual trust boundary:** these controls do not defend against a hostile PATH, modified Node/npm/Bash binaries, or environment startup facilities such as `BASH_ENV`. Use a clean, trusted machine. **Solidity compilation and actual Foundry test runs are still blocked** because `forge`, `solc` and the Solidity dependency are not installed here; passing offline tests does not authorize testnet or mainnet deployment.
 
+### Inherited Foundry configuration is not trusted
+
+Foundry reads `FOUNDRY_*` and `DAPP_*` environment variables as configuration overrides, often taking precedence over the checked-in `foundry.toml`. A clean local verification must not permit inherited values to reduce fuzz/invariant campaigns, change source paths or profiles, or enable test FFI. The guarded `bash scripts/verify-local.sh` entrypoint clears these prefixes, in addition to sensitive RPC/account variables, **before** running the policy preflights and offline Forge commands. The mocked verification regression injects synthetic hostile overrides and refuses to pass if they reach Node, npm or Forge. No variable values are logged.
+
+This is an environment hardening measure, **not** a verification of Foundry's global configuration, shell startup environment, machine trust, compiler authenticity, or test results. A complete clean-checkout real Forge run remains required before any launch decision.
+
 ## One-command local Solidity verification gate
 
 On a machine with Node.js 20+, Bash (WSL2 on Windows), Foundry, a **preinstalled local Solidity compiler 0.8.24**, and locally installed `@openzeppelin/contracts@5.4.0`, run:
