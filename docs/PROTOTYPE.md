@@ -2,7 +2,7 @@
 
 **Status: experimental, not audited, not deployed.**
 
-**Latest offline verification (14 November 2026): 161/161 checks passed together**, including four new inherited Node-option injection checks. This is not a Solidity compilation or a security audit; Foundry/solc remain unavailable in the execution environment. This source code must not be represented as a live VirgoStars cryptocurrency.
+**Latest offline verification (14 November 2026): 163/163 checks passed together**, including six Node/npm environment injection checks (four preload and two script-shell cases). This is not a Solidity compilation or a security audit; Foundry/solc remain unavailable in the execution environment. This source code must not be represented as a live VirgoStars cryptocurrency.
 
 ## Contract
 
@@ -66,6 +66,22 @@ bash scripts/verify-local.sh
 **Observed results:** dependency policy check PASS; the single `npm --ignore-scripts run test:offline` invocation exited **0** with **157/157** checks passed, split into 38 dependency-lock Node tests, 21 synthetic ABI Node tests, 15 mocked deployment guards, 18 RPC URL Node tests, 8 mocked RPC integration tests, 34 synthetic invariant-evidence Node tests, 10 mocked local verification gates, 8 Foundry-console-format tests, and 5 dependency bootstrap checks. There were **zero failing tests** and no RPC calls or signing operations. The local test log was inspected group by group.
 
 **Blocked separately:** `bash scripts/verify-local.sh` returned exit code **2** with the explicit message that Foundry `forge` is not installed. Solidity compilation, runtime ERC-20 tests, real fuzz/invariant campaigns, the *compiled* ABI, and verification of actual deployed bytecode remain **unverified**. Neither `@openzeppelin/contracts` nor compiler binaries were downloaded for this exercise. This offline suite is **not** an audit or authorization to issue a token.
+
+### npm script-shell injection guard — 14 November 2026
+
+Setting `npm_config_script_shell=/path/to/untrusted/executable` selects a different shell for an explicitly requested `npm run` command. **`--ignore-scripts` only blocks lifecycle hooks: it does not protect the named script from this setting.** A local npm 10.9.2 probe with a harmless marker-writing executable reproduced execution of the inherited shell.
+
+The local Solidity verification gate now invokes:
+
+```bash
+npm --node-options='' --script-shell=/bin/sh --ignore-scripts run test:offline
+```
+
+`--script-shell=/bin/sh` overrides inherited npm configuration and pins the shell used to execute the reviewed scripts, on the intended Linux/WSL2 environment. The existing mocked verification gate checks the exact flag. Two additional cases in `test/shell/node-env-guard.test.sh` demonstrate the unsafe behavior without the flag and successful suppression with the flag using **real npm** and a dependency-free local fixture.
+
+**Executed:** Complete `test:offline` suite, **163/163 passed** in one invocation, exit 0, using source bytes matched to GitHub. Log SHA-256: `1d55c64b834d6ac918d900e9f0a1049052963b071f122e1ab9d5f2b3fdb56a2c`. No real `forge` or Solidity compiler was available; this is not a contract audit or deployment authorization.
+
+**Remaining trust boundary:** This protects only npm's choice of script interpreter; it cannot prevent a compromised `/bin/sh`, hostile PATH or startup environment, or a maliciously modified executable. Run verification in a trusted machine/VM. All Solidity build and invariant gates are still pending a real Foundry installation.
 
 ### Node preload and npm environment hardening — 14 November 2026
 
