@@ -14,7 +14,7 @@ cat > "$work/bin/npm" <<'MOCK'
 #!/usr/bin/env bash
 printf 'npm %s\n' "$*" >> "$MOCK_LOG"
 [[ -z "${ETH_RPC_URL:-}" && -z "${ARBITRUM_SEPOLIA_RPC_URL:-}" && -z "${FOUNDRY_ACCOUNT:-}" ]] || exit 81
-[[ "$*" == 'run test:offline' ]] || exit 82
+[[ "$*" == '--ignore-scripts run test:offline' ]] || exit 82
 [[ "${MOCK_FAIL_STAGE:-}" != 'offline' ]] || exit 41
 MOCK
 cat > "$work/bin/forge" <<'MOCK'
@@ -37,6 +37,7 @@ cat > "$work/bin/node" <<'MOCK'
 printf 'node %s\n' "$*" >> "$MOCK_LOG"
 [[ -z "${ETH_RPC_URL:-}" && -z "${ARBITRUM_SEPOLIA_RPC_URL:-}" && -z "${FOUNDRY_ACCOUNT:-}" ]] || exit 85
 case "${1:-}" in
+  scripts/check-dependency-lock.mjs) [[ "${MOCK_FAIL_STAGE:-}" != 'policy' ]] || exit 47 ;;
   scripts/check-abi.mjs) [[ "${MOCK_FAIL_STAGE:-}" != 'abi' ]] || exit 45 ;;
   scripts/check-foundry-invariants.mjs) [[ "${MOCK_FAIL_STAGE:-}" != 'evidence' ]] || exit 46 ;;
   *) exit 86 ;;
@@ -67,10 +68,11 @@ grep -Fq 'OpenZeppelin contracts dependency missing' "$work/output"
 pass=$((pass+1))
 mv "$work/no-dependency" "$work/project/node_modules/@openzeppelin/contracts/token/ERC20/ERC20.sol"
 
-# Deliberately preload RPC/account variables: the gate must strip them.
+# Deliberately preload RPC/account variables and an npm config override.
 export ETH_RPC_URL='https://rpc.example.test/SECRET_VALUE'
 export ARBITRUM_SEPOLIA_RPC_URL='https://rpc.example.test/SECRET_VALUE'
 export FOUNDRY_ACCOUNT='fake-key'
+export npm_config_ignore_scripts=false
 
 expect_stage_failure() {
   local stage="$1" last="$2" forbidden="$3"
@@ -88,7 +90,8 @@ expect_stage_failure() {
   fi
   pass=$((pass+1))
 }
-expect_stage_failure offline 'npm run test:offline' 'forge build --offline --force'
+expect_stage_failure policy 'node scripts/check-dependency-lock.mjs' 'npm --ignore-scripts run test:offline'
+expect_stage_failure offline 'npm --ignore-scripts run test:offline' 'forge build --offline --force'
 expect_stage_failure build 'forge build --offline --force' 'node scripts/check-abi.mjs'
 expect_stage_failure abi 'node scripts/check-abi.mjs' 'forge test --offline -vv'
 expect_stage_failure tests 'forge test --offline -vv' 'forge test --offline --match-contract SpicaCashInvariantTest -vv'
@@ -103,8 +106,9 @@ fi
 : > "$MOCK_LOG"
 export MOCK_FAIL_STAGE=''
 bash "$work/project/scripts/verify-local.sh" > "$work/output" 2>&1
-[[ $(wc -l < "$MOCK_LOG") -eq 6 ]] || { cat "$MOCK_LOG" >&2; exit 1; }
-grep -Fxq 'npm run test:offline' "$MOCK_LOG"
+[[ $(wc -l < "$MOCK_LOG") -eq 7 ]] || { cat "$MOCK_LOG" >&2; exit 1; }
+grep -Fxq 'node scripts/check-dependency-lock.mjs' "$MOCK_LOG"
+grep -Fxq 'npm --ignore-scripts run test:offline' "$MOCK_LOG"
 grep -Fxq 'forge build --offline --force' "$MOCK_LOG"
 grep -Fxq 'node scripts/check-abi.mjs' "$MOCK_LOG"
 grep -Fxq 'forge test --offline -vv' "$MOCK_LOG"
