@@ -2,19 +2,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
-import { planOfflineNodeSteps, runOfflineNodeSteps } from '../../scripts/run-offline-node.mjs';
+import { REQUIRED_TEST_SUITES, planOfflineNodeSteps, runOfflineNodeSteps } from '../../scripts/run-offline-node.mjs';
 
 const dirent = (name, regular = true) => ({ name, isFile: () => regular });
+const fullEntries = () => REQUIRED_TEST_SUITES.map(name => dirent(name));
 
 test('discovers all regular Node tests in deterministic order and includes four draft checks', () => {
   const root = join('test-root');
   const plan = planOfflineNodeSteps(root, [
-    dirent('z.test.mjs'), dirent('notes.txt'), dirent('a.test.mjs'),
+    ...fullEntries(), dirent('z-new.test.mjs'), dirent('notes.txt'),
   ]);
   assert.equal(plan.length, 5);
   assert.deepEqual(plan[0].args, ['--test', '--test-concurrency=4',
-    join(root, 'test', 'node', 'a.test.mjs'),
-    join(root, 'test', 'node', 'z.test.mjs')]);
+    ...[...REQUIRED_TEST_SUITES, 'z-new.test.mjs'].sort()
+      .map(name => join(root, 'test', 'node', name))]);
   assert.deepEqual(plan.slice(1).map(step => step.label), [
     'tokenomics draft', 'contributor grants draft',
     'grant batches draft', 'grant manifest draft']);
@@ -22,12 +23,17 @@ test('discovers all regular Node tests in deterministic order and includes four 
 
 test('refuses missing tests and disguised test directories', () => {
   assert.throws(() => planOfflineNodeSteps('repo', []), /no Node test files/);
-  assert.throws(() => planOfflineNodeSteps('repo', [dirent('a.test.mjs', false)]),
-    /regular files/);
+  assert.throws(() => planOfflineNodeSteps('repo', [
+    ...fullEntries(), dirent('extra.test.mjs', false)]), /regular files/);
+  assert.throws(() => planOfflineNodeSteps('repo', [
+    ...fullEntries().filter(entry => entry.name !== 'tokenomics.test.mjs')]),
+    /missing required Node test suites: tokenomics\.test\.mjs/);
+  assert.throws(() => planOfflineNodeSteps('repo', [dirent('tokenomics.test.mjs')]),
+    /missing required Node test suites/);
 });
 
 test('runs every step without a shell and reports success only after all steps', () => {
-  const plan = planOfflineNodeSteps('repo', [dirent('core.test.mjs')]);
+  const plan = planOfflineNodeSteps('repo', fullEntries());
   const calls = [];
   const response = runOfflineNodeSteps('repo', plan, (bin, args, options) => {
     calls.push({ bin, args, options });
@@ -40,7 +46,7 @@ test('runs every step without a shell and reports success only after all steps',
 });
 
 test('stops immediately on a failed Node step and cannot print success', () => {
-  const plan = planOfflineNodeSteps('repo', [dirent('core.test.mjs')]);
+  const plan = planOfflineNodeSteps('repo', fullEntries());
   let count = 0;
   const response = runOfflineNodeSteps('repo', plan, () => {
     count++;
@@ -51,7 +57,7 @@ test('stops immediately on a failed Node step and cannot print success', () => {
 });
 
 test('aborted child processes fail closed', () => {
-  const plan = planOfflineNodeSteps('repo', [dirent('core.test.mjs')]);
+  const plan = planOfflineNodeSteps('repo', fullEntries());
   const response = runOfflineNodeSteps('repo', plan, () => ({ status: null, signal: 'SIGTERM' }));
   assert.deepEqual(response, { ok: false, failed: 'all Node regression tests' });
 });
