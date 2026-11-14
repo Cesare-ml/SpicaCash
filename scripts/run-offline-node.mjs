@@ -18,7 +18,10 @@ const DRAFT_CHECKS = [
 export const REQUIRED_NODE_TESTS = Object.freeze([
   'abi-check.test.mjs',
   'contributor-grants.test.mjs',
+  'dependency-lock.test.mjs',
   'distinct-batch-files.test.mjs',
+  'foundry-evidence.test.mjs',
+  'foundry-format.test.mjs',
   'grant-batches.test.mjs',
   'grant-inventory.test.mjs',
   'grant-manifest.test.mjs',
@@ -27,12 +30,19 @@ export const REQUIRED_NODE_TESTS = Object.freeze([
   'proposal-cli-integration.test.mjs',
   'read-small-file.test.mjs',
   'review-json-manifest.test.mjs',
+  'rpc-url.test.mjs',
   'strict-cli-json.test.mjs',
   'tokenomics.test.mjs',
 ]);
 
 export function planOfflineNodeSteps(root, entries) {
   if (!Array.isArray(entries)) throw new Error('test directory entries required');
+  // A case-variant suffix is silently skipped on some platforms; fail closed.
+  const noncanonical = entries.find(entry => /\.test\.mjs$/i.test(entry.name) &&
+    !entry.name.endsWith('.test.mjs'));
+  if (noncanonical) {
+    throw new Error('Node test filenames must use lowercase .test.mjs: ' + noncanonical.name);
+  }
   const tests = entries.filter(entry => entry.name.endsWith('.test.mjs'));
   if (tests.some(entry => !entry.isFile())) {
     throw new Error('all .test.mjs entries must be regular files');
