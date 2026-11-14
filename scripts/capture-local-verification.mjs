@@ -68,6 +68,21 @@ function inputHashes(root) {
   return result;
 }
 
+// Git status can report an intentionally hidden assume-unchanged/skip-worktree
+// edit as clean. Cross-check each critical worktree file against the object
+// actually recorded at HEAD. Git supports both SHA-1 and SHA-256 object IDs.
+export function inputsMatchCommittedBlobs(root, run, env) {
+  for (const name of INPUTS) {
+    const committed = checkedText(run, 'git',
+      ['rev-parse', '--verify', 'HEAD:' + name], root, env);
+    const actual = checkedText(run, 'git',
+      ['hash-object', '--', name], root, env);
+    if (!/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(committed) ||
+        actual !== committed) return false;
+  }
+  return true;
+}
+
 function evidenceDirectory(root) {
   const directory = join(root, '.spica-evidence');
   if (existsSync(directory)) {
@@ -102,6 +117,9 @@ export function captureLocalVerification({
   if (dirty !== '') throw new Error('Checkout is dirty; refusing evidence capture');
 
   const hashes = inputHashes(project);
+  if (!inputsMatchCommittedBlobs(project, run, safeEnv)) {
+    throw new Error('Critical working files differ from committed Git blobs');
+  }
   const timestamp = now.toISOString();
   const forge = invoke(run, 'forge', ['--version'], { cwd: project, env: safeEnv });
   const forgeLine = forge.ok ? forge.output.split(/\r?\n/, 1)[0] : '';
@@ -122,7 +140,7 @@ export function captureLocalVerification({
   const afterHashes = inputHashes(project);
   const inputsStable = afterStatus === '' && INPUTS.every(
     name => hashes[name] === afterHashes[name]
-  );
+  ) && inputsMatchCommittedBlobs(project, run, safeEnv);
   const status = !inputsStable ? 'INVALIDATED'
     : !forge.ok ? 'BLOCKED' : verification.ok ? 'PASS' : 'FAIL';
   const record = {
