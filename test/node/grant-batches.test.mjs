@@ -149,3 +149,24 @@ test('CLI rejects unexpected options (without reading files)', () => {
   assert.equal(run.status,2);
   assert.match(run.stderr,/Usage:/);
 });
+
+test('direct batch reconciler refuses unsafe optional economics on empty drafts', () => {
+  for (const mutate of [
+    t => { t.deploymentApproved = true; },
+    t => { t.product.aiCreditConversionEnabled = true; },
+    t => { t.token.totalSupplyBaseUnits = '999'; }
+  ]) {
+    const t = economics();
+    mutate(t);
+    const result = check([{name:'empty.json',plan:clone(draft)}], t);
+    assert.equal(result.valid, false);
+    assert.match(result.errors.join('\n'), /tokenomics/);
+  }
+});
+
+test('direct batch reconciler accepts safe economics with empty drafts without proposing grants', () => {
+  const result = check([{name:'empty.json',plan:clone(draft)}], economics());
+  assert.equal(result.valid, true, result.errors.join('\n'));
+  assert.equal(result.proposalCount, 0);
+  assert.deepEqual(result.totals, {});
+});

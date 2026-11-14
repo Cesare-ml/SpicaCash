@@ -25,8 +25,8 @@ if (!file || invalid || tokenomicsFile?.startsWith('--')) {
   try {
     const grants = parseReviewJson(readSmallBytes(file));
     const tokenomics = tokenomicsFile === null ? null : parseReviewJson(readSmallBytes(tokenomicsFile));
-    // Do not silently accept a malformed companion plan when grants are draft.
-    // validateContributorGrants only needs economics for nonempty proposals.
+    // Defense in depth: reject unsafe economics at the CLI boundary too.
+    // The exported grant validator independently checks companions on drafts.
     const economicsCheck = tokenomics === null ? null : validateTokenomics(tokenomics);
     const report = economicsCheck !== null && !economicsCheck.valid
       ? { valid: false, errors: economicsCheck.errors.map(e => 'tokenomics.' + e) }

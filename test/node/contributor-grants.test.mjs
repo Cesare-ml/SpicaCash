@@ -151,3 +151,33 @@ test('CLI validates two synthetic local JSON files without execution', () => {
     rmSync(folder, { recursive: true, force: true });
   }
 });
+
+test('direct grants validator checks unsafe economics even on an empty draft', () => {
+  for (const [field, mutate] of [
+    ['deploymentApproved', t => { t.deploymentApproved = true; }],
+    ['product.aiCreditConversionEnabled', t => { t.product.aiCreditConversionEnabled = true; }],
+    ['product.tokenSalesEnabled', t => { t.product.tokenSalesEnabled = true; }],
+    ['allocations', t => { t.token.totalSupplyBaseUnits = '999'; }]
+  ]) {
+    const t = syntheticTokenomics();
+    mutate(t);
+    const result = validateContributorGrants(draft, t);
+    assert.equal(result.valid, false, field);
+    assert.match(result.errors.join('\n'), /tokenomics/);
+    assert.match(result.errors.join('\n'), new RegExp(field.replace('.', '\\.') + '|allocation sum'));
+  }
+});
+
+test('direct grants validator accepts valid companion economics for a review-only draft', () => {
+  const result = validateContributorGrants(draft, syntheticTokenomics());
+  assert.equal(result.valid, true, result.errors.join('\n'));
+  assert.equal(result.proposedBaseUnits, undefined);
+});
+
+test('direct grants validator refuses unvalidated draft economics with populated allocations', () => {
+  const t = syntheticTokenomics();
+  t.status = 'draft';
+  const result = validateContributorGrants(draft, t);
+  assert.equal(result.valid, false);
+  assert.match(result.errors.join('\n'), /tokenomics.*draft must/);
+});
