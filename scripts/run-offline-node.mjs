@@ -13,6 +13,24 @@ const DRAFT_CHECKS = [
   ['grant manifest draft', 'check-grant-manifest.mjs', 'grant-batches.draft.manifest.json'],
 ];
 
+// A missing baseline regression suite must not turn a partial checkout green.
+// New .test.mjs suites are still discovered automatically.
+export const REQUIRED_TEST_SUITES = Object.freeze([
+  'abi-check.test.mjs',
+  'contributor-grants.test.mjs',
+  'distinct-batch-files.test.mjs',
+  'grant-batches.test.mjs',
+  'grant-inventory.test.mjs',
+  'grant-manifest.test.mjs',
+  'offline-node-runner.test.mjs',
+  'parse-review-json.test.mjs',
+  'proposal-cli-integration.test.mjs',
+  'read-small-file.test.mjs',
+  'review-json-manifest.test.mjs',
+  'strict-cli-json.test.mjs',
+  'tokenomics.test.mjs',
+]);
+
 export function planOfflineNodeSteps(root, entries) {
   if (!Array.isArray(entries)) throw new Error('test directory entries required');
   const tests = entries.filter(entry => entry.name.endsWith('.test.mjs'));
@@ -21,6 +39,9 @@ export function planOfflineNodeSteps(root, entries) {
   }
   const names = tests.map(entry => entry.name).sort();
   if (names.length === 0) throw new Error('no Node test files found; refusing partial verification');
+  const found = new Set(names);
+  const missing = REQUIRED_TEST_SUITES.filter(name => !found.has(name));
+  if (missing.length) throw new Error('missing required Node test suites: ' + missing.join(', '));
   return [
     { label: 'all Node regression tests', args: ['--test', '--test-concurrency=4',
       ...names.map(name => join(root, 'test', 'node', name))] },
