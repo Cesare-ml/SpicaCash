@@ -43,6 +43,13 @@ function mockedCommands(root, { dirty = '', forge = true, gate = 0, wrongRoot = 
     assert.equal(options.env.ETH_RPC_URL, undefined);
     assert.equal(options.env.FOUNDRY_PROFILE, undefined);
     assert.equal(options.env.DAPP_TEST_FUZZ_RUNS, undefined);
+    for (const key of Object.keys(options.env)) {
+      assert.doesNotMatch(key, /^(?:FOUNDRY_|DAPP_|GIT_|NPM_CONFIG_|NODE_|BASH_FUNC_|LD_|DYLD_)/i,
+        'untrusted override reached ' + command + ': ' + key);
+    }
+    for (const key of ['BASH_ENV', 'ENV', 'CDPATH', 'SHELLOPTS', 'BASHOPTS']) {
+      assert.equal(options.env[key], undefined, 'unsafe shell startup ' + key);
+    }
     if (command === 'git') {
       const subcommand = args.slice(0, 2).join(' ');
       if (subcommand === 'rev-parse --show-toplevel') {
@@ -77,7 +84,25 @@ const poisonedEnv = Object.freeze({
   FOUNDRY_FUZZ_RUNS: '1',
   DAPP_TEST_FUZZ_RUNS: '1',
   FOUNDRY_ACCOUNT: 'SECRET',
-  SPICA_CONFIRM_TESTNET_DEPLOY: 'YES_ARBITRUM_SEPOLIA_ONLY'
+  SPICA_CONFIRM_TESTNET_DEPLOY: 'YES_ARBITRUM_SEPOLIA_ONLY',
+  BASH_ENV: '/tmp/evil-shell-bootstrap',
+  ENV: '/tmp/evil-shell-env',
+  CDPATH: '/tmp/unsafe-cd',
+  SHELLOPTS: 'extdebug',
+  BASHOPTS: 'extglob',
+  'BASH_FUNC_node%%': '() { echo unexpected; }',
+  GIT_DIR: '/tmp/other-repo/.git',
+  GIT_WORK_TREE: '/tmp/other-repo',
+  GIT_INDEX_FILE: '/tmp/other-index',
+  GIT_CONFIG_COUNT: '1',
+  GIT_CONFIG_KEY_0: 'core.hooksPath',
+  GIT_CONFIG_VALUE_0: '/tmp/fake-hooks',
+  npm_config_script_shell: '/tmp/fake-shell',
+  NPM_CONFIG_SCRIPT_SHELL: '/tmp/fake-shell',
+  NODE_PATH: '/tmp/fake-modules',
+  LD_PRELOAD: '/tmp/fake-inject.so',
+  LD_LIBRARY_PATH: '/tmp/fake-libs',
+  DYLD_INSERT_LIBRARIES: '/tmp/fake-inject.dylib'
 });
 
 test('cleans inherited injection/network/signing environment without echoing values', () => {
@@ -86,6 +111,28 @@ test('cleans inherited injection/network/signing environment without echoing val
   assert.equal(safe.NO_COLOR, '1');
   for (const key of Object.keys(poisonedEnv)) {
     if (key !== 'PATH') assert.equal(safe[key], undefined, key);
+  }
+});
+
+test('preserves ordinary tool lookup but drops mixed-case child environment overrides', () => {
+  const source = {
+    PATH: '/trusted/bin', HOME: '/home/example', TEMP: '/tmp/example',
+    LANG: 'C.UTF-8', DISPLAY: ':0',
+    git_config_count: '1', Git_Work_Tree: '/tmp/other',
+    Npm_Config_Script_Shell: '/tmp/untrusted', Node_Path: '/tmp/injected',
+    'bAsH_FuNc_git%%': '() { echo malicious; }', dYlD_insert_libraries: '/tmp/lib.dylib',
+    ld_preload: '/tmp/inject.so', DaPp_FfI: 'true',
+    FOUNDRY_PROFILE: 'unreviewed', BASH_ENV: '/tmp/startup'
+  };
+  const actual = cleanVerificationEnv(source);
+  assert.equal(actual.PATH, source.PATH);
+  assert.equal(actual.HOME, source.HOME);
+  assert.equal(actual.TEMP, source.TEMP);
+  assert.equal(actual.LANG, source.LANG);
+  assert.equal(actual.DISPLAY, source.DISPLAY);
+  assert.equal(actual.NO_COLOR, '1');
+  for (const key of Object.keys(source).slice(5)) {
+    assert.equal(actual[key], undefined, 'untrusted key survived: ' + key);
   }
 });
 
