@@ -260,7 +260,7 @@ test('manifest refuses hard-linked aliases of one hashed batch (loader and CLI)'
   try {
     linkSync(join(f.dir, 'grant.json'), join(f.dir, 'other.json'));
   } catch (err) {
-    if (['EPERM', 'EACCES', 'ENOTSUP', 'EOPNOTSUPP'].includes(err.code)) {
+    if (['EPERM', 'EACCES', 'ENOTSUP', 'EOPNOTSUPP', 'ENOSYS'].includes(err.code)) {
       t.skip('hard links not supported on this filesystem'); return;
     }
     throw err;
@@ -284,4 +284,8 @@ test('manifest permits two independent files with identical valid draft bytes', 
   const report = loadGrantManifest(save(f.dir, f.data));
   assert.equal(report.valid, true, report.errors.join('\n'));
   assert.equal(report.batches.length, 2);
+  const cliReport = run(f.path);
+  assert.equal(cliReport.status, 0, cliReport.stderr);
+  assert.match(cliReport.stdout, /Verified batches: 2/);
+  assert.match(cliReport.stdout, /NOT approved for issuance/);
 });
