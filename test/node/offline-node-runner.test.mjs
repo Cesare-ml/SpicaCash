@@ -26,6 +26,18 @@ test('refuses missing tests and disguised test directories', () => {
     /regular files/);
 });
 
+test('fails closed on case-variant Node test suffixes', () => {
+  for (const misleading of ['hidden.test.MJS', 'hidden.TEST.mjs', 'hidden.Test.Mjs']) {
+    assert.throws(() => planOfflineNodeSteps('repo', [
+      dirent('visible.test.mjs'), dirent(misleading),
+    ]), /lowercase \.test\.mjs/);
+  }
+  // Ordinary note files are still allowed; case is relevant only for tests.
+  assert.equal(planOfflineNodeSteps('repo', [
+    dirent('visible.test.mjs'), dirent('README.MD'),
+  ]).length, 5);
+});
+
 test('runs every step without a shell and reports success only after all steps', () => {
   const plan = planOfflineNodeSteps('repo', [dirent('core.test.mjs')]);
   const calls = [];
