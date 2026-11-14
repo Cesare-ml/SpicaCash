@@ -17,6 +17,7 @@ const DRAFT_CHECKS = [
 // Additional *.test.mjs files are still discovered automatically.
 export const REQUIRED_NODE_TESTS = Object.freeze([
   'abi-check.test.mjs',
+  'browser-smoke-plan.test.mjs',
   'contributor-grants.test.mjs',
   'dependency-lock.test.mjs',
   'distinct-batch-files.test.mjs',
@@ -25,6 +26,7 @@ export const REQUIRED_NODE_TESTS = Object.freeze([
   'grant-batches.test.mjs',
   'grant-inventory.test.mjs',
   'grant-manifest.test.mjs',
+  'local-demo-viewer.test.mjs',
   'offline-node-runner.test.mjs',
   'parse-review-json.test.mjs',
   'proposal-cli-integration.test.mjs',
