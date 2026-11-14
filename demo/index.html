@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; form-action 'none'; base-uri 'none'">
+  <title>SpicaCash · Simulatore locale</title>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: #101321; color: #f0f2fa; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: radial-gradient(ellipse at 80% 0%, #252b50 0%, #101321 60%); }
+    main { width: min(1080px, calc(100% - 32px)); margin: 0 auto; padding: 42px 0 70px; }
+    .topline { color: #b3bcdb; font-size: 12px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+    header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 26px; }
+    h1 { font-size: clamp(32px, 5vw, 58px); line-height: 1.05; letter-spacing: -.05em; margin: 10px 0; }
+    h1 span { color: #b6e6c2; }
+    .lead { color: #aeb7d0; line-height: 1.55; max-width: 670px; margin: 8px 0 0; }
+    .offline { display: inline-block; border: 1px solid #3b694f; color: #b9f3c5; border-radius: 999px; padding: 8px 12px; font-size: 12px; font-weight: 750; white-space: nowrap; background: #182b25; }
+    .panel { border: 1px solid #353b55; border-radius: 20px; background: rgba(21, 25, 42, .94); padding: 24px; box-shadow: 0 18px 50px #080b1e3d; }
+    .section-title { font-size: 14px; font-weight: 750; color: #e0e4f2; margin: 0 0 14px; }
+    .cards { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 14px; margin-bottom: 18px; }
+    .card { padding: 22px; border: 1px solid #373f5b; border-radius: 18px; background: #1d2338; }
+    .card .label { color: #b5bfd7; font-size: 13px; }
+    .card .value { margin: 14px 0 6px; font-size: clamp(26px, 3.5vw, 39px); font-weight: 780; font-variant-numeric: tabular-nums; letter-spacing: -.04em; overflow-wrap: anywhere; }
+    .card .unit { font-size: 13px; color: #aeb8d3; }
+    .card:first-child .value { color: #c6f2cc; }
+    .card:nth-child(2) .value { color: #e2d5ff; }
+    .meter { height: 7px; background: #353b53; border-radius: 999px; overflow: hidden; margin: 17px 0; }
+    .meter > div { height: 100%; background: linear-gradient(90deg, #83cba0, #bfdfce); transition: width .2s ease; }
+    .stage-top { display: flex; justify-content: space-between; align-items: center; gap: 14px; color: #aeb8d3; font-size: 13px; }
+    .stage-title { font-size: 23px; margin: 6px 0; line-height: 1.25; }
+    .stage-copy { color: #abb7d3; min-height: 46px; line-height: 1.5; margin: 0; }
+    .buttons { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
+    button { border: 1px solid #66708d; border-radius: 12px; background: #2b334c; color: #fff; padding: 11px 18px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+    button.primary { border-color: #aeddbb; background: #b7e9c2; color: #15251c; }
+    button:hover:not(:disabled) { filter: brightness(1.1); }
+    button:focus-visible { outline: 3px solid #f9d28c; outline-offset: 3px; }
+    button:disabled { opacity: .38; cursor: not-allowed; }
+    .grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; margin-top: 18px; }
+    .ledger { list-style: none; padding: 0; margin: 0; }
+    .ledger li { display: flex; gap: 11px; border-top: 1px solid #303751; padding: 11px 0; align-items: flex-start; }
+    .ledger li:first-child { border-top: 0; padding-top: 0; }
+    .step-pill { min-width: 28px; height: 28px; border-radius: 50%; background: #39425f; display: inline-grid; place-items: center; font-size: 12px; font-weight: 700; color: #ecf2ff; }
+    .ledger li.rejected .step-pill { background: #613f42; }
+    .ledger strong { display: block; font-size: 14px; margin: 3px 0 4px; }
+    .ledger small { color: #abb7d3; display: block; line-height: 1.5; }
+    .data-line { display: flex; justify-content: space-between; gap: 14px; border-top: 1px solid #303751; padding: 13px 0; font-size: 14px; }
+    .data-line:first-of-type { border-top: 0; }
+    .data-line span:first-child { color: #abb7d3; }
+    .data-line strong { font-variant-numeric: tabular-nums; }
+    footer { margin-top: 22px; color: #aeb8cf; font-size: 12px; line-height: 1.65; }
+    @media(max-width: 700px) { header { flex-direction: column; } .cards { grid-template-columns: 1fr 1fr; } .cards .card:last-child { grid-column: 1/-1; } .grid { grid-template-columns: 1fr; } .panel { padding: 18px; } }
+    @media(max-width: 420px) { .cards { grid-template-columns: 1fr; } .cards .card:last-child { grid-column: auto; } main { width: calc(100% - 22px); padding-top: 20px; } }
+    @media(prefers-reduced-motion: reduce) { .meter > div { transition: none; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <div class="topline">SpicaCash / prototipo ERC-20</div>
+        <h1>Il tuo primo <span>SPICA</span></h1>
+        <p class="lead">Segui una simulazione guidata di trasferimenti e autorizzazioni. Tutti i saldi sono fittizi: nessun wallet, blockchain, server o denaro reale.</p>
+      </div>
+      <span class="offline">● 100% offline · dati di prova</span>
+    </header>
+
+    <section aria-label="Saldi simulati" class="cards">
+      <div class="card"><div class="label">Alice · wallet dimostrativo</div><div class="value" id="alice-balance">1.000</div><div class="unit">SPICA fittizi</div></div>
+      <div class="card"><div class="label">Bob · wallet dimostrativo</div><div class="value" id="bob-balance">0</div><div class="unit">SPICA fittizi</div></div>
+      <div class="card"><div class="label">Bob → Spender · autorizzazione</div><div class="value" id="allowance">0</div><div class="unit">SPICA spendibili da Spender</div></div>
+    </section>
+
+    <section class="panel" aria-label="Avanzamento simulazione">
+      <div class="stage-top"><span>Scenario guidato</span><span id="progress-text">Fase 1 di 6</span></div>
+      <div class="meter" role="progressbar" id="progress" aria-label="Avanzamento scenario" aria-valuemin="1" aria-valuemax="6" aria-valuenow="1"><div id="progress-fill" style="width:16.6667%"></div></div>
+      <h2 class="stage-title" id="step-title">Emissione iniziale simulata</h2>
+      <p class="stage-copy" id="step-detail">Alice riceve 1.000 SPICA fittizi per questa dimostrazione.</p>
+      <div class="buttons">
+        <button type="button" id="previous">← Indietro</button>
+        <button type="button" class="primary" id="next">Avanti →</button>
+        <button type="button" id="reset">Ricomincia</button>
+      </div>
+    </section>
+
+    <div class="grid">
+      <section class="panel" aria-label="Registro movimenti simulati">
+        <h2 class="section-title">Registro dei movimenti</h2>
+        <ol class="ledger" id="ledger" aria-live="polite"></ol>
+      </section>
+      <section class="panel" aria-label="Integrità della simulazione">
+        <h2 class="section-title">Controlli e proprietà</h2>
+        <div class="data-line"><span>Offerta totale fittizia</span><strong id="total-supply">1.000 SPICA</strong></div>
+        <div class="data-line"><span>Somma Alice + Bob</span><strong id="held-supply">1.000 SPICA</strong></div>
+        <div class="data-line"><span>Token creati dopo l'inizio</span><strong>0</strong></div>
+        <div class="data-line"><span>Stato dei controlli</span><strong id="checks">Coerente</strong></div>
+        <p class="lead" style="font-size:13px">Questo visualizzatore riproduce un esempio matematico. Il test Solidity separato in <code>test/SpicaCashLocalDemo.t.sol</code> verifica lo stesso scenario sulla EVM locale di Foundry; qui non viene eseguito alcun contratto.</p>
+      </section>
+    </div>
+    <footer>RICERCA / NESSUN TOKEN UFFICIALE EMESSO. Questo file HTML non contiene RPC, richieste di rete, chiavi, funzioni di firma, quotazioni o trading. Le quantità non rappresentano la supply o la tokenomics approvate.</footer>
+  </main>
+
+  <script id="spica-local-logic">
+    "use strict";
+    const UNIT = 10n ** 18n;
+    const TOTAL = 1000n * UNIT;
+    const SCENARIO = Object.freeze([
+      { type: "mint", title: "Emissione iniziale simulata", detail: "Alice riceve 1.000 SPICA fittizi per questa dimostrazione.", movement: "Creazione di prova: 1.000 a Alice" },
+      { type: "transfer", title: "Alice invia 125 SPICA", detail: "Alice trasferisce 125 token a Bob, senza commissioni.", movement: "Alice → Bob: 125 SPICA" },
+      { type: "approve", title: "Bob autorizza 20 SPICA", detail: "Bob consente a Spender di prelevare fino a 20 SPICA dal suo saldo.", movement: "Bob → Spender: approvazione di 20" },
+      { type: "pull", title: "Spender trasferisce 7 SPICA", detail: "Spender sposta 7 SPICA da Bob verso Alice. L'autorizzazione residua scende a 13.", movement: "Bob → Alice tramite Spender: 7 SPICA" },
+      { type: "revoke", title: "Bob revoca l'autorizzazione", detail: "Bob imposta a zero quanto Spender può ancora prelevare.", movement: "Bob → Spender: revoca dell'autorizzazione" },
+      { type: "rejected", title: "Tentativo rifiutato", detail: "Spender prova a prelevare un altro SPICA: la simulazione rifiuta l'operazione e i saldi restano invariati.", movement: "Prelievo non autorizzato: rifiutato" }
+    ]);
+
+    function calculate(stepIndex) {
+      if (!Number.isInteger(stepIndex) || stepIndex < 0 || stepIndex >= SCENARIO.length) {
+        throw new RangeError("Fase non valida");
+      }
+      let alice = 0n, bob = 0n, allowance = 0n;
+      const history = [];
+      for (let i = 0; i <= stepIndex; i++) {
+        const action = SCENARIO[i];
+        if (action.type === "mint") {
+          alice = TOTAL;
+        } else if (action.type === "transfer") {
+          const amount = 125n * UNIT;
+          if (alice < amount) throw new Error("Saldo Alice insufficiente");
+          alice -= amount; bob += amount;
+        } else if (action.type === "approve") {
+          allowance = 20n * UNIT;
+        } else if (action.type === "pull") {
+          const amount = 7n * UNIT;
+          if (bob < amount || allowance < amount) throw new Error("Prelievo non valido");
+          bob -= amount; alice += amount; allowance -= amount;
+        } else if (action.type === "revoke") {
+          allowance = 0n;
+        } else if (action.type === "rejected") {
+          const amount = 1n * UNIT;
+          if (allowance >= amount && bob >= amount) throw new Error("Il prelievo dovrebbe essere rifiutato");
+        } else {
+          throw new Error("Azione sconosciuta");
+        }
+        if (alice < 0n || bob < 0n || allowance < 0n || alice + bob !== TOTAL) {
+          throw new Error("Invariante di conservazione violato");
+        }
+        history.push({ title: action.movement, rejected: action.type === "rejected" });
+      }
+      return { alice, bob, allowance, total: TOTAL, history, stage: SCENARIO[stepIndex] };
+    }
+
+    function formatTokens(baseUnits) {
+      const whole = (baseUnits / UNIT).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+      const decimals = (baseUnits % UNIT).toString().padStart(18, "0").replace(/0+$/, "");
+      return decimals ? whole + "," + decimals : whole;
+    }
+
+    if (typeof document !== "undefined") {
+      const byId = id => document.getElementById(id);
+      let stageIndex = 0;
+      function render() {
+        const state = calculate(stageIndex);
+        byId("alice-balance").textContent = formatTokens(state.alice);
+        byId("bob-balance").textContent = formatTokens(state.bob);
+        byId("allowance").textContent = formatTokens(state.allowance);
+        byId("total-supply").textContent = formatTokens(state.total) + " SPICA";
+        byId("held-supply").textContent = formatTokens(state.alice + state.bob) + " SPICA";
+        byId("checks").textContent = "Coerente";
+        byId("step-title").textContent = state.stage.title;
+        byId("step-detail").textContent = state.stage.detail;
+        byId("progress-text").textContent = "Fase " + (stageIndex + 1) + " di " + SCENARIO.length;
+        byId("progress").setAttribute("aria-valuenow", String(stageIndex + 1));
+        byId("progress-fill").style.width = (100 * (stageIndex + 1) / SCENARIO.length) + "%";
+        byId("previous").disabled = stageIndex === 0;
+        byId("next").disabled = stageIndex === SCENARIO.length - 1;
+        const ledger = byId("ledger");
+        ledger.replaceChildren();
+        state.history.forEach((entry, index) => {
+          const item = document.createElement("li");
+          if (entry.rejected) item.className = "rejected";
+          const number = document.createElement("span");
+          number.className = "step-pill";
+          number.textContent = String(index + 1);
+          const body = document.createElement("div");
+          const title = document.createElement("strong");
+          title.textContent = entry.title;
+          const description = document.createElement("small");
+          description.textContent = entry.rejected ? "Nessuna variazione dei saldi" : "Operazione dimostrativa";
+          body.append(title, description);
+          item.append(number, body);
+          ledger.append(item);
+        });
+      }
+      byId("previous").addEventListener("click", () => { if (stageIndex > 0) stageIndex--; render(); });
+      byId("next").addEventListener("click", () => { if (stageIndex < SCENARIO.length - 1) stageIndex++; render(); });
+      byId("reset").addEventListener("click", () => { stageIndex = 0; render(); });
+      render();
+    }
+  </script>
+</body>
+</html>
