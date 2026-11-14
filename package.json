@@ -1,0 +1,32 @@
+{
+  "name": "spicacash-contracts",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Experimental SpicaCash ERC-20 contracts (no production token deployed)",
+  "scripts": {
+    "build": "forge build && node scripts/check-abi.mjs",
+    "check:abi": "node scripts/check-abi.mjs",
+    "test": "forge test -vv",
+    "test:fuzz": "forge test --match-test testFuzz -vv",
+    "test:invariant": "forge test --match-test invariant_ -vv",
+    "test:abi-guard": "node --test test/node/abi-check.test.mjs",
+    "test:deploy-guard": "bash test/shell/deploy-guard.test.sh",
+    "test:offline": "npm run test:dependency-lock && npm run test:abi-guard && npm run test:deploy-guard && npm run test:rpc-url && npm run test:rpc-deploy-guard && npm run test:foundry-evidence && npm run test:local-gate && npm run test:foundry-format && npm run test:bootstrap && npm run test:node-env",
+    "test:rpc-url": "node --test test/node/rpc-url.test.mjs",
+    "test:rpc-deploy-guard": "bash test/shell/rpc-url-guard.test.sh",
+    "test:foundry-evidence": "node --test test/node/foundry-evidence.test.mjs",
+    "check:foundry-invariants": "node scripts/check-foundry-invariants.mjs",
+    "verify:local": "bash scripts/verify-local.sh",
+    "test:local-gate": "bash test/shell/verify-local-guard.test.sh",
+    "test:foundry-format": "node --test test/node/foundry-format.test.mjs",
+    "test:dependency-lock": "node --test test/node/dependency-lock.test.mjs",
+    "test:bootstrap": "bash test/shell/bootstrap-deps.test.sh",
+    "test:node-env": "bash test/shell/node-env-guard.test.sh"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "5.4.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
