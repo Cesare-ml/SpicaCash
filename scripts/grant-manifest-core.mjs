@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { parseReviewJson } from './parse-review-json.mjs';
 import { lstatSync, realpathSync } from 'node:fs';
 import { readSmallBytes } from './read-small-file.mjs';
+import { assertDistinctBatchFiles } from './distinct-batch-files.mjs';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 
 const MAX_BATCHES = 64;
@@ -148,6 +149,17 @@ export function loadGrantManifest(manifestPath, options = {}) {
       result.batches.push({ name: e.name, plan: e.value });
     }
   });
+  // A manifest must not count one physical file twice under two approved
+  // path/hash entries. Symlink aliases are already denied by readEntry, but
+  // hard links have distinct canonical paths and can share one inode.
+  // This is best-effort on mutable/network filesystems, not an atomic snapshot.
+  if (errors.length === 0 && result.batches.length > 1) {
+    try {
+      assertDistinctBatchFiles(result.batches.map(batch => resolve(base, batch.name)));
+    } catch (err) {
+      failure('batches', 'physical file identity check failed: ' + err.message);
+    }
+  }
   if (manifest.status === 'proposal' && manifest.tokenomics === null) {
     failure('tokenomics', 'proposal requires a hashed tokenomics file');
   }
