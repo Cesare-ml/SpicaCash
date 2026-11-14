@@ -94,8 +94,15 @@ export function loadGrantManifest(manifestPath, options = {}) {
   if (!Array.isArray(manifest.batches) ||
       manifest.batches.length === 0 || manifest.batches.length > MAX_BATCHES) {
     failure('batches', 'expected 1 to 64 hashed batch files');
-    return result;
   }
+  if (manifest.status === 'proposal' && manifest.tokenomics === null) {
+    failure('tokenomics', 'proposal requires a hashed tokenomics file');
+  }
+  // Refuse malformed/unauthorized manifest headers before opening *any*
+  // manifest-selected grant or economics paths. A rejected header cannot
+  // meaningfully authorize further local reads, even in an unpinned review.
+  if (errors.length > 0) return result;
+
   const seen = new Set();
   const readEntry = (entry, where) => {
     if (!exactShape(entry, ['path', 'sha256'], where, errors)) return null;
@@ -149,9 +156,6 @@ export function loadGrantManifest(manifestPath, options = {}) {
       result.batches.push({ name: e.name, plan: e.value });
     }
   });
-  if (manifest.status === 'proposal' && manifest.tokenomics === null) {
-    failure('tokenomics', 'proposal requires a hashed tokenomics file');
-  }
   // Path uniqueness alone cannot catch distinct names for the same hard-linked
   // batch. Reuse the standalone review's physical-file identity guard after all
   // declared files have passed their individual digest and JSON checks.
