@@ -12,6 +12,9 @@ const requiredInvariants = [
 ];
 const handlerContract = 'SpicaCashInvariantHandler';
 const requiredSelectors = ['move', 'approve', 'pull'];
+// Forge run/call/revert counters are bounded to unsigned 64-bit decimal width.
+// Refuse oversized untrusted transcript numbers before constructing BigInts.
+const MAX_COUNTER_DIGITS = 20;
 const requiredSmoke = [
   'testInvariantTargetsOnlyTheHandler',
   'testInvariantHandlerExercisesTransferApprovalAndPull',
@@ -87,6 +90,10 @@ export function checkInvariantEvidence(raw) {
       errors.push(`${name}: expected exactly one passing invariant campaign with metrics`);
       continue;
     }
+    if (matches[0].slice(1).some(value => value.length > MAX_COUNTER_DIGITS)) {
+      errors.push(`${name}: invariant counter exceeds ${MAX_COUNTER_DIGITS} decimal digits`);
+      continue;
+    }
     const [runs, calls, reverts] = matches[0].slice(1).map(BigInt);
     if (runs < 64n) errors.push(`${name}: fewer than 64 invariant runs`);
     if (calls < 4096n) errors.push(`${name}: fewer than 4096 invariant calls`);
@@ -114,6 +121,10 @@ export function checkInvariantEvidence(raw) {
           !requiredSelectors.includes(row[1]) || entries.has(row[1]) ||
           !row.slice(2).every((value) => /^\d+$/.test(value))) {
         errors.push(`${name}: unexpected or malformed handler selector metrics row`);
+        continue;
+      }
+      if (row.slice(2).some(value => value.length > MAX_COUNTER_DIGITS)) {
+        errors.push(`${name}: handler selector counter exceeds ${MAX_COUNTER_DIGITS} decimal digits`);
         continue;
       }
       const [callsPerSelector, selectorReverts, discards] = row.slice(2).map(BigInt);

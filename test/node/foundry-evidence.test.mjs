@@ -47,6 +47,13 @@ rejected('all invariants must appear', s => s.replace('[PASS] invariant_NoTokens
 rejected('64-run minimum is enforced', s => s.replace('runs: 64', 'runs: 1'), /fewer than 64/);
 rejected('4096-call minimum is enforced', s => s.replace('calls: 4096', 'calls: 0'), /fewer than 4096/);
 rejected('nonzero revert is never accepted', s => s.replace('reverts: 0', 'reverts: 1'), /nonzero revert/);
+rejected('oversized invariant run counter is rejected before BigInt parsing',
+  s => s.replace('runs: 64', 'runs: ' + '9'.repeat(100_000)),
+  /invariant counter exceeds 20 decimal digits/);
+rejected('oversized invariant call counter is rejected before BigInt parsing',
+  s => s.replace('calls: 4096', 'calls: ' + '9'.repeat(100_000)),
+  /invariant counter exceeds 20 decimal digits/);
+
 rejected('an explicit failure overrides PASS markers', s => s + '\n[FAIL] testUnexpected()\n', /failing tests/);
 rejected('Forge success summary is required', s => s.replace('5 passed; 0 failed', '4 passed; 1 failed'), /success summary/);
 rejected('duplicate PASS markers are refused', s => s + '\n[PASS] invariant_TotalSupplyRemainsFixed() (runs: 64, calls: 4096, reverts: 0)\n', /exactly five passing markers/);
@@ -81,6 +88,13 @@ rejected('selector metrics moved to another campaign are rejected', s => {
 rejected('additional selector row cannot be included', s => s.replace('| pull     | 1296 | 0       | 0        |', '| pull     | 1296 | 0       | 0        |\n| SpicaCashInvariantHandler  | burn     | 1 | 0       | 0        |'), /expected exactly three handler selector metric rows/);
 rejected('missing metrics header cannot pass', s => s.replace('Contract                   | Selector | Calls | Reverts | Discards', 'Contract                   | Selector | Fake  | Reverts | Discards'), /expected exactly one Foundry selector metrics table/);
 rejected('selector columns with malformed numbers fail', s => s.replace('| move     | 1400 |', '| move     | NaN |'), /unexpected or malformed handler selector metrics row/);
+rejected('oversized selector call counter is rejected before BigInt parsing',
+  s => s.replace('| move     | 1400 |', '| move     | ' + '9'.repeat(100_000) + ' |'),
+  /handler selector counter exceeds 20 decimal digits/);
+rejected('oversized selector discard counter is rejected before BigInt parsing',
+  s => s.replace('| pull     | 1296 | 0       | 0', '| pull     | 1296 | 0       | ' + '9'.repeat(100_000)),
+  /handler selector counter exceeds 20 decimal digits/);
+
 
 test('box drawing vertical separators are accepted', () => {
   const output = fixture().replaceAll('|', '│');
