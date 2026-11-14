@@ -82,6 +82,25 @@ rejected('additional selector row cannot be included', s => s.replace('| pull   
 rejected('missing metrics header cannot pass', s => s.replace('Contract                   | Selector | Calls | Reverts | Discards', 'Contract                   | Selector | Fake  | Reverts | Discards'), /expected exactly one Foundry selector metrics table/);
 rejected('selector columns with malformed numbers fail', s => s.replace('| move     | 1400 |', '| move     | NaN |'), /unexpected or malformed handler selector metrics row/);
 
+// Numeric parsing remains bounded if a Forge transcript is corrupted.
+rejected('oversized invariant runs fail before BigInt conversion', s =>
+  s.replace('runs: 64', 'runs: ' + '9'.repeat(100000)), /excessively long invariant counter/);
+rejected('oversized invariant call count fails before BigInt conversion', s =>
+  s.replace('calls: 4096', 'calls: ' + '9'.repeat(100000)), /excessively long invariant counter/);
+rejected('oversized invariant revert counter fails before BigInt conversion', s =>
+  s.replace('reverts: 0)', 'reverts: ' + '9'.repeat(100000) + ')'), /excessively long invariant counter/);
+rejected('oversized selector call count fails before BigInt conversion', s =>
+  s.replace('| move     | 1400 |', '| move     | ' + '9'.repeat(100000) + ' |'),
+  /unexpected or malformed handler selector metrics row/);
+rejected('oversized selector revert counter fails before BigInt conversion', s =>
+  s.replace('| approve  | 1400 | 0       |',
+    '| approve  | 1400 | ' + '9'.repeat(100000) + ' |'),
+  /unexpected or malformed handler selector metrics row/);
+rejected('oversized selector discard counter fails before BigInt conversion', s =>
+  s.replace('| pull     | 1296 | 0       | 0',
+    '| pull     | 1296 | 0       | ' + '9'.repeat(100000)),
+  /unexpected or malformed handler selector metrics row/);
+
 test('box drawing vertical separators are accepted', () => {
   const output = fixture().replaceAll('|', '│');
   assert.equal(checkInvariantEvidence(output).valid, true);
