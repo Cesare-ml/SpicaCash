@@ -18,15 +18,15 @@ The contract deliberately has **no owner, no upgradeable proxy, no admin minting
 Install Node.js (20+) and [Foundry](https://getfoundry.sh/introduction/installation), including `forge` and `cast`. For Windows, WSL2 with Linux tooling is recommended.
 
 ```bash
-node scripts/check-dependency-lock.mjs
-npm ci --ignore-scripts --no-audit --no-fund
+bash scripts/bootstrap-deps.sh
 forge build
 forge test -vv
 forge test --match-test testFuzz -vv
 forge test --match-test invariant_ -vv
 forge test --match-contract SpicaCashInvariantTest -vv
 node scripts/check-abi.mjs
-npm run test:offline
+node scripts/check-dependency-lock.mjs
+npm --ignore-scripts run test:offline
 ```
 
 The project contains plain Solidity tests with no forge-std dependency. Unit tests check constructor errors, token metadata, transfer amount conservation, approvals (including max allowance), ERC-6093 revert selectors and zero-address transfers. Three fuzz tests cover supply conservation, delegated transfers and overspending.
@@ -39,7 +39,7 @@ After compilation, `scripts/check-abi.mjs` rejects any new external function bey
 
 **Validation status (2026-11-13):** **Complete PR #2 offline suite passed: 105/105 cases** using `npm run test:offline` in a manually reconstructed local source tree with the same package layout and Git blob SHA-1s as the GitHub PR, after correcting the test/shell RPC harness repository-root path. Results: ABI **21/21**, deploy guards **15/15**, RPC URL **18/18**, mocked RPC integration **8/8**, Foundry evidence parser (synthetic transcripts) **34/34**, local verification pipeline mocks **9/9**, zero failures, exit code 0. The RPC integration test also passed when invoked from an unrelated working directory. No real provider, signer, blockchain call, or broadcast was involved. This is **not a full Git clone/checkout** and **not** a Solidity build. `forge build`, Solidity unit/fuzz/invariant runs and compiled ABI inspection remain **unrun** here because Foundry, solc and npm dependency retrieval are unavailable. Do not report the smart contract as verified until the Solidity commands pass in a configured environment.
 
-**Foundry console table compatibility (2026-11-13):** A public Foundry report shows horizontal separator rows (`|-----+-----|`) between selector metrics entries (see [foundry-rs/foundry#12269](https://github.com/foundry-rs/foundry/issues/12269)). The earlier parser treated these rows as metrics and would reject a valid campaign. `scripts/check-foundry-invariants.mjs` now ignores **only pure ASCII/Unicode drawing separators**, while malformed rows, duplicate/missing selectors, zero calls and nonzero reverts remain rejected. `npm run test:foundry-format` runs **8 dedicated synthetic-format regressions**, all **8/8 passed** locally with Node.js 22. The tested parser and test file match the exact GitHub source blob hashes. The expanded offline suite now has **151 cases** (previous 105, plus 8 Foundry-format tests and 19 lockfile tests), but **the entire 151-case suite has not been rerun together in a clean checkout**; the previous 105/105 result above is historical. This is not a real Foundry execution or audit.
+**Foundry console table compatibility (2026-11-13):** A public Foundry report shows horizontal separator rows (`|-----+-----|`) between selector metrics entries (see [foundry-rs/foundry#12269](https://github.com/foundry-rs/foundry/issues/12269)). The earlier parser treated these rows as metrics and would reject a valid campaign. `scripts/check-foundry-invariants.mjs` now ignores **only pure ASCII/Unicode drawing separators**, while malformed rows, duplicate/missing selectors, zero calls and nonzero reverts remain rejected. `npm run test:foundry-format` runs **8 dedicated synthetic-format regressions**, all **8/8 passed** locally with Node.js 22. The tested parser and test file match the exact GitHub source blob hashes. The expanded offline suite now has **157 registered cases** (previous 105, plus 8 Foundry-format checks, 38 dependency-lock checks, 5 bootstrap checks and one added verifier-policy scenario), but **the entire 157-case suite has not been rerun together in a clean checkout**; the previous 105/105 result above is historical. This is not a real Foundry execution or audit.
 
 ## Reproducible npm dependency and supply-chain boundary
 
@@ -47,19 +47,20 @@ The committed npm v3 `package-lock.json` records **only** the direct dependency 
 
 The repository's `.npmrc` also sets `ignore-scripts=true` by default. The direct checker pins all reviewed npm script commands and rejects unapproved lifecycle hooks, npm overrides/workspaces/bundled packages, unexpected lockfile metadata and altered `.npmrc`. **38/38** Node regression checks passed locally, including two real offline `npm ci` trials using empty, dependency-free test fixtures; `npm install --package-lock-only --offline --ignore-scripts --no-audit --no-fund` also accepted the lockfile **without changing its bytes**. These checks do **not** prove an existing `node_modules` folder has not been modified; for a trusted build start from a clean directory, run the direct policy check, then use `npm ci --ignore-scripts --no-audit --no-fund`; review any changed lockfile or package scripts in a PR. The package was **not downloaded or installed here**, and neither a Foundry/Solidity build nor a live-chain test was performed.
 
+**Safe bootstrap update (14 Nov 2026).** Start from a clean checkout with `bash scripts/bootstrap-deps.sh`, which runs the direct lock/script-policy checker **before** invoking npm and then calls `npm ci --ignore-scripts --no-audit --no-fund`. The verification script likewise performs the direct policy check before calling `npm --ignore-scripts run test:offline`. Launch the verifier with **`bash scripts/verify-local.sh`** rather than unguarded `npm run verify:local`, so an injected npm `preverify:local` hook cannot execute before verification. Five bootstrap scenarios and ten verifier-gate scenarios **passed locally** using mocks and two real dependency-free npm offline fixtures; the full combined 157-case suite, dependency installation and Foundry compilation have **not** been run here. No production operations were performed.
+
 ## One-command local Solidity verification gate
 
 On a machine with Node.js 20+, Bash (WSL2 on Windows), Foundry, a **preinstalled local Solidity compiler 0.8.24**, and locally installed `@openzeppelin/contracts@5.4.0`, run:
 
 ```bash
-node scripts/check-dependency-lock.mjs
-npm ci --ignore-scripts --no-audit --no-fund
-npm run verify:local
+bash scripts/bootstrap-deps.sh
+bash scripts/verify-local.sh
 ```
 
 The script `scripts/verify-local.sh` is **offline-only for blockchain interactions**. It checks that `forge` and the OpenZeppelin ERC-20 dependency exist, removes inherited testnet/RPC/keystore variables from its environment, then runs these five gates sequentially:
 
-1. `npm run test:offline` (**151 registered checks**, including 38 npm supply-chain, eight Foundry-format, 34 synthetic parser and nine mocked verification-pipeline cases; the 132 have not yet been run together).
+1. Direct dependency policy preflight, then `npm --ignore-scripts run test:offline` (**157 registered checks**, including 38 dependency-lock checks, 5 bootstrap checks, eight Foundry-format tests, 34 synthetic parser checks and 10 mocked verification-pipeline scenarios; all 157 have not yet been run together).
 2. `forge build --offline --force` to compile fresh Solidity artifacts **without downloading a compiler**.
 3. `node scripts/check-abi.mjs` against the **actual compiled artifact**.
 4. `forge test --offline -vv` for the full unit, fuzz and invariant suite.
@@ -67,7 +68,7 @@ The script `scripts/verify-local.sh` is **offline-only for blockchain interactio
 
 The invariant transcript verifier now requires one (and only one) matching Foundry suite header, exactly five passing test markers **within that suite**, an exact five-passed/zero-failed/zero-skipped summary, and three campaigns above the configured run/call thresholds. It rejects transcripts with unrelated suites or PASS markers after the suite summary. `test/shell/verify-local-guard.test.sh` uses mocked Node/npm/Forge binaries to assert the gate fails at each intermediate stage and clears inherited RPC/account environment settings. These checks exercise validation plumbing, **not** Solidity bytecode, and must not be described as real Foundry test runs.
 
-All three Forge invocations in `verify:local` explicitly use Foundry's `--offline` option, in addition to clearing inherited RPC variables. If the specified compiler is not already installed, **the gate must fail**, not download it. The nine mocked verification-pipeline tests assert that every Forge invocation includes `--offline`; the full offline suite remains **105/105**. The locally executed verification is still **blocked** on missing Foundry, so no Solidity test pass is claimed. 
+All three Forge invocations in `verify:local` explicitly use Foundry's `--offline` option, in addition to clearing inherited RPC variables. If the specified compiler is not already installed, **the gate must fail**, not download it. The nine mocked verification-pipeline tests assert that every Forge invocation includes `--offline`; the last full offline suite run was **105/105**; the current 157-case suite requires a complete checkout. The locally executed verification is still **blocked** on missing Foundry, so no Solidity test pass is claimed. 
 
 **Selector coverage gate (13 Nov 2026).** The invariant evidence validator now requires Foundry's `show_metrics = true` table **within each** of the three invariant campaigns. It checks that the only listed target is `SpicaCashInvariantHandler`, that the table contains exactly the `move`, `approve`, and `pull` methods, and that each method has nonzero calls with zero reverts and discards. The sum of selector calls must equal the campaign's reported call count. Missing, duplicated, malformed, foreign or mismatched selector rows fail the gate. The 14 added Node regression cases use synthetic Foundry-shaped ASCII/Unicode tables, **not** real compiled contract output. A future Foundry output-format change may intentionally cause the gate to fail closed until reviewed. The result must still be compared with real Foundry output by a human reviewer.
 
@@ -85,8 +86,7 @@ The earlier `vm.targetContract(address)` call incorrectly treated the helper as 
 Run and record:
 
 ```bash
-node scripts/check-dependency-lock.mjs
-npm ci --ignore-scripts --no-audit --no-fund
+bash scripts/bootstrap-deps.sh
 forge build
 forge test --match-contract SpicaCashInvariantTest -vv
 forge test --match-test invariant_ -vv
