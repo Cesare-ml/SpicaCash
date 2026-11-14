@@ -84,6 +84,13 @@ export function checkDependencyLock(manifest, lock) {
   if (unexpectedKeys(lock, reviewedLockFields).length !== 0) {
     errors.push('unexpected top-level lockfile metadata');
   }
+  // Review the Node runtime requirement itself, not only dependency tarballs.
+  // A modified package.json engines field must never pass solely because the
+  // lockfile still contains the reviewed constraint.
+  if (!record(manifest.engines) || Object.keys(manifest.engines).length !== 1 ||
+      manifest.engines.node !== '>=20') {
+    errors.push('manifest must require exactly Node.js >=20');
+  }
   const deps = manifest.dependencies;
   if (!record(deps) || Object.keys(deps).length !== 1 || deps[pinnedName] !== pinnedVersion) {
     errors.push('manifest must pin only @openzeppelin/contracts@5.4.0');
@@ -117,7 +124,8 @@ export function checkDependencyLock(manifest, lock) {
   if (record(project) && unexpectedKeys(project, reviewedRootFields).length !== 0) {
     errors.push('unreviewed root package metadata in lockfile');
   }
-  if (!record(project?.engines) || project.engines.node !== '>=20') {
+  if (!record(project?.engines) || Object.keys(project.engines).length !== 1 ||
+      project.engines.node !== '>=20' || project.engines.node !== manifest.engines?.node) {
     errors.push('unexpected Node engine requirement in root lock entry');
   }
   const dependency = packages[`node_modules/${pinnedName}`];

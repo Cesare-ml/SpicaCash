@@ -29,6 +29,17 @@ rejects('reject unexpected dev dependency', (p) => { p.devDependencies = { hardh
 rejects('reject missing dependency manifest', (p) => { delete p.dependencies; }, /pin only/);
 rejects('reject malformed optional dependency list', (p) => { p.optionalDependencies = null; }, /optionalDependencies/);
 rejects('reject unexpected root version', (p) => { p.version = '1.0.0'; }, /project package identity/);
+rejects('reject removed Node engine policy from manifest', (p) => { delete p.engines; }, /manifest must require exactly Node.js >=20/);
+rejects('reject lowered Node engine policy in manifest', (p) => { p.engines.node = '>=18'; }, /manifest must require exactly Node.js >=20/);
+rejects('reject malformed Node engine policy', (p) => { p.engines = []; }, /manifest must require exactly Node.js >=20/);
+rejects('reject extra engine metadata in manifest', (p) => { p.engines.npm = '*'; }, /manifest must require exactly Node.js >=20/);
+rejects('reject extra Node engine metadata in root lock entry', (_p, l) => { l.packages[''].engines.npm = '*'; }, /unexpected Node engine requirement/);
+rejects('reject missing Node engine policy in root lock entry', (_p, l) => { delete l.packages[''].engines; }, /unexpected Node engine requirement/);
+rejects('reject unreviewed matching engine changes in manifest and lock', (p, l) => {
+  p.engines.node = '>=22';
+  l.packages[''].engines.node = '>=22';
+}, /manifest must require exactly Node.js >=20/);
+
 rejects('reject lockfile version downgrade', (_p, l) => { l.lockfileVersion = 2; }, /lockfile must use v3/);
 rejects('reject lockfile missing required packages', (_p, l) => { delete l.packages['node_modules/@openzeppelin/contracts']; }, /exactly root/);
 rejects('reject any additional locked package', (_p, l) => { l.packages['node_modules/random'] = {}; }, /exactly root/);
