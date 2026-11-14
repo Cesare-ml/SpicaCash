@@ -10,3 +10,5 @@ broadcast/
 .DS_Store
 .vscode/
 .idea/
+# Local-only, non-authorizing verifier receipts. Do not publish automatically.
+.spica-evidence/
