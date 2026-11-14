@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 // Reject unreviewed changes to the *compiled* SpicaCash public ABI.
 // This does not audit bytecode, roles, storage, token balances or dependencies.
-import { readFileSync } from 'node:fs';
+import { closeSync, constants, fstatSync, openSync, readSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const artifactPath = resolve(process.argv[2] || 'out/SpicaCash.sol/SpicaCash.json');
@@ -11,13 +11,55 @@ const fail = (message) => {
   process.exit(1);
 };
 
+// Foundry artifacts contain more than the ABI. Bound the whole artifact read
+// before JSON parsing; a malformed compiler output must not exhaust memory.
+const MAX_ARTIFACT_BYTES = 16 * 1024 * 1024;
+const CHUNK_BYTES = 64 * 1024;
+function readBoundedArtifact(path) {
+  const flags = constants.O_RDONLY |
+    (process.platform !== 'win32' && typeof constants.O_NOFOLLOW === 'number'
+      ? constants.O_NOFOLLOW : 0) |
+    (process.platform !== 'win32' && typeof constants.O_NONBLOCK === 'number'
+      ? constants.O_NONBLOCK : 0);
+  const fd = openSync(path, flags);
+  try {
+    const before = fstatSync(fd, { bigint: true });
+    if (!before.isFile() || before.size > BigInt(MAX_ARTIFACT_BYTES)) {
+      throw new Error('artifact must be a regular file not exceeding 16 MiB');
+    }
+    const chunks = [];
+    let total = 0;
+    while (true) {
+      // The extra byte detects growth after the initial descriptor check.
+      const chunk = Buffer.allocUnsafe(
+        Math.min(CHUNK_BYTES, MAX_ARTIFACT_BYTES + 1 - total));
+      const count = readSync(fd, chunk, 0, chunk.length, null);
+      if (count === 0) break;
+      total += count;
+      if (total > MAX_ARTIFACT_BYTES) throw new Error('artifact exceeds 16 MiB');
+      chunks.push(chunk.subarray(0, count));
+    }
+    const after = fstatSync(fd, { bigint: true });
+    if (!after.isFile() || before.dev !== after.dev || before.ino !== after.ino ||
+        before.size !== BigInt(total) || after.size !== BigInt(total) ||
+        before.mtimeNs !== after.mtimeNs || before.ctimeNs !== after.ctimeNs) {
+      throw new Error('artifact changed during read');
+    }
+    return Buffer.concat(chunks, total).toString('utf8');
+  } finally {
+    closeSync(fd);
+  }
+}
+
 let artifact;
 try {
-  artifact = JSON.parse(readFileSync(artifactPath, 'utf8'));
-} catch (error) {
-  fail(`cannot read ${artifactPath}: ${error.message}`);
+  artifact = JSON.parse(readBoundedArtifact(artifactPath));
+} catch {
+  // Avoid echoing filesystem paths or untrusted source content into logs.
+  fail('cannot read or parse compiled artifact (regular file, maximum 16 MiB)');
 }
-if (!Array.isArray(artifact.abi)) fail('artifact must contain an ABI array');
+if (artifact === null || typeof artifact !== 'object' || Array.isArray(artifact) ||
+    !Array.isArray(artifact.abi)) fail('artifact must contain an ABI array');
 
 // Ethereum ERC-20 functions. Require their return types and mutability too,
 // rather than merely matching the method names and input types.
