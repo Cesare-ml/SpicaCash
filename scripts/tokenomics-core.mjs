@@ -39,6 +39,9 @@ export function validateTokenomics(p, options={}) {
     }else supply=units(p.token.totalSupplyBaseUnits,'token.totalSupplyBaseUnits');
   }
   if(!Array.isArray(p.allocations))err('allocations','expected array');
+  // Bound direct-library inputs as well as file-based CLI inputs: do not
+  // traverse attacker-sized arrays or perform unbounded bigint accounting.
+  else if(p.allocations.length>1000)err('allocations','maximum 1000 allocation entries');
   else{
     if(p.status==='proposal'&&!p.allocations.length)err('allocations','proposal needs allocations');
     let total=0n;const seen=new Set();
