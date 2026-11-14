@@ -7,6 +7,9 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
+# Prevent inherited Node preloads from executing before dependency preflight.
+unset NODE_OPTIONS npm_config_node_options NPM_CONFIG_NODE_OPTIONS
+
 command -v node >/dev/null || { echo 'FAIL: Node.js 20+ is required.' >&2; exit 2; }
 command -v npm >/dev/null || { echo 'FAIL: npm is required.' >&2; exit 2; }
 command -v forge >/dev/null || { echo 'FAIL: Foundry forge is not installed; Solidity tests were NOT run.' >&2; exit 2; }
@@ -24,7 +27,8 @@ export NO_COLOR=1
 # run pre/post hooks. The explicit npm flag overrides inherited config.
 node scripts/check-dependency-lock.mjs
 printf 'Gate 1/5: offline Node/Bash tests\n'
-npm --ignore-scripts run test:offline
+# Override user/global npm config that could inject NODE_OPTIONS into test child processes.
+npm --node-options='' --ignore-scripts run test:offline
 printf 'Gate 2/5: compile fresh Solidity artifacts\n'
 forge build --offline --force
 printf 'Gate 3/5: inspect the real compiled SpicaCash ABI\n'
