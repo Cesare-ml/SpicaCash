@@ -6,6 +6,10 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
+# Node executes NODE_OPTIONS preloads before the policy checker can run.
+# Drop inherited injection options for this process and its npm children.
+unset NODE_OPTIONS npm_config_node_options NPM_CONFIG_NODE_OPTIONS
+
 command -v node >/dev/null || { echo 'FAIL: Node.js 20+ is required.' >&2; exit 2; }
 command -v npm >/dev/null || { echo 'FAIL: npm is required.' >&2; exit 2; }
 
