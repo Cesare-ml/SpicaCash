@@ -109,6 +109,7 @@ The [SHA-256 manifest integrity check](docs/GRANT_MANIFEST_INTEGRITY.md) detects
 ## Documentation
 
 - [Launch readiness and open tasks](docs/LAUNCH_READINESS.md) — 17 unresolved, evidence-gated engineering, economic, testnet, legal and launch tasks. A consolidated Git history is not release verification.
+- [Portable offline Node evidence capture](docs/OFFLINE_EVIDENCE.md) — Windows 11 / PowerShell instructions for read-only Git/source-hash provenance, dependency-policy preflight and Node-suite stdout/stderr evidence. Eight isolated fixture tests passed; **not** Foundry, browser, security audit or launch approval.
 - [Local EVM demonstration (Windows/WSL2)](docs/LOCAL_DEMO.md) — sample ERC-20 deployment, balances, transfer, approval, delegated transfer and revoked approval using disposable synthetic accounts. Source prepared; real Forge execution pending.
 - [Standalone Windows offline viewer](docs/LOCAL_VIEWER.md) — double-click `demo/index.html` to step through fictional Alice/Bob transfers, delegated allowances and rejection, with no server or wallet. This is a mathematical simulation, not EVM execution or a live coin.
   - Optional Windows Chrome/Edge smoke verification: `node scripts/check-viewer-browser.mjs` (real browser required; no wallet, RPC or deployment). The Node-only offline tests remain browser-independent.
