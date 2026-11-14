@@ -43,7 +43,7 @@ test('parses the strict real-browser success signal', () => {
     JSON.stringify({ status: 'PASS', assertions: 61, failures: [] }) +
     '</pre></body></html>';
   assert.deepEqual(parseSmokeOutput(dom),
-    { status: 'PASS', assertions: 51, failures: [] });
+    { status: 'PASS', assertions: 61, failures: [] });
 });
 
 test('preserves named assertion failures and refuses malformed evidence', () => {
