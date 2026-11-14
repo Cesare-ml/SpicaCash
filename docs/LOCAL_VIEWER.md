@@ -62,7 +62,7 @@ The script locates Chrome, Edge or Chromium (or uses an explicit browser path), 
 - Enabled/disabled Next and Previous controls, rejected delegated spending and Reset.
 - The number of ledger entries, progress semantics and the no-network content-security policy.
 
-A successful run reports **61 browser DOM assertions** and deletes the temporary copy and browser profile. A missing browser, nonzero browser exit, timeout, malformed result or failed assertion exits nonzero; the test never guesses that it passed. No screenshots are captured automatically. The check runs **only** when explicitly invoked; it is not part of `test:offline:node`, which remains portable without a browser.
+A successful run must report **exactly 61 browser DOM assertions**, with one unambiguous result marker and no failures, before the temporary copy and browser profile are deleted. Partial, duplicate, or unexpected result records fail closed. A missing browser, nonzero browser exit, timeout, malformed result or failed assertion exits nonzero; the test never guesses that it passed. No screenshots are captured automatically. The check runs **only** when explicitly invoked; it is not part of `test:offline:node`, which remains portable without a browser.
 
 To point to a browser not discovered automatically, use a known local executable:
 
