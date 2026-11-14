@@ -27,6 +27,8 @@ This optional manifest lists the exact relative paths and **SHA-256 hashes of th
 }
 ```
 
+The loader validates the manifest header first (schema version, status, execution authorization, draft/proposal tokenomics rules, and batch count). **If the header is invalid it stops before opening any manifest-selected grant/tokenomics file**, including when no external digest is supplied. An independently pinned digest is still compared first, before parsing even the header. This prevents unnecessary reads from a rejected manifest, not filesystem races or intentional omissions.
+
 The checked-in file includes the real digest of the checked-in empty draft. A future `proposal` manifest would reference a hashed `tokenomics` object with the same `path`/`sha256` fields and a nonempty `batches` array. **No real proposal manifest exists yet.**
 
 ## Reproduction
