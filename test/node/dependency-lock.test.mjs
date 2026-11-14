@@ -173,7 +173,7 @@ for (const [name, mutate] of [
     const path = join(dir, 'package-lock.json');
     const original = readFileSync(path, 'utf8');
     const ambiguous = original.replace('"lockfileVersion": 3,',
-      '"lockfileVersion": 1,\\n  "lockfileVersion": 3,');
+      '"lockfileVersion": 1,  "lockfileVersion": 3,');
     assert.notEqual(ambiguous, original);
     assert.equal(JSON.parse(ambiguous).lockfileVersion, 3);
     writeFileSync(path, ambiguous);
