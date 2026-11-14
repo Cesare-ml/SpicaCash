@@ -118,11 +118,11 @@ test('bounds policy, full Node suite and offline draft subprocess durations', ()
 });
 
 test('times out a blocked child instead of claiming offline verification passed', () => {
-  const result = runOfflineNodeSteps(process.cwd(),
+  assert.throws(() => runOfflineNodeSteps(process.cwd(),
     [{ label: 'reviewed dependency policy', args: ['-e', 'while (true) {}'] }],
     (bin, args, options) => spawnSync(bin, args,
-      { ...options, timeout: 40, windowsHide: true, encoding: 'utf8', stdio: 'pipe' }));
-  assert.deepEqual(result, { ok: false, failed: 'reviewed dependency policy' });
+      { ...options, timeout: 40, windowsHide: true, encoding: 'utf8', stdio: 'pipe' })),
+    error => error?.code === 'ETIMEDOUT');
 });
 
 test('runs every step without a shell and reports success only after all steps', () => {
