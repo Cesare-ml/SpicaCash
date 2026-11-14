@@ -60,6 +60,8 @@ export function planOfflineNodeSteps(root, entries) {
     throw new Error('missing required Node test suites: ' + missing.join(', '));
   }
   return [
+    // Verify pinned dependencies and reviewed commands before invoking tests.
+    { label: 'reviewed dependency policy', args: [join(root, 'scripts', 'check-dependency-lock.mjs')] },
     { label: 'all Node regression tests', args: ['--test', '--test-concurrency=4',
       ...names.map(name => join(root, 'test', 'node', name))] },
     ...DRAFT_CHECKS.map(([label, script, config]) => ({
@@ -92,7 +94,7 @@ function main() {
       process.exitCode = 1;
       return;
     }
-    console.log('Node-only offline checks passed. Bash deploy guards, Foundry tests and audit NOT run.');
+    console.log('Node-only offline checks and dependency policy passed. Bash deploy guards, Foundry tests and audit NOT run.');
   } catch (error) {
     console.error('Node-only offline checks could not complete: ' + error.message);
     process.exitCode = 1;
