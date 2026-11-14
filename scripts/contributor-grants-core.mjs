@@ -72,6 +72,16 @@ export function validateContributorGrants(plan, tokenomicsPlan = null, options =
   }
   if (total > MAX_UINT256) fail('grants', 'sum exceeds uint256');
 
+  // Validate every explicitly supplied companion document, including on an
+  // empty draft. This exported function must fail closed for library callers,
+  // not only for the standalone CLI's separate input-validation guard.
+  const economicsCheck = tokenomicsPlan === null ? null : validateTokenomics(
+    tokenomicsPlan, { requireProposal: plan.status === 'proposal' }
+  );
+  if (economicsCheck !== null && !economicsCheck.valid) {
+    fail('tokenomics', 'invalid companion proposal: ' + economicsCheck.errors.join('; '));
+  }
+
   let bucketAmount = null;
   if (plan.status === 'draft') {
     if (plan.tokenomicsBucketId !== null) fail('tokenomicsBucketId', 'draft must not select an allocation bucket');
@@ -84,11 +94,7 @@ export function validateContributorGrants(plan, tokenomicsPlan = null, options =
     if (!Array.isArray(plan.grants) || plan.grants.length === 0) fail('grants', 'proposal requires grants');
     if (tokenomicsPlan === null) {
       fail('tokenomics', 'a complete local tokenomics proposal is required');
-    } else {
-      const check = validateTokenomics(tokenomicsPlan, { requireProposal: true });
-      if (!check.valid) {
-        fail('tokenomics', 'invalid companion proposal: ' + check.errors.join('; '));
-      } else {
+    } else if (economicsCheck?.valid === true) {
         const bucket = tokenomicsPlan.allocations.find((a) => a.id === plan.tokenomicsBucketId);
         if (!bucket || bucket.category !== 'contributors') {
           fail('tokenomicsBucketId', 'must reference a contributors-category allocation');
@@ -96,7 +102,6 @@ export function validateContributorGrants(plan, tokenomicsPlan = null, options =
           bucketAmount = BigInt(bucket.amountBaseUnits);
           if (total > bucketAmount) fail('grants', 'proposed grants exceed the contributor bucket');
         }
-      }
     }
   }
   const result = { valid: errors.length === 0, errors, status: plan.status };
