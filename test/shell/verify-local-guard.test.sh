@@ -40,6 +40,7 @@ printf 'node %s\n' "$*" >> "$MOCK_LOG"
 [[ -z "${ETH_RPC_URL:-}" && -z "${ARBITRUM_SEPOLIA_RPC_URL:-}" && -z "${FOUNDRY_ACCOUNT:-}" ]] || exit 85
 case "${1:-}" in
   scripts/check-dependency-lock.mjs) [[ "${MOCK_FAIL_STAGE:-}" != 'policy' ]] || exit 47 ;;
+  scripts/check-foundry-config.mjs) [[ "${MOCK_FAIL_STAGE:-}" != 'config' ]] || exit 48 ;;
   scripts/check-abi.mjs) [[ "${MOCK_FAIL_STAGE:-}" != 'abi' ]] || exit 45 ;;
   scripts/check-foundry-invariants.mjs) [[ "${MOCK_FAIL_STAGE:-}" != 'evidence' ]] || exit 46 ;;
   *) exit 86 ;;
@@ -94,7 +95,8 @@ expect_stage_failure() {
   fi
   pass=$((pass+1))
 }
-expect_stage_failure policy 'node scripts/check-dependency-lock.mjs' 'npm --node-options= --script-shell=/bin/sh --ignore-scripts run test:offline'
+expect_stage_failure policy 'node scripts/check-dependency-lock.mjs' 'node scripts/check-foundry-config.mjs'
+expect_stage_failure config 'node scripts/check-foundry-config.mjs' 'npm --node-options= --script-shell=/bin/sh --ignore-scripts run test:offline'
 expect_stage_failure offline 'npm --node-options= --script-shell=/bin/sh --ignore-scripts run test:offline' 'forge build --offline --force'
 expect_stage_failure build 'forge build --offline --force' 'node scripts/check-abi.mjs'
 expect_stage_failure abi 'node scripts/check-abi.mjs' 'forge test --offline -vv'
@@ -110,8 +112,9 @@ fi
 : > "$MOCK_LOG"
 export MOCK_FAIL_STAGE=''
 bash "$work/project/scripts/verify-local.sh" > "$work/output" 2>&1
-[[ $(wc -l < "$MOCK_LOG") -eq 7 ]] || { cat "$MOCK_LOG" >&2; exit 1; }
+[[ $(wc -l < "$MOCK_LOG") -eq 8 ]] || { cat "$MOCK_LOG" >&2; exit 1; }
 grep -Fxq 'node scripts/check-dependency-lock.mjs' "$MOCK_LOG"
+grep -Fxq 'node scripts/check-foundry-config.mjs' "$MOCK_LOG"
 grep -Fxq 'npm --node-options= --script-shell=/bin/sh --ignore-scripts run test:offline' "$MOCK_LOG"
 grep -Fxq 'forge build --offline --force' "$MOCK_LOG"
 grep -Fxq 'node scripts/check-abi.mjs' "$MOCK_LOG"
