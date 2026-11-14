@@ -32,7 +32,9 @@ test('refuses unsafe or unexpected browser source rather than claiming success',
     '<script id="spica-local-logic"></script><body></body>',
     html.replace("connect-src 'none'", "connect-src *"),
     html.replace('</body>', '</body></body>'),
-    createSmokeHtml(html)
+    createSmokeHtml(html),
+    html.replace('</body>',
+      '<pre id="spica-browser-smoke-result">{"status":"PASS"}</pre></body>')
   ]) {
     assert.throws(() => createSmokeHtml(source), /Refusing to test/);
   }
@@ -40,15 +42,15 @@ test('refuses unsafe or unexpected browser source rather than claiming success',
 
 test('parses the strict real-browser success signal', () => {
   const dom = '<html><body><pre id="spica-browser-smoke-result">' +
-    JSON.stringify({ status: 'PASS', assertions: 51, failures: [] }) +
+    JSON.stringify({ status: 'PASS', assertions: 61, failures: [] }) +
     '</pre></body></html>';
   assert.deepEqual(parseSmokeOutput(dom),
-    { status: 'PASS', assertions: 51, failures: [] });
+    { status: 'PASS', assertions: 61, failures: [] });
 });
 
 test('preserves named assertion failures and refuses malformed evidence', () => {
   const failure = '<pre id="spica-browser-smoke-result">' +
-    JSON.stringify({ status: 'FAIL', assertions: 51, failures: ['Bob final balance'] }) +
+    JSON.stringify({ status: 'FAIL', assertions: 61, failures: ['Bob final balance'] }) +
     '</pre>';
   assert.deepEqual(parseSmokeOutput(failure).failures, ['Bob final balance']);
   for (const dom of [
@@ -57,14 +59,29 @@ test('preserves named assertion failures and refuses malformed evidence', () => 
     '<pre id="spica-browser-smoke-result">' +
       JSON.stringify({ status: 'PASS', assertions: 2, failures: [] }) + '</pre>',
     '<pre id="spica-browser-smoke-result">' +
-      JSON.stringify({ status: 'PASS', assertions: 51, failures: ['broken'] }) + '</pre>',
+      JSON.stringify({ status: 'PASS', assertions: 61, failures: ['broken'] }) + '</pre>',
     '<pre id="spica-browser-smoke-result">' +
-      JSON.stringify({ status: 'FAIL', assertions: 51, failures: [] }) + '</pre>',
+      JSON.stringify({ status: 'FAIL', assertions: 61, failures: [] }) + '</pre>',
     '<pre id="spica-browser-smoke-result">' +
-      JSON.stringify({ status: 'PASS', assertions: 51, failures: [] })
+      JSON.stringify({ status: 'PASS', assertions: 61, failures: [] })
   ]) {
     assert.throws(() => parseSmokeOutput(dom));
   }
+});
+
+test('rejects truncated, padded or ambiguous browser PASS evidence', () => {
+  const record = (assertions, extra = {}) =>
+    '<pre id="spica-browser-smoke-result">' +
+      JSON.stringify({ status: 'PASS', assertions, failures: [], ...extra }) + '</pre>';
+  for (const assertions of [0, 30, 60, 62, 1000]) {
+    assert.throws(() => parseSmokeOutput(record(assertions)), /Malformed or incomplete/);
+  }
+  assert.throws(() => parseSmokeOutput(record(61, { injected: true })),
+    /Malformed or incomplete/);
+  assert.throws(() => parseSmokeOutput(record(61) + record(61)),
+    /Multiple browser smoke-test results/);
+  assert.throws(() => parseSmokeOutput(record(61) + record(60)),
+    /Multiple browser smoke-test results/);
 });
 
 test('discovers Windows browser installs and supports explicit overrides', () => {
