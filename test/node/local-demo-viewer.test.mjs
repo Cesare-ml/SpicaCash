@@ -91,3 +91,122 @@ test('stage changes are announced to assistive technology and keyboard controls 
   assert.match(embedded[1], /event\.ctrlKey/);
   assert.match(embedded[1], /isContentEditable/);
 });
+
+function makeViewerElement(tagName = 'DIV') {
+  const attributes = new Map();
+  const handlers = new Map();
+  return {
+    tagName, textContent: '', className: '', disabled: false,
+    isContentEditable: false, style: {}, children: [],
+    setAttribute(name, value) { attributes.set(name, String(value)); },
+    getAttribute(name) { return attributes.get(name) ?? null; },
+    addEventListener(type, handler) {
+      const list = handlers.get(type) || [];
+      list.push(handler);
+      handlers.set(type, list);
+    },
+    click() { for (const handler of handlers.get('click') || []) handler(); },
+    append(...nodes) { this.children.push(...nodes); },
+    replaceChildren(...nodes) { this.children = nodes; }
+  };
+}
+
+function mountOfflineViewer() {
+  const ids = [
+    'alice-balance', 'bob-balance', 'allowance', 'total-supply',
+    'held-supply', 'checks', 'step-title', 'step-detail',
+    'progress-text', 'progress', 'progress-fill', 'previous',
+    'next', 'reset', 'ledger'
+  ];
+  const elements = new Map(ids.map(id => [id, makeViewerElement()]));
+  const events = new Map();
+  const document = {
+    getElementById(id) {
+      assert.ok(elements.has(id), 'missing test fixture element: ' + id);
+      return elements.get(id);
+    },
+    createElement(tagName) { return makeViewerElement(tagName.toUpperCase()); },
+    addEventListener(type, handler) {
+      const list = events.get(type) || [];
+      list.push(handler);
+      events.set(type, list);
+    }
+  };
+  // Run the *shipped inline script*, including render and keyboard listeners,
+  // with only a local fake DOM. No browser, network, timers or wallet access.
+  runInNewContext(embedded[1], { document }, {
+    timeout: 1000, filename: 'demo/index.html'
+  });
+  const byId = id => elements.get(id);
+  return {
+    byId,
+    stage: () => Number(byId('progress').getAttribute('aria-valuenow')),
+    key(key, options = {}) {
+      let prevented = false;
+      const event = {
+        key, target: document, altKey: false, ctrlKey: false,
+        shiftKey: false, metaKey: false, ...options,
+        preventDefault() { prevented = true; }
+      };
+      for (const handler of events.get('keydown') || []) handler(event);
+      return prevented;
+    }
+  };
+}
+
+test('actual inline keyboard listener navigates six bounded replay states', () => {
+  const app = mountOfflineViewer();
+  assert.equal(app.stage(), 1);
+  assert.equal(app.key('ArrowRight'), true);
+  assert.equal(app.stage(), 2);
+  assert.equal(app.byId('alice-balance').textContent, '875');
+  assert.equal(app.byId('bob-balance').textContent, '125');
+  assert.equal(app.key('End'), true);
+  assert.equal(app.stage(), 6);
+  assert.equal(app.byId('alice-balance').textContent, '882');
+  assert.equal(app.byId('bob-balance').textContent, '118');
+  assert.equal(app.byId('allowance').textContent, '0');
+  assert.equal(app.byId('ledger').children.length, 6);
+  assert.equal(app.key('ArrowRight'), true);
+  assert.equal(app.stage(), 6, 'right arrow must not leave final stage');
+  assert.equal(app.key('Home'), true);
+  assert.equal(app.stage(), 1);
+  assert.equal(app.key('ArrowLeft'), true);
+  assert.equal(app.stage(), 1, 'left arrow must not precede first stage');
+  assert.equal(app.byId('total-supply').textContent, '1.000 SPICA');
+  assert.equal(app.byId('held-supply').textContent, '1.000 SPICA');
+});
+
+test('keyboard listener preserves modifiers, editable controls, and unrelated keys', () => {
+  const app = mountOfflineViewer();
+  for (const modifier of ['altKey', 'ctrlKey', 'metaKey', 'shiftKey']) {
+    assert.equal(app.key('End', { [modifier]: true }), false, modifier);
+    assert.equal(app.stage(), 1, modifier);
+  }
+  for (const tagName of ['INPUT', 'TEXTAREA', 'SELECT']) {
+    assert.equal(app.key('End', { target: { tagName } }), false, tagName);
+    assert.equal(app.stage(), 1, tagName);
+  }
+  assert.equal(app.key('End', { target: { tagName: 'DIV', isContentEditable: true } }), false);
+  assert.equal(app.stage(), 1);
+  assert.equal(app.key('Escape'), false);
+  assert.equal(app.stage(), 1);
+  assert.equal(app.key('End'), true);
+  assert.equal(app.stage(), 6);
+});
+
+test('mouse controls still work after keyboard navigation and reset', () => {
+  const app = mountOfflineViewer();
+  app.key('End');
+  assert.equal(app.byId('next').disabled, true);
+  app.byId('previous').click();
+  assert.equal(app.stage(), 5);
+  assert.equal(app.byId('next').disabled, false);
+  app.byId('reset').click();
+  assert.equal(app.stage(), 1);
+  assert.equal(app.byId('previous').disabled, true);
+  app.byId('next').click();
+  assert.equal(app.stage(), 2);
+  assert.equal(app.byId('ledger').children.length, 2);
+  assert.equal(app.byId('held-supply').textContent, '1.000 SPICA');
+});
