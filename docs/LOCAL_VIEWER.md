@@ -44,7 +44,7 @@ With Node.js 20+ installed, run from the repository root:
 node --test test/node/local-demo-viewer.test.mjs
 ```
 
-This test loads the actual `demo/index.html` JavaScript and verifies the six stages, exact balances, approval accounting, supply conservation, rejected transfer, 18-decimal formatting, and absence of visible network/wallet connection surfaces. No npm script or dependency installation is needed.
+This test loads the actual `demo/index.html` JavaScript and verifies the six stages, exact balances, approval accounting, supply conservation, rejected transfer, 18-decimal formatting, and absence of visible network/wallet connection surfaces. It also mounts the real inline viewer script in a **minimal in-memory DOM stub** to exercise ArrowLeft/ArrowRight/Home/End navigation, boundary conditions, modifier keys, editable targets, reset and ordinary buttons. These deterministic Node tests do not substitute for an actual Windows keyboard or assistive-technology test. No npm script or dependency installation is needed.
 
 **Verification status (2026-11-14):** the exact GitHub HTML script passed **10/10 isolated V8 calculation/safety checks**. The full Node suite and a Windows browser end-to-end test have **not** been executed in this environment. Those still require independent run evidence. The static source inspection and tests do not establish freedom from all possible browser or toolchain issues.
 
