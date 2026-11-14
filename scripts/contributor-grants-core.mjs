@@ -95,13 +95,13 @@ export function validateContributorGrants(plan, tokenomicsPlan = null, options =
     if (tokenomicsPlan === null) {
       fail('tokenomics', 'a complete local tokenomics proposal is required');
     } else if (economicsCheck?.valid === true) {
-        const bucket = tokenomicsPlan.allocations.find((a) => a.id === plan.tokenomicsBucketId);
-        if (!bucket || bucket.category !== 'contributors') {
-          fail('tokenomicsBucketId', 'must reference a contributors-category allocation');
-        } else {
-          bucketAmount = BigInt(bucket.amountBaseUnits);
-          if (total > bucketAmount) fail('grants', 'proposed grants exceed the contributor bucket');
-        }
+      const bucket = tokenomicsPlan.allocations.find((a) => a.id === plan.tokenomicsBucketId);
+      if (!bucket || bucket.category !== 'contributors') {
+        fail('tokenomicsBucketId', 'must reference a contributors-category allocation');
+      } else {
+        bucketAmount = BigInt(bucket.amountBaseUnits);
+        if (total > bucketAmount) fail('grants', 'proposed grants exceed the contributor bucket');
+      }
     }
   }
   const result = { valid: errors.length === 0, errors, status: plan.status };
