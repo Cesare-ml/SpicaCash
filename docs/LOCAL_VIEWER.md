@@ -48,6 +48,34 @@ This test loads the actual `demo/index.html` JavaScript and verifies the six sta
 
 **Verification status (2026-11-14):** the exact GitHub HTML script passed **10/10 isolated V8 calculation/safety checks**. The full Node suite and a Windows browser end-to-end test have **not** been executed in this environment. Those still require independent run evidence. The static source inspection and tests do not establish freedom from all possible browser or toolchain issues.
 
+## Optional real-browser smoke test (Chrome / Edge / Chromium)
+
+With Node.js 20+ and a locally installed Chromium-based browser, run in a clean checkout:
+
+```powershell
+node scripts/check-viewer-browser.mjs
+```
+
+The script locates Chrome, Edge or Chromium (or uses an explicit browser path), creates an **ephemeral copy** of `demo/index.html` in a temporary folder, injects a test-only inline harness into that copy, launches the real browser in headless mode, and exercises:
+
+- All six checkpoints including the exact Alice/Bob balances, allowance and conservation values.
+- Enabled/disabled Next and Previous controls, rejected delegated spending and Reset.
+- The number of ledger entries, progress semantics and the no-network content-security policy.
+
+A successful run reports **61 browser DOM assertions** and deletes the temporary copy and browser profile. A missing browser, nonzero browser exit, timeout, malformed result or failed assertion exits nonzero; the test never guesses that it passed. No screenshots are captured automatically. The check runs **only** when explicitly invoked; it is not part of `test:offline:node`, which remains portable without a browser.
+
+To point to a browser not discovered automatically, use a known local executable:
+
+```powershell
+$env:SPICA_BROWSER_PATH = "C:\Program Files\Google\Chrome\Application\chrome.exe"
+node scripts/check-viewer-browser.mjs
+Remove-Item Env:SPICA_BROWSER_PATH
+```
+
+Microsoft Edge can be selected similarly using its `msedge.exe` path. Do not disable the Chrome sandbox on Windows. The exceptional `SPICA_BROWSER_NO_SANDBOX=1` override is available only for isolated disposable Linux test environments where a browser cannot otherwise launch; **it reduces browser isolation and must never be used on an ordinary workstation.**
+
+**Status:** The exact harness logic passed 61 assertions in an isolated DOM simulation on 14 November 2026. This is **not** evidence of a successful real Chrome/Edge launch; the Chromium process in the available execution container timed out. Execute the browser command on Windows, record the current Git commit and output, and inspect a screenshot manually before accepting SC-04. This also does not run Foundry or independently audit the contract.
+
 ## Safety and scope
 
 - No token has been deployed on Arbitrum, Base, testnet or mainnet.
