@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 const FILES = Object.freeze([
   '.npmrc', 'package.json', 'package-lock.json',
   'scripts/check-dependency-lock.mjs', 'scripts/run-offline-node.mjs',
+  'scripts/capture-offline-evidence.mjs', 'test/node/offline-evidence.test.mjs',
 ]);
 const MAX_FILE_BYTES = 1024 * 1024;
 const MAX_PROCESS_OUTPUT = 1024 * 1024;
@@ -86,6 +87,12 @@ export function captureEvidence(root, run = spawnSync) {
       throw new Error('could not determine Git commit');
     }
     report.source.commitSha = commit.stdout.trim();
+    // Git status from a nested directory may omit edits elsewhere in the tree.
+    // Only accept a verifier located at the repository's actual worktree root.
+    const prefix = execute(root, 'git', ['rev-parse', '--show-prefix'], 10000, run);
+    if (!prefix.passed || prefix.stdout.trim() !== '') {
+      throw new Error('evidence script must run from the Git worktree root');
+    }
     const status = execute(root, 'git', ['-c', 'core.fsmonitor=false', 'status', '--porcelain=v1', '--untracked-files=normal'], 10000, run);
     if (!status.passed) throw new Error('could not inspect Git status');
     report.source.clean = status.stdout === '';
