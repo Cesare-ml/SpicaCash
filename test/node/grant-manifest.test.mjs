@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,writeFileSync,readFileSync,rmSync,symlinkSync,linkSync,mkdirSync,renameSync} from 'node:fs';
+import {mkdtempSync,writeFileSync,readFileSync,rmSync,symlinkSync,linkSync,mkdirSync,renameSync,unlinkSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve,dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -217,6 +217,48 @@ test('unsafe authority and unknown fields are rejected',t=>{
  const f=fixture(t);f.data.executionAuthorized=true;f.data.signingKey='unsafe';
  assert.match(errors(f),/executionAuthorized/);assert.match(errors(f),/signingKey/);
 });
+test('invalid manifest policy stops before opening referenced batch',t=>{
+ const f=fixture(t);
+ f.data.executionAuthorized=true;
+ f.data.signingKey='not authorized';
+ unlinkSync(join(f.dir,'grant.json'));
+ const report=loadGrantManifest(save(f.dir,f.data));
+ assert.equal(report.valid,false);
+ assert.match(report.errors.join('\n'),/executionAuthorized/);
+ assert.match(report.errors.join('\n'),/signingKey/);
+ assert.doesNotMatch(report.errors.join('\n'),/cannot read verified JSON/);
+ assert.equal(report.batches.length,0);
+});
+test('malformed later descriptor stops before opening an earlier batch',t=>{
+ const f=fixture(t);
+ f.data.batches.push({path:'later.json',sha256:'a'.repeat(64),wallet:'forbidden'});
+ unlinkSync(join(f.dir,'grant.json'));
+ const report=loadGrantManifest(save(f.dir,f.data));
+ assert.equal(report.valid,false);
+ assert.match(report.errors.join('\n'),/batches\[1\]\.wallet: unexpected field/);
+ assert.doesNotMatch(report.errors.join('\n'),/cannot read verified JSON/);
+ assert.equal(report.batches.length,0);
+});
+test('invalid tokenomics digest stops before opening proposal batch',t=>{
+ const f=fixture(t);
+ f.data.status='proposal';
+ f.data.tokenomics={path:'economics.json',sha256:'Z'.repeat(64)};
+ unlinkSync(join(f.dir,'grant.json'));
+ const report=loadGrantManifest(save(f.dir,f.data));
+ assert.equal(report.valid,false);
+ assert.match(report.errors.join('\n'),/tokenomics\.sha256: expected lowercase SHA-256 digest/);
+ assert.doesNotMatch(report.errors.join('\n'),/cannot read verified JSON/);
+});
+test('duplicate descriptors fail before any listed file is opened',t=>{
+ const f=fixture(t);
+ f.data.batches.push({...f.data.batches[0]});
+ unlinkSync(join(f.dir,'grant.json'));
+ const report=loadGrantManifest(save(f.dir,f.data));
+ assert.equal(report.valid,false);
+ assert.match(report.errors.join('\n'),/duplicate file in manifest/);
+ assert.doesNotMatch(report.errors.join('\n'),/cannot read verified JSON/);
+});
+
 test('backslash paths are rejected',t=>{
  const f=fixture(t);f.data.batches[0].path='..\\secret.json';assert.match(errors(f),/safe relative/);
 });
