@@ -1,20 +1,23 @@
 // SPDX-License-Identifier: MIT
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { join } from 'node:path';
-import { planOfflineNodeSteps, runOfflineNodeSteps } from '../../scripts/run-offline-node.mjs';
+import { readdirSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { REQUIRED_NODE_TESTS, planOfflineNodeSteps, runOfflineNodeSteps } from '../../scripts/run-offline-node.mjs';
 
 const dirent = (name, regular = true) => ({ name, isFile: () => regular });
+const requiredEntries = (extra = []) => [...REQUIRED_NODE_TESTS.map(name => dirent(name)), ...extra];
 
 test('discovers all regular Node tests in deterministic order and includes four draft checks', () => {
   const root = join('test-root');
-  const plan = planOfflineNodeSteps(root, [
+  const plan = planOfflineNodeSteps(root, requiredEntries([
     dirent('z.test.mjs'), dirent('notes.txt'), dirent('a.test.mjs'),
-  ]);
+  ]));
   assert.equal(plan.length, 5);
+  const names = [...REQUIRED_NODE_TESTS, 'a.test.mjs', 'z.test.mjs'].sort();
   assert.deepEqual(plan[0].args, ['--test', '--test-concurrency=4',
-    join(root, 'test', 'node', 'a.test.mjs'),
-    join(root, 'test', 'node', 'z.test.mjs')]);
+    ...names.map(name => join(root, 'test', 'node', name))]);
   assert.deepEqual(plan.slice(1).map(step => step.label), [
     'tokenomics draft', 'contributor grants draft',
     'grant batches draft', 'grant manifest draft']);
@@ -27,7 +30,7 @@ test('refuses missing tests and disguised test directories', () => {
 });
 
 test('runs every step without a shell and reports success only after all steps', () => {
-  const plan = planOfflineNodeSteps('repo', [dirent('core.test.mjs')]);
+  const plan = planOfflineNodeSteps('repo', requiredEntries([dirent('core.test.mjs')]));
   const calls = [];
   const response = runOfflineNodeSteps('repo', plan, (bin, args, options) => {
     calls.push({ bin, args, options });
@@ -40,7 +43,7 @@ test('runs every step without a shell and reports success only after all steps',
 });
 
 test('stops immediately on a failed Node step and cannot print success', () => {
-  const plan = planOfflineNodeSteps('repo', [dirent('core.test.mjs')]);
+  const plan = planOfflineNodeSteps('repo', requiredEntries([dirent('core.test.mjs')]));
   let count = 0;
   const response = runOfflineNodeSteps('repo', plan, () => {
     count++;
@@ -51,7 +54,28 @@ test('stops immediately on a failed Node step and cannot print success', () => {
 });
 
 test('aborted child processes fail closed', () => {
-  const plan = planOfflineNodeSteps('repo', [dirent('core.test.mjs')]);
+  const plan = planOfflineNodeSteps('repo', requiredEntries([dirent('core.test.mjs')]));
   const response = runOfflineNodeSteps('repo', plan, () => ({ status: null, signal: 'SIGTERM' }));
   assert.deepEqual(response, { ok: false, failed: 'all Node regression tests' });
+});
+
+test('fails closed if any mandatory security regression suite is removed', () => {
+  for (const removed of REQUIRED_NODE_TESTS) {
+    const remaining = requiredEntries().filter(entry => entry.name !== removed);
+    assert.throws(() => planOfflineNodeSteps('repo', remaining), error =>
+      error.message.includes('missing required Node test suites: ' + removed), removed);
+  }
+});
+
+test('refuses case-colliding test names (Windows-compatible behavior)', () => {
+  assert.throws(() => planOfflineNodeSteps('repo', requiredEntries([
+    dirent('Tokenomics.test.mjs'),
+  ])), /ambiguous case-insensitive Node test filename/);
+});
+
+test('required suite list is present in the actual repository test folder', () => {
+  const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+  const entries = readdirSync(join(root, 'test', 'node'), { withFileTypes: true });
+  assert.doesNotThrow(() => planOfflineNodeSteps(root, entries));
+  assert.ok(REQUIRED_NODE_TESTS.length >= 13);
 });
