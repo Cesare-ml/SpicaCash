@@ -34,7 +34,7 @@ This is a public, pre-launch crypto-asset project. **There is no official deploy
 
 - Read `docs/CONTRIBUTOR_GRANTS.md` before modifying grant proposals.
 - Do not assign real SPICA amounts, wallets, recipient identities, or payment entitlements: there is no approved allocation.
-- Grant proposals require a separate validated tokenomics proposal with a contributors-category allocation.
+- Grant proposals require a separate validated tokenomics proposal with a contributors-category allocation. Keep the exported `validateContributorGrants` function fail-closed for **every non-null companion tokenomics document**, including empty draft grants; do not rely solely on CLI pre-validation. Test direct API calls and the batch reconciler with unsafe economics on draft inputs.
 - Canonical GitHub PR links are unverified documentary references, not proof of acceptance or unique identity. Human review remains mandatory.
 - Never implement automatic payout, token-to-credits conversion, or a vesting execution transaction in this workstream.
 - Run `npm run test:grants` and `npm run check:grants` when changing grant tooling.
