@@ -271,7 +271,7 @@ test('pinned review refuses missing safeguards before manifest validation',t=>{
     assert.doesNotMatch(r.stdout,/VALID/);
   }
 });
-test('pinned review succeeds with valid proposal, independent pin and complete scoped inventory',t=>{
+test('pinned review succeeds with valid proposal, caller-supplied pin and complete scoped inventory',t=>{
   const f=groupedProposal(t);
   const digest=sha256Hex(readFileSync(f.path));
   const r=run(f.path,'--pinned-proposal-review','--require-proposal',
@@ -291,7 +291,7 @@ test('pinned review rejects mismatched manifest digest',t=>{
 test('pinned review rejects unlisted local batch despite matching manifest pin',t=>{
   const f=groupedProposal(t);
   const digest=sha256Hex(readFileSync(f.path));
-  writeFileSync(join(f.dir,'review-batches','unlisted.json'),'{}\\n');
+  writeFileSync(join(f.dir,'review-batches','unlisted.json'),'{}\n');
   const r=run(f.path,'--pinned-proposal-review','--require-proposal',
     '--inventory-dir','review-batches','--expected-manifest-sha256',digest);
   assert.equal(r.status,1,r.stdout);
