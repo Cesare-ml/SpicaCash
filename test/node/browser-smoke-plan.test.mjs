@@ -40,7 +40,7 @@ test('refuses unsafe or unexpected browser source rather than claiming success',
 
 test('parses the strict real-browser success signal', () => {
   const dom = '<html><body><pre id="spica-browser-smoke-result">' +
-    JSON.stringify({ status: 'PASS', assertions: 51, failures: [] }) +
+    JSON.stringify({ status: 'PASS', assertions: 61, failures: [] }) +
     '</pre></body></html>';
   assert.deepEqual(parseSmokeOutput(dom),
     { status: 'PASS', assertions: 51, failures: [] });
@@ -57,14 +57,37 @@ test('preserves named assertion failures and refuses malformed evidence', () => 
     '<pre id="spica-browser-smoke-result">' +
       JSON.stringify({ status: 'PASS', assertions: 2, failures: [] }) + '</pre>',
     '<pre id="spica-browser-smoke-result">' +
+      JSON.stringify({ status: 'PASS', assertions: 60, failures: [] }) + '</pre>',
+    '<pre id="spica-browser-smoke-result">' +
+      JSON.stringify({ status: 'PASS', assertions: 62, failures: [] }) + '</pre>',
+    '<pre id="spica-browser-smoke-result">' +
       JSON.stringify({ status: 'PASS', assertions: 51, failures: ['broken'] }) + '</pre>',
     '<pre id="spica-browser-smoke-result">' +
       JSON.stringify({ status: 'FAIL', assertions: 51, failures: [] }) + '</pre>',
     '<pre id="spica-browser-smoke-result">' +
-      JSON.stringify({ status: 'PASS', assertions: 51, failures: [] })
+      JSON.stringify({ status: 'PASS', assertions: 61, failures: [] })
   ]) {
     assert.throws(() => parseSmokeOutput(dom));
   }
+});
+
+
+test('rejects duplicate browser results even when the first looks successful', () => {
+  const marker = '<pre id="spica-browser-smoke-result">' +
+    JSON.stringify({ status: 'PASS', assertions: 61, failures: [] }) + '</pre>';
+  assert.throws(() => parseSmokeOutput(marker + marker), /Duplicate browser smoke-test results/);
+  assert.throws(() => parseSmokeOutput(marker +
+    '<pre id="spica-browser-smoke-result">' +
+    JSON.stringify({ status: 'FAIL', assertions: 20, failures: ['late DOM failure'] }) +
+    '</pre>'), /Duplicate browser smoke-test results/);
+});
+
+test('preserves incomplete FAIL evidence for diagnostic output', () => {
+  const marker = '<pre id="spica-browser-smoke-result">' +
+    JSON.stringify({ status: 'FAIL', assertions: 20, failures: ['early exception'] }) +
+    '</pre>';
+  assert.deepEqual(parseSmokeOutput(marker),
+    { status: 'FAIL', assertions: 20, failures: ['early exception'] });
 });
 
 test('discovers Windows browser installs and supports explicit overrides', () => {
