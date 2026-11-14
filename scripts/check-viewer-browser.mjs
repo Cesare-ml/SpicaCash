@@ -63,6 +63,25 @@ const HARNESS = String.raw`<script id="spica-browser-smoke-harness">
       byId("reset").click();
       snapshot("1.000", "0", "0", 1, 1);
       expect("Previous disabled after reset", byId("previous").disabled);
+      const key = name => {
+        const event = new KeyboardEvent("keydown", { key: name, bubbles: true, cancelable: true });
+        document.dispatchEvent(event);
+        expect("Keyboard " + name + " prevents page scrolling", event.defaultPrevented);
+      };
+      key("ArrowRight");
+      snapshot("875", "125", "0", 2, 2);
+      key("End");
+      snapshot("882", "118", "0", 6, 6);
+      key("ArrowRight");
+      snapshot("882", "118", "0", 6, 6);
+      key("Home");
+      snapshot("1.000", "0", "0", 1, 1);
+      key("ArrowLeft");
+      snapshot("1.000", "0", "0", 1, 1);
+      document.dispatchEvent(new KeyboardEvent("keydown",
+        { key: "End", ctrlKey: true, bubbles: true, cancelable: true }));
+      expect("Modified browser shortcut does not change stage",
+        byId("progress").getAttribute("aria-valuenow") === "1");
     } catch (error) {
       failures.push("Browser exception: " + String(error));
     }

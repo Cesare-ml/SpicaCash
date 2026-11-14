@@ -17,7 +17,7 @@
    Start-Process .\demo\index.html
    ```
 
-3. Select **Avanti**, **Indietro** or **Ricomincia**. The screen shows Alice/Bob balances, Bob's remaining allowance for a delegated spender, progress, a readable event log and conservation checks.
+3. Select **Avanti**, **Indietro** or **Ricomincia**, or use **← / →** to navigate, **Home** to return to the beginning, and **End** to reach the final stage. Standard modifier shortcuts and editable controls are left alone. The screen shows Alice/Bob balances, Bob's remaining allowance for a delegated spender, progress, a readable event log and conservation checks. The stage title and explanation are announced by a polite screen-reader live region.
 
 There is **no HTTP server** to start: the document is opened through `file://` and deliberately includes **all CSS and JavaScript inline** for offline operation. It is responsive for desktop and mobile. The CSP disallows network connections (`connect-src 'none'`); no external scripts, images, APIs or wallet SDKs are loaded.
 
@@ -59,10 +59,10 @@ node scripts/check-viewer-browser.mjs
 The script locates Chrome, Edge or Chromium (or uses an explicit browser path), creates an **ephemeral copy** of `demo/index.html` in a temporary folder, injects a test-only inline harness into that copy, launches the real browser in headless mode, and exercises:
 
 - All six checkpoints including the exact Alice/Bob balances, allowance and conservation values.
-- Enabled/disabled Next and Previous controls, rejected delegated spending and Reset.
+- Enabled/disabled Next and Previous controls, rejected delegated spending, Reset, arrow-key/Home/End navigation, and preservation of modified shortcuts.
 - The number of ledger entries, progress semantics and the no-network content-security policy.
 
-A successful run reports **61 browser DOM assertions** and deletes the temporary copy and browser profile. A missing browser, nonzero browser exit, timeout, malformed result or failed assertion exits nonzero; the test never guesses that it passed. No screenshots are captured automatically. The check runs **only** when explicitly invoked; it is not part of `test:offline:node`, which remains portable without a browser.
+A successful run reports **97 browser DOM assertions** (including boundary keyboard navigation and modified-shortcut refusal) and deletes the temporary copy and browser profile. A missing browser, nonzero browser exit, timeout, malformed result or failed assertion exits nonzero; the test never guesses that it passed. No screenshots are captured automatically. The check runs **only** when explicitly invoked; it is not part of `test:offline:node`, which remains portable without a browser.
 
 To point to a browser not discovered automatically, use a known local executable:
 
