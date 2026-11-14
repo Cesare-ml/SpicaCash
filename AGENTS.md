@@ -78,6 +78,8 @@ This is a public, pre-launch crypto-asset project. **There is no official deploy
 
 - The portable Node verification baseline contains **17 mandatory `.test.mjs` suites**, including the hardened ERC-20 dependency, Foundry-output and RPC tests. Do not remove or rename any mandatory suite without explicit review. Refuse case-variant `.test.MJS`/`.TEST.mjs` suffixes and case-insensitive duplicate test filenames before running subprocesses; continue to discover additional canonical `.test.mjs` suites. This is only a completeness guard, not a proof that a test ran or passed.
 
+- The launch-readiness report is a descriptive, offline parse of `docs/LAUNCH_READINESS.md`, not evidence verification or a release gate. Keep SC-01 through SC-17 and G1 through G5 intact, and preserve unconditional `NOT_AUTHORIZED` / `evidenceVerified: false` output. `test/node/launch-readiness.test.mjs` is a mandatory Node regression suite; after adding it the reviewed inventory contains 18 suites. No automation may interpret a checked box as launch approval.
+
 ## Pull request checklist
 
 - State the goal, threat-model impact, and exact files changed.
