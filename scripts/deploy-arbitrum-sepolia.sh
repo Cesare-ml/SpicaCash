@@ -3,6 +3,18 @@
 # Explicitly guarded testnet-only deployment helper. NEVER put keys in this script.
 set -euo pipefail
 
+# Inherited Foundry/Dapp settings can change the RPC, profile or execution
+# behavior of forge after cast has already checked Arbitrum Sepolia.
+# Reject overrides before any RPC call. The explicitly validated keystore
+# alias FOUNDRY_ACCOUNT is the sole supported exception.
+# This does not authenticate the local toolchain or external configuration.
+for override_name in "${!FOUNDRY_@}" "${!DAPP_@}"; do
+  if [[ "$override_name" != 'FOUNDRY_ACCOUNT' ]]; then
+    echo 'REFUSED: inherited Foundry/Dapp environment override; clear FOUNDRY_* and DAPP_* except FOUNDRY_ACCOUNT.' >&2
+    exit 1
+  fi
+done
+
 command -v cast >/dev/null || { echo "Missing Foundry 'cast'." >&2; exit 1; }
 command -v forge >/dev/null || { echo "Missing Foundry 'forge'." >&2; exit 1; }
 
