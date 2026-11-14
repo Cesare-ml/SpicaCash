@@ -5,6 +5,12 @@ This is a tracked worklist, not approval for issuance, fundraising, distribution
 
 The repo already contains an experimental fixed-supply ERC-20 (`src/SpicaCash.sol`), 17 mandatory Node regression-suite files, Solidity tests, research-only tokenomics/grant validators and a guarded Arbitrum Sepolia helper. No official chain, issuance quantity, initial holder, allocation, audit, testnet/mainnet contract address or real market has been approved. The historical 163/163 offline check came from a partial source reconstruction: **the entire current consolidated checkout and real Forge suite have not been verified together**.
 
+## Offline status report (descriptive only)
+
+Run `node scripts/report-launch-readiness.mjs` on a clean checkout (Node 20+) to inspect the current **17 SC tasks** and **5 decision gates** as JSON. The report rejects missing, duplicate, reordered or malformed task IDs and gates. Run `node --test test/node/launch-readiness.test.mjs` to exercise positive and negative parser cases. Both commands are local; no token operations, network calls or deployment are needed.
+
+**Important:** `releaseStatus` is **always** `NOT_AUTHORIZED` and `evidenceVerified` is **always** `false`, even when every checkbox is marked. The parser does not inspect linked logs, authenticate reviewers, verify Solidity tests, approve economic decisions or replace the go/no-go process. A green command exit means only that the checklist structure was parsed, **not** that launch gates passed.
+
 ## P0 — trustworthy local demonstration (no chain transactions)
 
 - [ ] **SC-01 / clean Windows clone and onboarding.** On Windows 11 + PowerShell, clone `main` and document prerequisites (Git, Node >=20). Run `node scripts/check-dependency-lock.mjs` *before any npm script*; clear inherited Node/npm preload options as documented in `AGENTS.md`. Run `node scripts/run-offline-node.mjs`. **Done when:** exact commit SHA, versions, stdout/stderr and exit codes are captured on a clean checkout; failures are resolved rather than hidden.
