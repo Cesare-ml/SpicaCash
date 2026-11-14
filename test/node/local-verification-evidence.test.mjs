@@ -6,6 +6,7 @@ import {
   symlinkSync, existsSync, statSync
 } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { join, dirname, resolve } from 'node:path';
 import {
   captureLocalVerification, cleanVerificationEnv
@@ -56,6 +57,12 @@ function mockedCommands(root, { dirty = '', forge = true, gate = 0, wrongRoot = 
         return { status: 0, stdout: wrongRoot ? dirname(root) : resolve(root) };
       }
       if (subcommand === 'rev-parse HEAD') return { status: 0, stdout: SHA };
+      if (subcommand === 'rev-parse --verify' && args[2]?.startsWith('HEAD:')) {
+        return { status: 0, stdout: SHA };
+      }
+      if (subcommand === 'hash-object --' && FILES.includes(args[2])) {
+        return { status: 0, stdout: SHA };
+      }
       if (subcommand === 'status --porcelain=v1') return { status: 0, stdout: dirty };
       throw new Error('unexpected git command');
     }
@@ -281,4 +288,62 @@ test('child env uses a null-prototype record to avoid inherited setters', () => 
   assert.equal(Object.getPrototypeOf(sanitized), null);
   assert.equal(sanitized.injected, undefined);
   assert.equal(sanitized.PATH, '/trusted/bin');
+});
+
+
+test('real Git rejects hidden assume-unchanged input edits that porcelain status misses', t => {
+  const root = fixture(t);
+  writeFileSync(join(root, '.gitignore'), '.spica-evidence/\n');
+  execFileSync('git', ['init', '-q', root]);
+  execFileSync('git', ['-C', root, 'add', '.']);
+  execFileSync('git', ['-C', root, '-c', 'user.name=Spica test',
+    '-c', 'user.email=spica@test.invalid', 'commit', '-qm', 'initial fixture']);
+  const calls = [];
+  const run = (command, args, options) => {
+    calls.push(command);
+    if (command === 'git') return spawnSync(command, args, options);
+    if (command === 'forge') return { status: 0, stdout: 'forge Version: 1.2.3\n' };
+    if (command === 'bash') return { status: 0 };
+    throw new Error('Unexpected command');
+  };
+
+  // Baseline: actual Git object IDs match, so the mocked verifier can report
+  // local PASS (this says nothing about Solidity execution).
+  const first = captureLocalVerification({
+    root, run, env: poisonedEnv, now: TIME
+  });
+  assert.equal(first.record.verificationStatus, 'PASS');
+  assert.equal(first.record.releaseAuthorized, false);
+  assert.equal(execFileSync('git', ['-C', root, 'status', '--porcelain=v1'],
+    { encoding: 'utf8' }).trim(), '');
+
+  const relative = 'foundry.toml';
+  execFileSync('git', ['-C', root, 'update-index', '--assume-unchanged', relative]);
+  writeFileSync(join(root, relative), 'changed despite assume-unchanged\n');
+  // This is the Git blind spot: clean porcelain does NOT imply unchanged bytes.
+  assert.equal(execFileSync('git', ['-C', root, 'status', '--porcelain=v1'],
+    { encoding: 'utf8' }).trim(), '');
+
+  const forgeBefore = calls.filter(x => x === 'forge').length;
+  assert.throws(() => captureLocalVerification({
+    root, run, env: poisonedEnv,
+    now: new Date('2026-11-14T12:35:10Z')
+  }), /Critical working files differ from committed Git blobs/);
+  assert.equal(calls.filter(x => x === 'forge').length, forgeBefore);
+  assert.equal(readFileSync(first.outputPath, 'utf8').includes('"releaseAuthorized": false'), true);
+});
+
+test('mocked Git object mismatches fail before querying Forge', t => {
+  const root = fixture(t);
+  const { run: baseline, calls } = mockedCommands(root);
+  const run = (cmd, args, options) => {
+    if (cmd === 'git' && args[0] === 'hash-object') {
+      calls.push({ command: cmd, args, options });
+      return { status: 0, stdout: 'b'.repeat(40) };
+    }
+    return baseline(cmd, args, options);
+  };
+  assert.throws(() => captureLocalVerification({ root, run, env: poisonedEnv, now: TIME }),
+    /Critical working files differ/);
+  assert.equal(calls.some(x => x.command === 'forge' || x.command === 'bash'), false);
 });
