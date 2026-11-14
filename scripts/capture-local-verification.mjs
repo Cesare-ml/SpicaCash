@@ -99,7 +99,7 @@ export function captureLocalVerification({
   const timestamp = now.toISOString();
   const forge = invoke(run, 'forge', ['--version'], { cwd: project, env: safeEnv });
   const forgeLine = forge.ok ? forge.output.split(/\r?\n/, 1)[0] : '';
-  const safeForgeVersion = /^[\x20-\x7e]{1,120}$/.test(forgeLine)
+  const safeForgeVersion = /^forge Version: [A-Za-z0-9._+-]{1,40}$/.test(forgeLine)
     ? forgeLine : 'unavailable';
 
   // The reviewed verifier is the only command run here; its output streams
