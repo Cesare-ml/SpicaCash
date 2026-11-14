@@ -77,5 +77,13 @@ test('required suite list is present in the actual repository test folder', () =
   const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
   const entries = readdirSync(join(root, 'test', 'node'), { withFileTypes: true });
   assert.doesNotThrow(() => planOfflineNodeSteps(root, entries));
-  assert.ok(REQUIRED_NODE_TESTS.length >= 13);
+  assert.ok(REQUIRED_NODE_TESTS.length >= 17);
+  for (const name of [
+    'dependency-lock.test.mjs',
+    'foundry-evidence.test.mjs',
+    'foundry-format.test.mjs',
+    'rpc-url.test.mjs',
+  ]) {
+    assert.ok(REQUIRED_NODE_TESTS.includes(name), 'must retain security suite ' + name);
+  }
 });
