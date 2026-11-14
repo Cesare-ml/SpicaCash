@@ -87,7 +87,14 @@ export function checkInvariantEvidence(raw) {
       errors.push(`${name}: expected exactly one passing invariant campaign with metrics`);
       continue;
     }
-    const [runs, calls, reverts] = matches[0].slice(1).map(BigInt);
+    // Forge counters are bounded by uint64 in practice. Avoid allocating
+    // enormous BigInts from an adversarial or corrupted local transcript.
+    const rawCounters = matches[0].slice(1);
+    if (rawCounters.some((value) => value.length > 20)) {
+      errors.push(`${name}: excessively long invariant counter`);
+      continue;
+    }
+    const [runs, calls, reverts] = rawCounters.map(BigInt);
     if (runs < 64n) errors.push(`${name}: fewer than 64 invariant runs`);
     if (calls < 4096n) errors.push(`${name}: fewer than 4096 invariant calls`);
     if (reverts !== 0n) errors.push(`${name}: nonzero revert count`);
@@ -112,7 +119,7 @@ export function checkInvariantEvidence(raw) {
     for (const row of data) {
       if (row.length !== 5 || row[0] !== handlerContract ||
           !requiredSelectors.includes(row[1]) || entries.has(row[1]) ||
-          !row.slice(2).every((value) => /^\d+$/.test(value))) {
+          !row.slice(2).every((value) => /^\d{1,20}$/.test(value))) {
         errors.push(`${name}: unexpected or malformed handler selector metrics row`);
         continue;
       }
