@@ -13,12 +13,14 @@ cp "$root/scripts/bootstrap-deps.sh" "$work/project/scripts/bootstrap-deps.sh"
 cat > "$work/mockbin/node" <<'MOCK'
 #!/usr/bin/env bash
 printf 'node %s\n' "$*" >> "$MOCK_LOG"
+[[ -z "${NODE_OPTIONS:-}" && -z "${npm_config_node_options:-}" && -z "${NPM_CONFIG_NODE_OPTIONS:-}" ]] || exit 89
 [[ "$*" == 'scripts/check-dependency-lock.mjs' ]] || exit 75
 [[ "${MOCK_POLICY_FAIL:-0}" != 1 ]] || exit 76
 MOCK
 cat > "$work/mockbin/npm" <<'MOCK'
 #!/usr/bin/env bash
 printf 'npm %s\n' "$*" >> "$MOCK_LOG"
+[[ -z "${NODE_OPTIONS:-}" && -z "${npm_config_node_options:-}" && -z "${NPM_CONFIG_NODE_OPTIONS:-}" ]] || exit 90
 [[ "$*" == 'ci --ignore-scripts --no-audit --no-fund' ]] || exit 77
 [[ "${MOCK_INSTALL_FAIL:-0}" != 1 ]] || exit 78
 MOCK
@@ -30,6 +32,7 @@ pass=0
 # npm config value that would otherwise re-enable lifecycle scripts.
 : > "$MOCK_LOG"
 export npm_config_ignore_scripts=false
+export NODE_OPTIONS='--trace-warnings' npm_config_node_options='--trace-deprecation' NPM_CONFIG_NODE_OPTIONS='--no-warnings' 
 (cd /tmp && bash "$work/project/scripts/bootstrap-deps.sh" > "$work/out" 2>&1)
 [[ $(wc -l < "$MOCK_LOG") -eq 2 ]]
 [[ "$(head -n 1 "$MOCK_LOG")" == 'node scripts/check-dependency-lock.mjs' ]]
@@ -59,6 +62,8 @@ fi
 if grep -Fq 'PASS: installed' "$work/out"; then exit 1; fi
 unset MOCK_INSTALL_FAIL
 pass=$((pass + 1))
+
+unset NODE_OPTIONS npm_config_node_options NPM_CONFIG_NODE_OPTIONS
 
 # Use the *real* npm binary on an empty, offline fixture to establish that the
 # explicit --ignore-scripts wins even when user config requests hooks.
