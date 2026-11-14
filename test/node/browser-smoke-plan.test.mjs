@@ -23,6 +23,10 @@ test('injects an inline DOM acceptance harness after the real viewer script', ()
   assert.match(instrumented, /"reset"/);
   assert.match(instrumented, /"rejected"/);
   assert.match(instrumented, /"held-supply"/);
+  assert.match(instrumented, /new KeyboardEvent/);
+  assert.match(instrumented, /"ArrowRight"/);
+  assert.match(instrumented, /"Home"/);
+  assert.match(instrumented, /"End"/);
   assert.equal((html.match(/spica-browser-smoke-harness/g) || []).length, 0);
 });
 

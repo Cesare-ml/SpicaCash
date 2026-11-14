@@ -79,3 +79,15 @@ test('single-file browser viewer has no external code, form, wallet or RPC surfa
   assert.doesNotMatch(html, /<script\s+src|<iframe|<form\b|<link\s+[^>]*href|https?:\/\//i);
   assert.doesNotMatch(embedded[1], /\bfetch\s*\(|\bWebSocket\s*\(|\bXMLHttpRequest\b|\bwindow\.ethereum\b|\bcast\s+send\b/);
 });
+
+test('stage changes are announced to assistive technology and keyboard controls are documented', () => {
+  assert.match(html, /role="status" aria-live="polite" aria-atomic="true"/);
+  assert.match(html, /Tastiera:.*Home.*End/);
+  assert.match(embedded[1], /document\.addEventListener\("keydown"/);
+  for (const key of ['ArrowLeft', 'ArrowRight', 'Home', 'End']) {
+    assert.ok(embedded[1].includes('event.key === "' + key + '"'));
+  }
+  assert.match(embedded[1], /event\.preventDefault\(\)/);
+  assert.match(embedded[1], /event\.ctrlKey/);
+  assert.match(embedded[1], /isContentEditable/);
+});

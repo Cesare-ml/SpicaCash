@@ -31,6 +31,7 @@
     .stage-title { font-size: 23px; margin: 6px 0; line-height: 1.25; }
     .stage-copy { color: #abb7d3; min-height: 46px; line-height: 1.5; margin: 0; }
     .buttons { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
+    .keyboard-hint { font-size: 12px; color: #aeb8d3; margin: 12px 0 0; line-height: 1.6; }
     button { border: 1px solid #66708d; border-radius: 12px; background: #2b334c; color: #fff; padding: 11px 18px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
     button.primary { border-color: #aeddbb; background: #b7e9c2; color: #15251c; }
     button:hover:not(:disabled) { filter: brightness(1.1); }
@@ -74,13 +75,16 @@
     <section class="panel" aria-label="Avanzamento simulazione">
       <div class="stage-top"><span>Scenario guidato</span><span id="progress-text">Fase 1 di 6</span></div>
       <div class="meter" role="progressbar" id="progress" aria-label="Avanzamento scenario" aria-valuemin="1" aria-valuemax="6" aria-valuenow="1"><div id="progress-fill" style="width:16.6667%"></div></div>
-      <h2 class="stage-title" id="step-title">Emissione iniziale simulata</h2>
-      <p class="stage-copy" id="step-detail">Alice riceve 1.000 SPICA fittizi per questa dimostrazione.</p>
+      <div role="status" aria-live="polite" aria-atomic="true">
+        <h2 class="stage-title" id="step-title">Emissione iniziale simulata</h2>
+        <p class="stage-copy" id="step-detail">Alice riceve 1.000 SPICA fittizi per questa dimostrazione.</p>
+      </div>
       <div class="buttons">
         <button type="button" id="previous">← Indietro</button>
         <button type="button" class="primary" id="next">Avanti →</button>
         <button type="button" id="reset">Ricomincia</button>
       </div>
+      <p class="keyboard-hint">Tastiera: ← e → per cambiare fase, Home per tornare all’inizio, End per raggiungere l’ultima fase.</p>
     </section>
 
     <div class="grid">
@@ -194,6 +198,21 @@
       byId("previous").addEventListener("click", () => { if (stageIndex > 0) stageIndex--; render(); });
       byId("next").addEventListener("click", () => { if (stageIndex < SCENARIO.length - 1) stageIndex++; render(); });
       byId("reset").addEventListener("click", () => { stageIndex = 0; render(); });
+      document.addEventListener("keydown", event => {
+        // Preserve browser shortcuts and future editable controls.
+        if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey ||
+            event.target?.isContentEditable ||
+            /^(INPUT|TEXTAREA|SELECT)$/.test(event.target?.tagName || "")) return;
+        let nextIndex = stageIndex;
+        if (event.key === "ArrowLeft") nextIndex = Math.max(0, stageIndex - 1);
+        else if (event.key === "ArrowRight") nextIndex = Math.min(SCENARIO.length - 1, stageIndex + 1);
+        else if (event.key === "Home") nextIndex = 0;
+        else if (event.key === "End") nextIndex = SCENARIO.length - 1;
+        else return;
+        event.preventDefault();
+        stageIndex = nextIndex;
+        render();
+      });
       render();
     }
   </script>
