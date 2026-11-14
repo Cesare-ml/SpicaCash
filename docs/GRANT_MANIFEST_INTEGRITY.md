@@ -43,7 +43,7 @@ node scripts/check-grant-manifest.mjs path/to/manifest.json --require-proposal
 
 The checked-in draft passes the first command but **must fail** `--require-proposal`.
 
-File paths must be relative to the manifest directory and end in `.json`. The loader refuses path traversal, absolute paths, symlink redirects, duplicated local paths, malformed/unexpected fields, digest mismatches, invalid statuses and files larger than 1 MiB. Maximum: 64 batches, each subject to the existing grant validator limits. It validates hashes **before** arithmetic and cross-file PR duplicate checks.
+File paths must be relative to the manifest directory and end in `.json`. The loader refuses path traversal, absolute paths, symlink redirects, duplicated local paths and hard-linked physical batch aliases (where filesystem identity is available), malformed/unexpected fields, digest mismatches, invalid statuses and files larger than 1 MiB. Maximum: 64 batches, each subject to the existing grant validator limits. It validates hashes **before** arithmetic and cross-file PR duplicate checks.
 
 ## Optional out-of-band review fingerprint
 
@@ -93,6 +93,7 @@ This is an **opt-in** directory check; omitting `--inventory-dir` explicitly rep
 
 ## Boundaries and remaining risks
 
+- **Physical-file uniqueness is best effort.** The manifest rejects hard-linked aliases of the same batch using the existing device/inode-based check, but mutable/network filesystems and platforms without stable inode identity limit this defense. Byte-identical independent files remain permitted.
 - **Completeness cannot be proved by the manifest itself.** An author could omit a batch entirely. Governance must separately confirm that the list is the agreed canonical set, e.g. by reviewing its committed Git revision and inventory.
 - SHA-256 detects changes relative to the listed digest; an attacker who edits the file *and* manifest can create a self-consistent dishonest proposal. Independent reviewers must inspect the committed content and authorship.
 - Public GitHub PR references remain unverified by this tool. Reviewers must confirm eligibility, merge/acceptance, conflicts of interest, ownership and anti-Sybil measures.
@@ -103,4 +104,4 @@ This is an **opt-in** directory check; omitting `--inventory-dir` explicitly rep
 
 ## Validation gates
 
-The 35 Node tests in `test/node/grant-manifest.test.mjs` cover default and synthetic proposals, tampered file hashes, unsafe file paths, duplicate references, Symlink denial, cross-batch over-allocation and CLI authorization disclaimers. Run `npm run test:safe-reader`, `npm run test:grant-manifest`, `npm run test:grant-inventory` and `npm run test:offline` in a clean repository checkout and document actual test output before merge. Solidity compilation and audit are separate, still mandatory before an onchain trial.
+The 37 Node tests in `test/node/grant-manifest.test.mjs` cover default and synthetic proposals, tampered file hashes, unsafe file paths, duplicate references, Symlink denial, cross-batch over-allocation and CLI authorization disclaimers. Run `npm run test:safe-reader`, `npm run test:grant-manifest`, `npm run test:grant-inventory` and `npm run test:offline` in a clean repository checkout and document actual test output before merge. Solidity compilation and audit are separate, still mandatory before an onchain trial.

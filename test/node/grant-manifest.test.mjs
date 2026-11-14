@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,writeFileSync,readFileSync,rmSync,symlinkSync,mkdirSync,renameSync} from 'node:fs';
+import {mkdtempSync,writeFileSync,readFileSync,rmSync,symlinkSync,linkSync,mkdirSync,renameSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve,dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -175,6 +175,30 @@ test('absolute paths are rejected',t=>{
 });
 test('duplicate input file entries are rejected',t=>{
  const f=fixture(t);f.data.batches.push({...f.data.batches[0]});assert.match(errors(f),/duplicate file/);
+});
+test('hard-linked batch aliases are rejected despite matching file hashes',t=>{
+ const f=fixture(t);
+ try {linkSync(join(f.dir,'grant.json'),join(f.dir,'alias.json'));}
+ catch(e){if(['EPERM','EOPNOTSUPP','ENOTSUP','ENOSYS'].includes(e.code)){t.skip('hard links unavailable');return;}throw e;}
+ f.data.batches.push({...f.data.batches[0],path:'alias.json'});
+ const path=save(f.dir,f.data);
+ const report=loadGrantManifest(path);
+ assert.equal(report.valid,false);
+ assert.match(report.errors.join('\n'),/duplicate physical grant batch file/);
+ const r=run(path);
+ assert.equal(r.status,1,r.stdout);
+ assert.match(r.stderr,/duplicate physical grant batch file/);
+});
+test('distinct batch files with identical bytes are not treated as hard links',t=>{
+ const f=fixture(t);
+ f.data.batches.push(put(f.dir,'independent.json',draft));
+ const path=save(f.dir,f.data);
+ const report=loadGrantManifest(path);
+ assert.equal(report.valid,true,report.errors.join('\n'));
+ assert.equal(report.batches.length,2);
+ const r=run(path);
+ assert.equal(r.status,0,r.stderr);
+ assert.match(r.stdout,/Verified batches: 2/);
 });
 test('symlinked batch files are rejected',t=>{
  const f=fixture(t);

@@ -2,6 +2,7 @@
 // Read-only manifest integrity checks; no GitHub, wallet or chain access.
 import { createHash } from 'node:crypto';
 import { parseReviewJson } from './parse-review-json.mjs';
+import { assertDistinctBatchFiles } from './distinct-batch-files.mjs';
 import { lstatSync, realpathSync } from 'node:fs';
 import { readSmallBytes } from './read-small-file.mjs';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
@@ -150,6 +151,17 @@ export function loadGrantManifest(manifestPath, options = {}) {
   });
   if (manifest.status === 'proposal' && manifest.tokenomics === null) {
     failure('tokenomics', 'proposal requires a hashed tokenomics file');
+  }
+  // Path uniqueness alone cannot catch distinct names for the same hard-linked
+  // batch. Reuse the standalone review's physical-file identity guard after all
+  // declared files have passed their individual digest and JSON checks.
+  // This is best-effort on mutable/network filesystems, not an atomic snapshot.
+  if (errors.length === 0) {
+    try {
+      assertDistinctBatchFiles(result.batches.map(batch => resolve(base, batch.name)));
+    } catch (err) {
+      failure('batches', err.message);
+    }
   }
   result.status = manifest.status;
   result.valid = errors.length === 0;

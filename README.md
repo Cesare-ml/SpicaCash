@@ -66,7 +66,7 @@ Standalone `check:tokenomics`, `check:grants` and `check:grant-batches` use the 
 
 ## Hashed grant proposal manifest (review-only)
 
-The [SHA-256 manifest integrity check](docs/GRANT_MANIFEST_INTEGRITY.md) detects modified batch files and requires a versioned, explicit list of the proposal files being reconciled. It **cannot prove** that no batch was intentionally omitted, that any GitHub contribution is eligible, or that token issuance is authorized.
+The [SHA-256 manifest integrity check](docs/GRANT_MANIFEST_INTEGRITY.md) detects modified batch files, rejects duplicate physical batch aliases (including supported hard links), and requires a versioned, explicit list of the proposal files being reconciled. It **cannot prove** that no batch was intentionally omitted, that any GitHub contribution is eligible, or that token issuance is authorized.
 
 - `npm run check:grant-manifest` — validate the committed empty draft and its exact checksum
 - `npm run test:grant-manifest` — run synthetic integrity and safety tests
