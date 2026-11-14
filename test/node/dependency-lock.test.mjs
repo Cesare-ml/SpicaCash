@@ -12,6 +12,24 @@ const project = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const manifest = JSON.parse(readFileSync(resolve(project, 'package.json'), 'utf8'));
 const lock = JSON.parse(readFileSync(resolve(project, 'package-lock.json'), 'utf8'));
 const inputs = () => [structuredClone(manifest), structuredClone(lock)];
+
+// Invoke npm's JavaScript CLI with this Node runtime, avoiding npm.cmd/.bat
+// shell invocation on Windows and implicit shell execution in all fixtures.
+function runOfflineNpmFixture(args, options) {
+  const nodeBin = dirname(process.execPath);
+  const npmCli = [
+    join(nodeBin, 'node_modules', 'npm', 'bin', 'npm-cli.js'), // Windows Node MSI
+    resolve(nodeBin, '../lib/node_modules/npm/bin/npm-cli.js'), // Node/NVM
+    resolve(nodeBin, '../share/nodejs/npm/bin/npm-cli.js') // Linux distro
+  ].find(existsSync);
+  if (!npmCli && process.platform === 'win32') {
+    throw new Error('Bundled npm-cli.js unavailable; refusing implicit Windows shell execution');
+  }
+  return npmCli
+    ? spawnSync(process.execPath, [npmCli, ...args], { ...options, shell: false })
+    : spawnSync('npm', args, { ...options, shell: false });
+}
+
 const rejects = (name, mutate, message) => test(name, () => {
   const [pkg, locked] = inputs();
   mutate(pkg, locked);
@@ -95,7 +113,7 @@ test('npm ci --ignore-scripts suppresses local preinstall hook (offline empty fi
       name:'offline-lifecycle-fixture', version:'0.0.1', lockfileVersion:3, requires:true,
       packages: {'': {name:'offline-lifecycle-fixture', version:'0.0.1'}}
     }));
-    const cli = spawnSync('npm', ['ci', '--ignore-scripts', '--offline', '--no-audit', '--no-fund'], {
+    const cli = runOfflineNpmFixture(['ci', '--ignore-scripts', '--offline', '--no-audit', '--no-fund'], {
       encoding:'utf8', cwd:dir, timeout:15000
     });
     assert.equal(cli.status, 0, cli.stderr);
@@ -123,7 +141,7 @@ test('npm ci respects project .npmrc ignore-scripts default (offline fixture)', 
     const env = {...process.env};
     delete env.npm_config_ignore_scripts;
     delete env.NPM_CONFIG_IGNORE_SCRIPTS;
-    const result = spawnSync('npm', ['ci', '--offline', '--no-audit', '--no-fund'], {
+    const result = runOfflineNpmFixture(['ci', '--offline', '--no-audit', '--no-fund'], {
       encoding:'utf8', cwd:dir, env, timeout:15000
     });
     assert.equal(result.status, 0, result.stderr);
