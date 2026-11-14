@@ -15,17 +15,32 @@ const FILES = Object.freeze([
 const MAX_FILE_BYTES = 1024 * 1024;
 const MAX_PROCESS_OUTPUT = 1024 * 1024;
 
+// Git metadata/config redirection, Node/npm preloads, Bash startup files and
+// native loaders must not influence the evidence collector's child processes.
+// Filtering names is case-insensitive for consistent Windows behavior.
+const BLOCKED_CHILD_PREFIX = /^(?:GIT_|NPM_CONFIG_|NODE_|FOUNDRY_|DAPP_|BASH_FUNC_|LD_|DYLD_)/i;
+const BLOCKED_CHILD_NAMES = new Set([
+  'BASH_ENV', 'ENV', 'CDPATH', 'SHELLOPTS', 'BASHOPTS',
+  'ETH_RPC_URL', 'ARBITRUM_SEPOLIA_RPC_URL', 'SPICA_CONFIRM_TESTNET_DEPLOY',
+]);
+
 export function childEnvironment(source = process.env) {
-  // Inherited Node preload and npm Node options are executable-code surfaces.
-  // This protects only spawned children, not the already-started parent process.
-  return {
-    ...source,
-    NODE_OPTIONS: '',
-    npm_config_node_options: '',
-    NPM_CONFIG_NODE_OPTIONS: '',
-    npm_config_script_shell: '',
-    NPM_CONFIG_SCRIPT_SHELL: '',
-  };
+  // This only sanitizes spawned children. An already-loaded Node preload,
+  // malicious PATH, tool executable or global Git configuration remains unsafe.
+  const env = Object.create(null);
+  for (const [key, value] of Object.entries(source)) {
+    if (BLOCKED_CHILD_PREFIX.test(key) || BLOCKED_CHILD_NAMES.has(key.toUpperCase())) {
+      continue;
+    }
+    env[key] = value;
+  }
+  // Retain empty compatibility overrides for the existing Node/npm checks.
+  env.NODE_OPTIONS = '';
+  env.npm_config_node_options = '';
+  env.NPM_CONFIG_NODE_OPTIONS = '';
+  env.npm_config_script_shell = '';
+  env.NPM_CONFIG_SCRIPT_SHELL = '';
+  return env;
 }
 
 export function digestRegularFile(path) {
