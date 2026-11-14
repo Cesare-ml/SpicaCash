@@ -196,7 +196,7 @@ test('child environment filters Git, shell startup, loader and case-variant over
     git_config_count: '1', GIT_INDEX_FILE: '/tmp/fake.index',
     NPM_CONFIG_SCRIPT_SHELL: '/tmp/evil-sh', Node_Path: '/tmp/inject',
     'bAsH_FuNc_git%%': '() { exit 0; }', BASH_ENV: '/tmp/evil-bash',
-    bAsH_oPtS: 'extdebug', ENV: '/tmp/evil-env', CDPATH: '/tmp',
+    bAsHoPtS: 'extdebug', ENV: '/tmp/evil-env', CDPATH: '/tmp',
     DaPp_FfI: 'true', FOUNDRY_PROFILE: 'untrusted',
     LD_PRELOAD: '/tmp/evil.so', dYlD_insert_libraries: '/tmp/evil.dylib',
     eth_rpc_url: 'https://example.invalid/private', ARBITRUM_SEPOLIA_RPC_URL: 'secret',
