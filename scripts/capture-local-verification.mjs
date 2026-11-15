@@ -135,10 +135,14 @@ export function captureLocalVerification({
 
   // A successful exit code is not evidence when the checked-in inputs
   // changed while the gate was executing. Recheck even on failure.
+  const afterCommit = checkedText(run, 'git', ['rev-parse', 'HEAD'], project, safeEnv);
   const afterStatus = checkedText(run, 'git',
     ['status', '--porcelain=v1', '--untracked-files=normal'], project, safeEnv);
   const afterHashes = inputHashes(project);
-  const inputsStable = afterStatus === '' && INPUTS.every(
+  // A test hook can replace HEAD with another clean commit without changing
+  // any of the critical source files. Never attribute that run to the
+  // original commit, even when Git status and individual blobs still match.
+  const inputsStable = afterCommit === commit && afterStatus === '' && INPUTS.every(
     name => hashes[name] === afterHashes[name]
   ) && inputsMatchCommittedBlobs(project, run, safeEnv);
   const status = !inputsStable ? 'INVALIDATED'
