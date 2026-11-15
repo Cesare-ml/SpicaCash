@@ -298,6 +298,9 @@ test('real Git rejects hidden assume-unchanged input edits that porcelain status
   execFileSync('git', ['-C', root, 'add', '.']);
   execFileSync('git', ['-C', root, '-c', 'user.name=Spica test',
     '-c', 'user.email=spica@test.invalid', 'commit', '-qm', 'initial fixture']);
+  // Real Git children need an actual executable search path. Keep hostile
+  // overrides in the fixture while preserving only this trusted PATH value.
+  const realGitEnv = { ...poisonedEnv, PATH: process.env.PATH };
   const calls = [];
   const run = (command, args, options) => {
     calls.push(command);
@@ -310,7 +313,7 @@ test('real Git rejects hidden assume-unchanged input edits that porcelain status
   // Baseline: actual Git object IDs match, so the mocked verifier can report
   // local PASS (this says nothing about Solidity execution).
   const first = captureLocalVerification({
-    root, run, env: poisonedEnv, now: TIME
+    root, run, env: realGitEnv, now: TIME
   });
   assert.equal(first.record.verificationStatus, 'PASS');
   assert.equal(first.record.releaseAuthorized, false);
@@ -326,7 +329,7 @@ test('real Git rejects hidden assume-unchanged input edits that porcelain status
 
   const forgeBefore = calls.filter(x => x === 'forge').length;
   assert.throws(() => captureLocalVerification({
-    root, run, env: poisonedEnv,
+    root, run, env: realGitEnv,
     now: new Date('2026-11-14T12:35:10Z')
   }), /Critical working files differ from committed Git blobs/);
   assert.equal(calls.filter(x => x === 'forge').length, forgeBefore);
@@ -383,6 +386,8 @@ test('real Git commit change with unchanged contract inputs cannot yield PASS', 
     '-c', 'user.email=spica@test.invalid', 'commit', '-qm', 'initial fixture']);
   const firstHead = execFileSync('git', ['-C', root, 'rev-parse', 'HEAD'],
     { encoding: 'utf8' }).trim();
+  // Keep real Git discoverable while testing all other environment filters.
+  const realGitEnv = { ...poisonedEnv, PATH: process.env.PATH };
   let verifierCalls = 0;
   const run = (command, args, options) => {
     if (command === 'git') return spawnSync(command, args, options);
@@ -399,7 +404,7 @@ test('real Git commit change with unchanged contract inputs cannot yield PASS', 
     }
     throw new Error('Unexpected command');
   };
-  const { record } = captureLocalVerification({ root, run, env: poisonedEnv, now: TIME });
+  const { record } = captureLocalVerification({ root, run, env: realGitEnv, now: TIME });
   const lastHead = execFileSync('git', ['-C', root, 'rev-parse', 'HEAD'],
     { encoding: 'utf8' }).trim();
   assert.notEqual(lastHead, firstHead);
