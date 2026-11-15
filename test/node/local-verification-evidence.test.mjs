@@ -347,3 +347,68 @@ test('mocked Git object mismatches fail before querying Forge', t => {
     /Critical working files differ/);
   assert.equal(calls.some(x => x.command === 'forge' || x.command === 'bash'), false);
 });
+
+
+test('mocked HEAD drift invalidates a zero-exit verification with unchanged inputs', t => {
+  const root = fixture(t);
+  const { run: normal, calls } = mockedCommands(root);
+  let headReads = 0;
+  const run = (command, args, options) => {
+    if (command === 'git' && args.join(' ') === 'rev-parse HEAD') {
+      headReads++;
+      if (headReads === 2) {
+        calls.push({ command, args, options });
+        return { status: 0, stdout: 'b'.repeat(40) };
+      }
+    }
+    return normal(command, args, options);
+  };
+  const { record } = captureLocalVerification({ root, run, env: poisonedEnv, now: TIME });
+  assert.equal(headReads, 2);
+  assert.equal(record.gitCommit, SHA);
+  assert.equal(record.verifierExitCode, 0);
+  assert.equal(record.inputsStableAfterRun, false);
+  assert.equal(record.verificationStatus, 'INVALIDATED');
+  assert.equal(record.releaseAuthorized, false);
+  assert.equal(calls.filter(x => x.command === 'bash').length, 1);
+});
+
+test('real Git commit change with unchanged contract inputs cannot yield PASS', t => {
+  const root = fixture(t);
+  writeFileSync(join(root, '.gitignore'), '.spica-evidence/\n');
+  writeFileSync(join(root, 'README.md'), 'initial research notes\n');
+  execFileSync('git', ['init', '-q', root]);
+  execFileSync('git', ['-C', root, 'add', '.']);
+  execFileSync('git', ['-C', root, '-c', 'user.name=Spica test',
+    '-c', 'user.email=spica@test.invalid', 'commit', '-qm', 'initial fixture']);
+  const firstHead = execFileSync('git', ['-C', root, 'rev-parse', 'HEAD'],
+    { encoding: 'utf8' }).trim();
+  let verifierCalls = 0;
+  const run = (command, args, options) => {
+    if (command === 'git') return spawnSync(command, args, options);
+    if (command === 'forge') return { status: 0, stdout: 'forge Version: 1.2.3\n' };
+    if (command === 'bash') {
+      verifierCalls++;
+      // Deliberately move HEAD to a different *clean* commit while retaining
+      // every critical Solidity/config/verifier blob unchanged.
+      writeFileSync(join(root, 'README.md'), 'revised research notes\n');
+      execFileSync('git', ['-C', root, 'add', 'README.md']);
+      execFileSync('git', ['-C', root, '-c', 'user.name=Spica test',
+        '-c', 'user.email=spica@test.invalid', 'commit', '-qm', 'noncritical docs']);
+      return { status: 0 };
+    }
+    throw new Error('Unexpected command');
+  };
+  const { record } = captureLocalVerification({ root, run, env: poisonedEnv, now: TIME });
+  const lastHead = execFileSync('git', ['-C', root, 'rev-parse', 'HEAD'],
+    { encoding: 'utf8' }).trim();
+  assert.notEqual(lastHead, firstHead);
+  assert.equal(record.gitCommit, firstHead);
+  assert.equal(verifierCalls, 1);
+  assert.equal(record.verifierExitCode, 0);
+  assert.equal(record.inputsStableAfterRun, false);
+  assert.equal(record.verificationStatus, 'INVALIDATED');
+  assert.equal(record.releaseAuthorized, false);
+  assert.equal(execFileSync('git', ['-C', root, 'status', '--porcelain=v1'],
+    { encoding: 'utf8' }).trim(), '');
+});
