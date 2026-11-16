@@ -82,6 +82,8 @@ test('single-file browser viewer has no external code, form, wallet or RPC surfa
 
 test('stage changes are announced to assistive technology and keyboard controls are documented', () => {
   assert.match(html, /role="status" aria-live="polite" aria-atomic="true"/);
+  assert.match(html, /aria-valuetext="Fase 1 di 6: Emissione iniziale simulata"/);
+  assert.match(html, /<ol class="ledger" id="ledger" aria-live="off"><\/ol>/);
   assert.match(html, /Tastiera:.*Home.*End/);
   assert.match(embedded[1], /document\.addEventListener\("keydown"/);
   for (const key of ['ArrowLeft', 'ArrowRight', 'Home', 'End']) {
@@ -157,12 +159,18 @@ function mountOfflineViewer() {
 test('actual inline keyboard listener navigates six bounded replay states', () => {
   const app = mountOfflineViewer();
   assert.equal(app.stage(), 1);
+  assert.equal(app.byId('progress').getAttribute('aria-valuetext'),
+    'Fase 1 di 6: Emissione iniziale simulata');
   assert.equal(app.key('ArrowRight'), true);
   assert.equal(app.stage(), 2);
+  assert.equal(app.byId('progress').getAttribute('aria-valuetext'),
+    'Fase 2 di 6: Alice invia 125 SPICA');
   assert.equal(app.byId('alice-balance').textContent, '875');
   assert.equal(app.byId('bob-balance').textContent, '125');
   assert.equal(app.key('End'), true);
   assert.equal(app.stage(), 6);
+  assert.equal(app.byId('progress').getAttribute('aria-valuetext'),
+    'Fase 6 di 6: Tentativo rifiutato');
   assert.equal(app.byId('alice-balance').textContent, '882');
   assert.equal(app.byId('bob-balance').textContent, '118');
   assert.equal(app.byId('allowance').textContent, '0');

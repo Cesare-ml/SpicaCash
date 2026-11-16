@@ -17,7 +17,7 @@
    Start-Process .\demo\index.html
    ```
 
-3. Select **Avanti**, **Indietro** or **Ricomincia**, or use **← / →** to navigate, **Home** to return to the beginning, and **End** to reach the final stage. Standard modifier shortcuts and editable controls are left alone. The screen shows Alice/Bob balances, Bob's remaining allowance for a delegated spender, progress, a readable event log and conservation checks. The stage title and explanation are announced by a polite screen-reader live region.
+3. Select **Avanti**, **Indietro** or **Ricomincia**, or use **← / →** to navigate, **Home** to return to the beginning, and **End** to reach the final stage. Standard modifier shortcuts and editable controls are left alone. The screen shows Alice/Bob balances, Bob's remaining allowance for a delegated spender, progress, a readable event log and conservation checks. The stage title and explanation are announced by a polite screen-reader live region. The progress bar also exposes the localized current phase (for example, “Fase 3 di 6: Bob autorizza 20 SPICA”) as its accessible value. The movement log remains available for browsing but is not a second live region, avoiding repeated announcements of the entire growing history.
 
 There is **no HTTP server** to start: the document is opened through `file://` and deliberately includes **all CSS and JavaScript inline** for offline operation. It is responsive for desktop and mobile. The CSP disallows network connections (`connect-src 'none'`); no external scripts, images, APIs or wallet SDKs are loaded.
 
