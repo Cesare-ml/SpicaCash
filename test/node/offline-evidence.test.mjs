@@ -156,7 +156,7 @@ test('rejects assume-unchanged edits that Git porcelain reports as clean', () =>
   try {
     const target = 'scripts/check-dependency-lock.mjs';
     execFileSync('git', ['-C', dir, 'update-index', '--assume-unchanged', target]);
-    writeFileSync(join(dir, target), "console.log('tampered policy');\\n");
+    writeFileSync(join(dir, target), "console.log('tampered policy');\n");
     const status = execFileSync('git', ['-C', dir, 'status', '--porcelain=v1'], {
       encoding: 'utf8'
     });
