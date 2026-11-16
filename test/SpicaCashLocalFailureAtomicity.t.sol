@@ -162,6 +162,45 @@ contract SpicaCashLocalFailureAtomicityTest {
         require(token.totalSupply() == SUPPLY, "final supply");
     }
 
+    function testFailedPullDoesNotAffectAnotherSpenderAllowance() public {
+        AtomicityActor alice = new AtomicityActor();
+        AtomicityActor bob = new AtomicityActor();
+        AtomicityActor spenderA = new AtomicityActor();
+        AtomicityActor spenderB = new AtomicityActor();
+        SpicaCash token = new SpicaCash(address(alice), SUPPLY);
+
+        alice.directSend(token, address(bob), 20 * UNIT);
+        bob.approveSpender(token, address(spenderA), 2 * UNIT);
+        bob.approveSpender(token, address(spenderB), 7 * UNIT);
+
+        try spenderA.delegatedPull(token, address(bob), address(alice), 3 * UNIT) {
+            revert("unauthorized spender A pull succeeded");
+        } catch (bytes memory reason) {
+            _assertError(
+                reason,
+                abi.encodeWithSelector(
+                    IERC20Errors.ERC20InsufficientAllowance.selector,
+                    address(spenderA),
+                    2 * UNIT,
+                    3 * UNIT
+                )
+            );
+        }
+
+        require(token.allowance(address(bob), address(spenderA)) == 2 * UNIT, "spender A allowance changed");
+        require(token.allowance(address(bob), address(spenderB)) == 7 * UNIT, "spender B allowance changed");
+        require(token.balanceOf(address(alice)) == 980 * UNIT, "alice changed");
+        require(token.balanceOf(address(bob)) == 20 * UNIT, "bob changed");
+        require(token.totalSupply() == SUPPLY, "supply changed");
+
+        spenderB.delegatedPull(token, address(bob), address(alice), 4 * UNIT);
+        require(token.allowance(address(bob), address(spenderA)) == 2 * UNIT, "spender A allowance spent");
+        require(token.allowance(address(bob), address(spenderB)) == 3 * UNIT, "spender B allowance incorrect");
+        require(token.balanceOf(address(alice)) == 984 * UNIT, "alice final");
+        require(token.balanceOf(address(bob)) == 16 * UNIT, "bob final");
+        require(token.totalSupply() == SUPPLY, "final supply");
+    }
+
     function testFailedDirectTransferPreservesBalancesAndSubsequentTransfer() public {
         AtomicityActor alice = new AtomicityActor();
         AtomicityActor bob = new AtomicityActor();
