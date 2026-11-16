@@ -217,6 +217,60 @@ test('unsafe authority and unknown fields are rejected',t=>{
  const f=fixture(t);f.data.executionAuthorized=true;f.data.signingKey='unsafe';
  assert.match(errors(f),/executionAuthorized/);assert.match(errors(f),/signingKey/);
 });
+
+test('invalid execution flag refuses missing manifest-selected batch before reading it',t=>{
+ const f=fixture(t);
+ f.data.executionAuthorized=true;
+ f.data.batches[0]={path:'missing-grant.json',sha256:'0'.repeat(64)};
+ const report=loadGrantManifest(save(f.dir,f.data));
+ assert.equal(report.valid,false);
+ assert.deepEqual(report.errors,['executionAuthorized: must remain false']);
+ assert.deepEqual(report.batches,[]);
+ assert.equal(report.tokenomics,null);
+});
+
+test('unknown top-level keys refuse referenced files before opening them',t=>{
+ const f=fixture(t);
+ f.data.signingKey='not-a-key';
+ f.data.batches[0]={path:'missing-grant.json',sha256:'0'.repeat(64)};
+ const report=loadGrantManifest(save(f.dir,f.data));
+ assert.equal(report.valid,false);
+ assert.deepEqual(report.errors,['manifest.signingKey: unexpected field']);
+ assert.deepEqual(report.batches,[]);
+});
+
+test('proposal lacking hashed tokenomics refuses batch reads',t=>{
+ const f=fixture(t);
+ f.data.status='proposal';
+ f.data.batches[0]={path:'missing-grant.json',sha256:'0'.repeat(64)};
+ const report=loadGrantManifest(save(f.dir,f.data));
+ assert.equal(report.valid,false);
+ assert.deepEqual(report.errors,['tokenomics: proposal requires a hashed tokenomics file']);
+ assert.deepEqual(report.batches,[]);
+});
+
+test('invalid schema and status refuse referenced file reads',t=>{
+ const f=fixture(t);
+ f.data.schemaVersion=99;
+ f.data.status='approved';
+ f.data.batches[0]={path:'missing-grant.json',sha256:'0'.repeat(64)};
+ const report=loadGrantManifest(save(f.dir,f.data));
+ assert.equal(report.valid,false);
+ assert.deepEqual(report.errors,[
+  'schemaVersion: expected version 1',
+  'status: must be draft or proposal'
+ ]);
+ assert.deepEqual(report.batches,[]);
+});
+
+test('valid manifest still reads and validates declared batch files',t=>{
+ const f=fixture(t);
+ const report=loadGrantManifest(f.path);
+ assert.equal(report.valid,true,report.errors.join('\n'));
+ assert.equal(report.batches.length,1);
+ assert.equal(report.batches[0].plan.status,'draft');
+});
+
 test('backslash paths are rejected',t=>{
  const f=fixture(t);f.data.batches[0].path='..\\secret.json';assert.match(errors(f),/safe relative/);
 });
