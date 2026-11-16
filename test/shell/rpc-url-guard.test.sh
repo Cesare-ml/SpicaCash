@@ -143,4 +143,32 @@ for override_name in FOUNDRY_ETH_RPC_URL DAPP_RPC_URL FOUNDRY_PROFILE; do
   reject_override_before_rpc
   unset "$override_name"
 done
+
+# Exported Bash functions must not be able to impersonate required executables.
+export MOCK_FUNCTION_LOG="$work/function.log"
+reject_exported_function() {
+  : > "$MOCK_CAST_LOG"; : > "$MOCK_FORGE_LOG"; : > "$MOCK_FUNCTION_LOG"
+  if bash "$root/scripts/deploy-arbitrum-sepolia.sh" > "$work/out" 2>&1; then
+    echo "FAIL: exported $1 function was accepted" >&2
+    exit 1
+  fi
+  grep -q 'REFUSED: exported shell function overrides a required tool' "$work/out"
+  [[ ! -s "$MOCK_CAST_LOG" && ! -s "$MOCK_FORGE_LOG" && ! -s "$MOCK_FUNCTION_LOG" ]] || {
+    echo "FAIL: exported $1 function or a tool ran before refusal" >&2; exit 1;
+  }
+  pass=$((pass+1))
+}
+cast() { printf 'cast function executed\n' >> "$MOCK_FUNCTION_LOG"; }
+export -f cast
+reject_exported_function cast
+unset -f cast
+forge() { printf 'forge function executed\n' >> "$MOCK_FUNCTION_LOG"; }
+export -f forge
+reject_exported_function forge
+unset -f forge
+node() { printf 'node function executed\n' >> "$MOCK_FUNCTION_LOG"; }
+export -f node
+reject_exported_function node
+unset -f node
+
 printf 'PASS: %d mocked RPC safety integration scenarios\n' "$pass"
