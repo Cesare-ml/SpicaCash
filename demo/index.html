@@ -202,8 +202,14 @@
         // Preserve browser shortcuts and let focused controls handle their own keys.
         const target = event.target;
         const targetRole = target?.getAttribute?.("role");
+        // Key events can originate from an icon/span nested inside a control.
+        // Check the nearest interactive ancestor as well as the direct target.
+        const interactiveAncestor = target?.closest?.(
+          'button, a, summary, input, textarea, select, [role="button"], [role="link"], ' +
+          '[role="slider"], [role="checkbox"], [role="radio"], [role="menuitem"]'
+        );
         if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey ||
-            target?.isContentEditable ||
+            target?.isContentEditable || interactiveAncestor ||
             /^(INPUT|TEXTAREA|SELECT|BUTTON|A|SUMMARY)$/.test(target?.tagName || "") ||
             ["button", "link", "slider", "checkbox", "radio", "menuitem"].includes(targetRole)) return;
         let nextIndex = stageIndex;
