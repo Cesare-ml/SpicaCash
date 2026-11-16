@@ -111,6 +111,35 @@ contract SpicaCashLocalFailureAtomicityTest {
         require(token.totalSupply() == SUPPLY, "final supply");
     }
 
+    function testInfiniteAllowanceSurvivesFailedAndSuccessfulPulls() public {
+        AtomicityActor alice = new AtomicityActor();
+        AtomicityActor bob = new AtomicityActor();
+        AtomicityActor spender = new AtomicityActor();
+        SpicaCash token = new SpicaCash(address(alice), SUPPLY);
+
+        alice.directSend(token, address(bob), 8 * UNIT);
+        bob.approveSpender(token, address(spender), type(uint256).max);
+
+        // A failing pull must not alter an unlimited allowance or any balance.
+        try spender.delegatedPull(token, address(bob), address(alice), 9 * UNIT) {
+            revert("over-balance unlimited pull succeeded");
+        } catch (bytes memory reason) {
+            require(_selector(reason) == IERC20Errors.ERC20InsufficientBalance.selector, "wrong unlimited error");
+        }
+
+        require(token.balanceOf(address(alice)) == 992 * UNIT, "alice changed");
+        require(token.balanceOf(address(bob)) == 8 * UNIT, "bob changed");
+        require(token.allowance(address(bob), address(spender)) == type(uint256).max, "infinite allowance changed");
+        require(token.totalSupply() == SUPPLY, "supply changed");
+
+        // OpenZeppelin's infinite approval is intentionally not decremented.
+        spender.delegatedPull(token, address(bob), address(alice), 3 * UNIT);
+        require(token.balanceOf(address(alice)) == 995 * UNIT, "alice final");
+        require(token.balanceOf(address(bob)) == 5 * UNIT, "bob final");
+        require(token.allowance(address(bob), address(spender)) == type(uint256).max, "infinite allowance spent");
+        require(token.totalSupply() == SUPPLY, "final supply");
+    }
+
     function testFailedDirectTransferPreservesBalancesAndSubsequentTransfer() public {
         AtomicityActor alice = new AtomicityActor();
         AtomicityActor bob = new AtomicityActor();
