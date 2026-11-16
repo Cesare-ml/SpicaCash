@@ -91,6 +91,28 @@ if grep -q 'SECRET_VALUE' "$MOCK_CAST_LOG" || grep -q 'SECRET_VALUE' "$MOCK_FORG
 fi
 pass=$((pass+1))
 
+# Constructor preflight must refuse invalid holder/supply values before
+# forge is invoked, even with explicit mock broadcast confirmation.
+assert_no_forge_on_invalid_constructor() {
+  : > "$MOCK_CAST_LOG"; : > "$MOCK_FORGE_LOG"
+  if bash "$root/scripts/deploy-arbitrum-sepolia.sh" > "$work/out" 2>&1; then
+    echo 'FAIL: invalid constructor input accepted' >&2; exit 1
+  fi
+  [[ ! -s "$MOCK_FORGE_LOG" ]] || { echo 'FAIL: forge ran for invalid constructor input' >&2; exit 1; }
+  if grep -q 'SECRET_VALUE' "$work/out"; then
+    echo 'FAIL: invalid constructor error leaked provider token' >&2; exit 1
+  fi
+  pass=$((pass+1))
+}
+export SPICA_TESTNET_HOLDER='0x0000000000000000000000000000000000000000'
+assert_no_forge_on_invalid_constructor
+export SPICA_TESTNET_HOLDER='0x000000000000000000000000000000000000BEEF'
+for invalid_supply in 0 01 1.0 115792089237316195423570985008687907853269984665640564039457584007913129639936; do
+  export SPICA_TESTNET_SUPPLY_BASE_UNITS="$invalid_supply"
+  assert_no_forge_on_invalid_constructor
+done
+export SPICA_TESTNET_SUPPLY_BASE_UNITS='1'
+
 # A forged or option-like keystore alias must never reach forge, even if
 # the caller explicitly requested a testnet broadcast.
 for unsafe_account in '--private-key' '../keystore' 'alias with spaces'; do
