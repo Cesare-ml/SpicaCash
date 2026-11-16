@@ -113,6 +113,20 @@ for invalid_supply in 0 01 1.0 1157920892373161954235709850086879078532699846656
 done
 export SPICA_TESTNET_SUPPLY_BASE_UNITS='1'
 
+# Boundary regression: uint256 max is valid, but never broadcasts without
+# explicit confirmation. This checks the comparison does not reject equality.
+export SPICA_TESTNET_SUPPLY_BASE_UNITS='115792089237316195423570985008687907853269984665640564039457584007913129639935'
+unset SPICA_CONFIRM_TESTNET_DEPLOY
+: > "$MOCK_CAST_LOG"; : > "$MOCK_FORGE_LOG"
+bash "$root/scripts/deploy-arbitrum-sepolia.sh" > "$work/out" 2>&1
+grep -q 'No transaction broadcast' "$work/out"
+[[ $(wc -l < "$MOCK_CAST_LOG") -eq 1 && ! -s "$MOCK_FORGE_LOG" ]] || {
+  echo 'FAIL: uint256 boundary preflight or no-broadcast behavior regressed' >&2; exit 1;
+}
+pass=$((pass+1))
+export SPICA_TESTNET_SUPPLY_BASE_UNITS='1'
+export SPICA_CONFIRM_TESTNET_DEPLOY='YES_ARBITRUM_SEPOLIA_ONLY'
+
 # A forged or option-like keystore alias must never reach forge, even if
 # the caller explicitly requested a testnet broadcast.
 for unsafe_account in '--private-key' '../keystore' 'alias with spaces'; do
