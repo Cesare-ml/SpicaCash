@@ -149,6 +149,33 @@ test('preserves ordinary tool lookup but drops mixed-case child environment over
   }
 });
 
+test('accepts SHA-256-format Git object IDs for HEAD and committed inputs', t => {
+  const root = fixture(t);
+  const sha256ObjectId = 'b'.repeat(64);
+  const { run: baseline } = mockedCommands(root);
+  const run = (command, args, options) => {
+    if (command === 'git' && args.join(' ') === 'rev-parse HEAD') {
+      return { status: 0, stdout: sha256ObjectId };
+    }
+    if (command === 'git' && args[0] === 'rev-parse' && args[1] === '--verify' &&
+        args[2]?.startsWith('HEAD:')) {
+      return { status: 0, stdout: sha256ObjectId };
+    }
+    if (command === 'git' && args[0] === 'hash-object') {
+      return { status: 0, stdout: sha256ObjectId };
+    }
+    return baseline(command, args, options);
+  };
+
+  const { record } = captureLocalVerification({
+    root, run, env: poisonedEnv, now: TIME
+  });
+  assert.equal(record.gitCommit, sha256ObjectId);
+  assert.equal(record.verificationStatus, 'PASS');
+  assert.equal(record.inputsStableAfterRun, true);
+  assert.equal(record.releaseAuthorized, false);
+});
+
 test('writes only a local, gitignored, git-pinned PASS summary on success', t => {
   const root = fixture(t);
   const { run, calls } = mockedCommands(root);
