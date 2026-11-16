@@ -28,7 +28,7 @@ When Foundry is installed, the wrapper displays `verify-local.sh` output directl
 .spica-evidence/verification-abcdef123456-20261114123456.json
 ```
 
-The example filename is illustrative; the actual filename incorporates your Git commit and UTC timestamp. The directory is intentionally in `.gitignore`. **Do not copy the receipt into the public repository as automatic proof of readiness.**
+The example filename is illustrative; the actual filename incorporates your Git commit and UTC timestamp. The directory is intentionally in `.gitignore`. On POSIX systems, both the directory and receipt are created without group/other permission bits (subject to the host umask); Windows uses its platform ACL model instead. **Do not copy the receipt into the public repository as automatic proof of readiness.**
 
 For a missing `forge`, the receipt says `BLOCKED`; for failing tests it says `FAIL`; for changed input files it says `INVALIDATED`. **Only an exit code 0 from the reviewed verifier, with stable input hashes and a clean checkout, yields `PASS`.** The wrapper itself exits nonzero for all other statuses.
 
