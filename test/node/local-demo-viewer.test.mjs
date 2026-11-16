@@ -196,6 +196,20 @@ test('keyboard listener preserves modifiers, editable controls, and unrelated ke
   }
   assert.equal(app.key('End', { target: { tagName: 'DIV', isContentEditable: true } }), false);
   assert.equal(app.stage(), 1);
+  for (const selector of [
+    'button', 'a', 'summary', 'input', 'textarea', 'select',
+    '[role="button"]', '[role="link"]', '[role="slider"]',
+    '[role="checkbox"]', '[role="radio"]', '[role="menuitem"]'
+  ]) {
+    const selectorList = 'button, a, summary, input, textarea, select, [role="button"], [role="link"], ' +
+      '[role="slider"], [role="checkbox"], [role="radio"], [role="menuitem"]';
+    const nestedTarget = {
+      tagName: 'SPAN',
+      closest(value) { assert.equal(value, selectorList); return { tagName: 'BUTTON' }; }
+    };
+    assert.equal(app.key('End', { target: nestedTarget }), false, 'nested in ' + selector);
+    assert.equal(app.stage(), 1, 'nested in ' + selector);
+  }
   assert.equal(app.key('Escape'), false);
   assert.equal(app.stage(), 1);
   assert.equal(app.key('End'), true);
