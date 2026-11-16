@@ -57,6 +57,16 @@ if (( ${#SPICA_TESTNET_SUPPLY_BASE_UNITS} > ${#max_uint256} )) ||
   exit 1
 fi
 
+# Validate the signing alias locally before any network request when a
+# broadcast is requested. Dry-run preflight never requires an account.
+if [[ "${SPICA_CONFIRM_TESTNET_DEPLOY:-}" == "YES_ARBITRUM_SEPOLIA_ONLY" ]]; then
+  ${""}: "${FOUNDRY_ACCOUNT:?Set FOUNDRY_ACCOUNT to the name of a local Foundry keystore account (no raw private keys)}"
+  if [[ ! "$FOUNDRY_ACCOUNT" =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$ ]]; then
+    echo "REFUSED: FOUNDRY_ACCOUNT must be a simple local keystore alias." >&2
+    exit 1
+  fi
+fi
+
 # Read the endpoint through Foundry's supported environment setting, not CLI argv.
 # An RPC URL may contain a provider token; putting it in argv exposes it to ps.
 export ETH_RPC_URL="$ARBITRUM_SEPOLIA_RPC_URL"
@@ -77,14 +87,6 @@ echo "Testnet supply (base units): $SPICA_TESTNET_SUPPLY_BASE_UNITS"
 if [[ "${SPICA_CONFIRM_TESTNET_DEPLOY:-}" != "YES_ARBITRUM_SEPOLIA_ONLY" ]]; then
   echo "No transaction broadcast. To deploy test tokens, set SPICA_CONFIRM_TESTNET_DEPLOY=YES_ARBITRUM_SEPOLIA_ONLY."
   exit 0
-fi
-
-: "${FOUNDRY_ACCOUNT:?Set FOUNDRY_ACCOUNT to the name of a local Foundry keystore account (no raw private keys)}"
-
-# Allow only simple local keystore aliases; reject option-like or path-like input.
-if [[ ! "$FOUNDRY_ACCOUNT" =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$ ]]; then
-  echo "REFUSED: FOUNDRY_ACCOUNT must be a simple local keystore alias." >&2
-  exit 1
 fi
 
 forge create src/SpicaCash.sol:SpicaCash \
