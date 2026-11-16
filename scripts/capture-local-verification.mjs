@@ -111,7 +111,7 @@ export function captureLocalVerification({
   const top = resolve(checkedText(run, 'git', ['rev-parse', '--show-toplevel'], project, safeEnv));
   if (top !== project) throw new Error('Not executing in the Git checkout root');
   const commit = checkedText(run, 'git', ['rev-parse', 'HEAD'], project, safeEnv);
-  if (!/^[0-9a-f]{40}$/.test(commit)) throw new Error('Unrecognized commit hash');
+  if (!/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(commit)) throw new Error('Unrecognized commit hash');
   const dirty = checkedText(run, 'git',
     ['status', '--porcelain=v1', '--untracked-files=normal'], project, safeEnv);
   if (dirty !== '') throw new Error('Checkout is dirty; refusing evidence capture');
