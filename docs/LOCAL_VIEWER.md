@@ -17,7 +17,7 @@
    Start-Process .\demo\index.html
    ```
 
-3. Select **Avanti**, **Indietro** or **Ricomincia**, or use **← / →** to navigate, **Home** to return to the beginning, and **End** to reach the final stage. Standard modifier shortcuts and editable controls are left alone. The screen shows Alice/Bob balances, Bob's remaining allowance for a delegated spender, progress, a readable event log and conservation checks. The stage title and explanation are announced by a polite screen-reader live region.
+3. Select **Avanti**, **Indietro** or **Ricomincia**, or use **← / →** to navigate, **Home** to return to the beginning, and **End** to reach the final stage. Standard modifier shortcuts, editable fields and focused interactive controls (buttons, links and widgets) are left alone, so those controls retain their native keyboard behavior. The screen shows Alice/Bob balances, Bob's remaining allowance for a delegated spender, progress, a readable event log and conservation checks. The stage title and explanation are announced by a polite screen-reader live region.
 
 There is **no HTTP server** to start: the document is opened through `file://` and deliberately includes **all CSS and JavaScript inline** for offline operation. It is responsive for desktop and mobile. The CSP disallows network connections (`connect-src 'none'`); no external scripts, images, APIs or wallet SDKs are loaded.
 
