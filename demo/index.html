@@ -53,6 +53,25 @@
     @media(max-width: 700px) { header { flex-direction: column; } .cards { grid-template-columns: 1fr 1fr; } .cards .card:last-child { grid-column: 1/-1; } .grid { grid-template-columns: 1fr; } .panel { padding: 18px; } }
     @media(max-width: 420px) { .cards { grid-template-columns: 1fr; } .cards .card:last-child { grid-column: auto; } main { width: calc(100% - 22px); padding-top: 20px; } }
     @media(prefers-reduced-motion: reduce) { .meter > div { transition: none; } }
+    @media (forced-colors: active) {
+      :root, body { background: Canvas; color: CanvasText; }
+      .panel, .card, .offline, .meter, button {
+        background: Canvas;
+        color: CanvasText;
+        border: 1px solid CanvasText;
+        box-shadow: none;
+      }
+      .topline, .lead, .card .label, .card .unit, .stage-top,
+      .stage-copy, .keyboard-hint, .ledger small, .data-line span:first-child,
+      footer { color: CanvasText; }
+      .card .value, .card:first-child .value, .card:nth-child(2) .value,
+      .offline { color: CanvasText; }
+      .meter > div { background: Highlight; }
+      .step-pill { background: Canvas; color: CanvasText; border: 1px solid CanvasText; }
+      .ledger li.rejected .step-pill { background: Mark; color: MarkText; }
+      button.primary { background: Highlight; color: HighlightText; border-color: Highlight; }
+      button:focus-visible { outline: 3px solid Highlight; outline-offset: 3px; }
+    }
   </style>
 </head>
 <body>
