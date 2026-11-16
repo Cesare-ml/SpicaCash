@@ -2,14 +2,15 @@
 
 **Research-only Foundry tests; no public deployment, signer, RPC, wallet or issuance.**
 
-`test/SpicaCashLocalFailureAtomicity.t.sol` adds six independent checks alongside the six-stage [local demo](LOCAL_DEMO.md):
+`test/SpicaCashLocalFailureAtomicity.t.sol` adds seven independent checks alongside the six-stage [local demo](LOCAL_DEMO.md):
 
 1. A delegated transfer with sufficient allowance but insufficient balance must revert with `ERC20InsufficientBalance`, leaving **both balances and the full allowance unchanged**. A subsequent valid transfer must still work and decrement the allowance by exactly the successful amount.
 2. A delegated transfer exceeding the granted allowance must revert with `ERC20InsufficientAllowance`, preserving balances, allowance and supply; a subsequent pull within the allowance succeeds.
 3. A delegated transfer to the zero address must revert with `ERC20InvalidReceiver`, without spending allowance or moving tokens. A subsequent valid delegated transfer must still work.
 4. An unlimited (`uint256.max`) allowance must remain unchanged after both a failed over-balance delegated pull and a subsequent successful pull, matching OpenZeppelin ERC-20 semantics.
 5. An approval to the zero spender must revert with `ERC20InvalidSpender`, preserving existing allowances, balances and supply; a subsequent valid revocation must succeed.
-6. A direct transfer from an empty synthetic account must revert with the same typed error, preserve the fixed supply and balances, and not prevent a later valid transfer.
+6. A rejected pull by spender A must leave both A's and independent spender B's allowances untouched; spender B must still be able to pull within its own limit without affecting A's allowance.
+7. A direct transfer from an empty synthetic account must revert with the same typed error, preserve the fixed supply and balances, and not prevent a later valid transfer.
 
 These scenarios use fresh synthetic contract actors, a toy 1,000-token supply and 18-decimal base units. The tests compare the complete ABI-encoded ERC-6093 revert payloads, including the account and amount arguments, rather than checking only four-byte selectors. They exercise failure atomicity of the inherited OpenZeppelin ERC-20 implementation rather than introducing token behavior.
 
