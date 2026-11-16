@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { REQUIRED_NODE_TESTS, planOfflineNodeSteps, runOfflineNodeSteps } from '../../scripts/run-offline-node.mjs';
+import { REQUIRED_NODE_TESTS, cleanNodeChildEnv, planOfflineNodeSteps, runOfflineNodeSteps } from '../../scripts/run-offline-node.mjs';
 
 const dirent = (name, regular = true) => ({ name, isFile: () => regular });
 const requiredEntries = (extra = []) => [...REQUIRED_NODE_TESTS.map(name => dirent(name)), ...extra];
@@ -29,6 +29,28 @@ test('refuses missing tests and disguised test directories', () => {
     /regular files/);
 });
 
+test('filters case-varied Node preload and module search settings from child environments', () => {
+  const source = {
+    PATH: '/trusted/bin', HOME: '/trusted/home', TEMP: '/trusted/temp',
+    NODE_OPTIONS: '--require /tmp/preload.cjs',
+    node_options: '--require /tmp/other.cjs',
+    NODE_PATH: '/tmp/injected-modules',
+    npm_config_node_options: '--require /tmp/npm-preload.cjs',
+    NPM_CONFIG_NODE_OPTIONS: '--require /tmp/npm-preload-2.cjs',
+  };
+  const actual = cleanNodeChildEnv(source);
+  assert.equal(Object.getPrototypeOf(actual), null);
+  assert.equal(actual.PATH, source.PATH);
+  assert.equal(actual.HOME, source.HOME);
+  assert.equal(actual.TEMP, source.TEMP);
+  assert.equal(actual.NO_COLOR, '1');
+  for (const key of Object.keys(source)) {
+    if (/^(?:NODE_OPTIONS|NODE_PATH|npm_config_node_options)$/i.test(key)) {
+      assert.equal(actual[key], undefined, key);
+    }
+  }
+});
+
 test('runs every step without a shell and reports success only after all steps', () => {
   const plan = planOfflineNodeSteps('repo', requiredEntries([dirent('core.test.mjs')]));
   const calls = [];
@@ -39,7 +61,7 @@ test('runs every step without a shell and reports success only after all steps',
   assert.deepEqual(response, { ok: true });
   assert.equal(calls.length, 5);
   assert.ok(calls.every(call => call.bin === process.execPath &&
-    call.options.shell === false && call.options.cwd === 'repo'));
+    call.options.shell === false && call.options.cwd === 'repo' &&\n    call.options.env.NODE_OPTIONS === undefined && call.options.env.NODE_PATH === undefined &&\n    call.options.env.npm_config_node_options === undefined && call.options.env.PATH === process.env.PATH));
 });
 
 test('stops immediately on a failed Node step and cannot print success', () => {

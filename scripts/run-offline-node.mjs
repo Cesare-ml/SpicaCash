@@ -71,10 +71,24 @@ export function planOfflineNodeSteps(root, entries) {
   ];
 }
 
-export function runOfflineNodeSteps(root, steps, execute = spawnSync) {
+// Prevent inherited Node preload/module-search settings from changing child
+// test and validator processes. This cannot undo code already loaded in the
+// parent process; start the runner from a trusted shell and executable PATH.
+export function cleanNodeChildEnv(source) {
+  const env = Object.create(null);
+  for (const [key, value] of Object.entries(source)) {
+    if (/^(?:NODE_OPTIONS|NODE_PATH|npm_config_node_options)$/i.test(key)) continue;
+    env[key] = value;
+  }
+  env.NO_COLOR = '1';
+  return env;
+}
+
+export function runOfflineNodeSteps(root, steps, execute = spawnSync, sourceEnv = process.env) {
+  const childEnv = cleanNodeChildEnv(sourceEnv);
   for (const step of steps) {
     const response = execute(process.execPath, step.args,
-      { cwd: root, stdio: 'inherit', shell: false });
+      { cwd: root, stdio: 'inherit', shell: false, env: childEnv });
     if (response?.error) throw response.error;
     if (response?.status !== 0) {
       return { ok: false, failed: step.label };
