@@ -15,6 +15,10 @@ The reviewer should:
 
 A reviewer should not receive or request private keys, seed phrases, signing credentials, production RPC credentials, personal wallet identities or access to a real treasury.
 
+## Threat model and residual risks
+
+The companion [threat model](THREAT_MODEL.md) records assets, trust boundaries, 15 threat scenarios, evidence requirements and review priorities. Treat each status as open until independently evidenced; the presence of a guard or regression test is not proof that it works in a trusted clean environment.
+
 ## 2. Scope to assess
 
 The reviewer should first establish the exact review snapshot, then assess these areas.
