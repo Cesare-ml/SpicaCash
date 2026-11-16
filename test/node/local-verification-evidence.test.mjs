@@ -204,6 +204,33 @@ test('dirty or wrong checkout cannot produce misleading evidence', t => {
   assert.equal(existsSync(join(root, '.spica-evidence')), false);
 });
 
+test('supports Git SHA-256 object IDs for HEAD and committed inputs', t => {
+  const root = fixture(t);
+  const SHA256 = 'b'.repeat(64);
+  const { run: baseline } = mockedCommands(root);
+  const run = (command, args, options) => {
+    if (command === 'git' && args.join(' ') === 'rev-parse HEAD') {
+      return { status: 0, stdout: SHA256 };
+    }
+    if (command === 'git' && args[0] === 'rev-parse' && args[1] === '--verify' &&
+        args[2]?.startsWith('HEAD:')) {
+      return { status: 0, stdout: SHA256 };
+    }
+    if (command === 'git' && args[0] === 'hash-object') {
+      return { status: 0, stdout: SHA256 };
+    }
+    return baseline(command, args, options);
+  };
+
+  const { record } = captureLocalVerification({
+    root, run, env: poisonedEnv, now: TIME
+  });
+  assert.equal(record.gitCommit, SHA256);
+  assert.equal(record.verificationStatus, 'PASS');
+  assert.equal(record.inputsStableAfterRun, true);
+  assert.equal(record.releaseAuthorized, false);
+});
+
 test('unexpected Git hash and malformed dates are rejected before Forge runs', t => {
   const root = fixture(t);
   const { run } = mockedCommands(root);
