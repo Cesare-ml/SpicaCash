@@ -210,3 +210,14 @@ test('mouse controls still work after keyboard navigation and reset', () => {
   assert.equal(app.byId('ledger').children.length, 2);
   assert.equal(app.byId('held-supply').textContent, '1.000 SPICA');
 });
+
+test('viewer provides a forced-colors mode using system colors', () => {
+  const style = html.match(/<style>([\s\S]*?)<\/style>/);
+  assert.ok(style, 'inline stylesheet exists');
+  assert.match(style[1], /@media\s*\(forced-colors:\s*active\)/);
+  for (const systemColor of ['Canvas', 'CanvasText', 'Highlight', 'HighlightText']) {
+    assert.ok(style[1].includes(systemColor), 'missing forced-colors system color: ' + systemColor);
+  }
+  assert.match(style[1], /button:focus-visible/);
+  assert.match(style[1], /\.meter > div/);
+});
