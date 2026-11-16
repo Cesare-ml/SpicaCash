@@ -163,7 +163,7 @@ for unsafe_account in '--private-key' '../keystore' 'alias with spaces'; do
     echo 'FAIL: unsafe keystore alias accepted' >&2; exit 1
   fi
   grep -q 'FOUNDRY_ACCOUNT must be a simple local keystore alias' "$work/out"
-  [[ ! -s "$MOCK_FORGE_LOG" ]] || { echo 'FAIL: forge ran for unsafe keystore alias' >&2; exit 1; }
+  [[ ! -s "$MOCK_CAST_LOG" && ! -s "$MOCK_FORGE_LOG" ]] || { echo 'FAIL: network or forge ran for unsafe keystore alias' >&2; exit 1; }
   pass=$((pass+1))
 done
 export FOUNDRY_ACCOUNT='synthetic-test-account'
@@ -175,7 +175,7 @@ unset FOUNDRY_ACCOUNT
 if bash "$root/scripts/deploy-arbitrum-sepolia.sh" > "$work/out" 2>&1; then
   echo 'FAIL: deployment accepted without a keystore alias' >&2; exit 1
 fi
-[[ ! -s "$MOCK_FORGE_LOG" ]] || { echo 'FAIL: forge ran without a keystore alias' >&2; exit 1; }
+[[ ! -s "$MOCK_CAST_LOG" && ! -s "$MOCK_FORGE_LOG" ]] || { echo 'FAIL: network or forge ran without a keystore alias' >&2; exit 1; }
 pass=$((pass+1))
 
 # The documented maximum alias length (64) remains usable with a mocked
