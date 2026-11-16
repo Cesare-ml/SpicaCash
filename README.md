@@ -96,7 +96,7 @@ The [SHA-256 manifest integrity check](docs/GRANT_MANIFEST_INTEGRITY.md) detects
 
 **Consolidation note (14 Nov 2026).** This combines the grant-review and tokenomics research stack with the newer, more restrictive ERC-20 tests and local safety checks. The previous **163/163** offline result covers the ERC-20 prototype snapshot only. The newly combined grant/review suite, Solidity compilation, vesting tests, real fuzz/invariant campaigns and an independent audit are **not verified**; no supply, wallet, treasury signer or deployment is approved.
 
-**Portable Node verification (experimental):** `npm run test:offline:node` now refuses to run if any of the **18** checked-in baseline Node regression suites is missing. It also rejects case-variant `.test.mjs` suffixes and case-insensitive filename collisions, while still discovering additional canonical suites. This does not replace the Bash guards, Foundry tests, or a complete clean-checkout test run.
+**Portable Node verification (experimental):** `npm run test:offline:node` now refuses to run if any of the **18** checked-in baseline Node regression suites is missing. It also rejects case-variant `.test.mjs` suffixes and case-insensitive filename collisions, while still discovering additional canonical suites. This does not replace the Bash guards, Foundry tests, or a complete clean-checkout test run. Each child process has a hard timeout: **30 minutes** for the complete Node regression suite and **2 minutes per draft validator**. A timed-out child fails the runner immediately; no later validator runs and no success message is emitted. These limits prevent indefinite hangs but do not make a partial Node-only run equivalent to the full Bash/Foundry verification.
 
 ## Roadmap
 
