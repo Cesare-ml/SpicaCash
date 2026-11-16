@@ -100,6 +100,22 @@ export function execute(root, command, args, timeoutMs, run = spawnSync) {
   };
 }
 
+function committedFileBlobs(root, run) {
+  const blobs = Object.create(null);
+  for (const filename of FILES) {
+    const committed = execute(root, 'git', ['rev-parse', '--verify', 'HEAD:' + filename], 10000, run);
+    const working = execute(root, 'git', ['hash-object', '--', filename], 10000, run);
+    const validId = value => /^[a-f0-9]{40}(?:[a-f0-9]{24})?\s*$/u.test(value);
+    if (!committed.passed || !working.passed ||
+        !validId(committed.stdout) || !validId(working.stdout) ||
+        committed.stdout.trim() !== working.stdout.trim()) {
+      throw new Error('critical source differs from committed Git blob: ' + filename);
+    }
+    blobs[filename] = committed.stdout.trim();
+  }
+  return blobs;
+}
+
 export function captureEvidence(root, run = spawnSync) {
   const report = {
     schemaVersion: 1,
@@ -134,6 +150,9 @@ export function captureEvidence(root, run = spawnSync) {
     if (!status.passed) throw new Error('could not inspect Git status');
     report.source.clean = status.stdout === '';
     if (!report.source.clean) throw new Error('working tree is not clean');
+    // Git porcelain can hide edits marked assume-unchanged. Pin every evidence
+    // input to its exact HEAD blob before running any child verification.
+    report.source.gitBlobIds = committedFileBlobs(root, run);
     for (const filename of FILES) {
       report.source.sha256[filename] = digestRegularFile(join(root, filename));
     }
@@ -157,8 +176,10 @@ export function captureEvidence(root, run = spawnSync) {
         !finalStatus.passed || finalStatus.stdout !== '') {
       throw new Error('checkout changed during verification');
     }
+    const finalBlobs = committedFileBlobs(root, run);
     for (const filename of FILES) {
-      if (digestRegularFile(join(root, filename)) !== report.source.sha256[filename]) {
+      if (finalBlobs[filename] !== report.source.gitBlobIds[filename] ||
+          digestRegularFile(join(root, filename)) !== report.source.sha256[filename]) {
         throw new Error('critical source changed during verification');
       }
     }

@@ -151,6 +151,36 @@ test('rejects symlink input files and refuses to run verification', (t) => {
   } finally { cleanup(dir); }
 });
 
+test('rejects assume-unchanged edits that Git porcelain reports as clean', () => {
+  const dir = fixture();
+  try {
+    const target = 'scripts/check-dependency-lock.mjs';
+    execFileSync('git', ['-C', dir, 'update-index', '--assume-unchanged', target]);
+    writeFileSync(join(dir, target), "console.log('tampered policy');\n");
+    const status = execFileSync('git', ['-C', dir, 'status', '--porcelain=v1'], {
+      encoding: 'utf8'
+    });
+    assert.equal(status, '');
+    const report = captureEvidence(dir);
+    assert.equal(report.status, 'INCOMPLETE');
+    assert.match(report.failure, /differs from committed Git blob/u);
+    assert.equal(report.checks.length, 0);
+  } finally { cleanup(dir); }
+});
+
+test('records committed Git blob IDs separately from SHA-256 content digests', () => {
+  const dir = fixture();
+  try {
+    const report = captureEvidence(dir);
+    assert.equal(report.status, 'PASSED_NODE_ONLY');
+    assert.equal(Object.keys(report.source.gitBlobIds).length, 7);
+    for (const filename of Object.keys(report.source.sha256)) {
+      assert.match(report.source.gitBlobIds[filename], /^[a-f0-9]{40}$/u);
+      assert.match(report.source.sha256[filename], /^[a-f0-9]{64}$/u);
+    }
+  } finally { cleanup(dir); }
+});
+
 test('refuses unsupported arguments instead of ignoring verification settings', () => {
   const dir = fixture();
   try {
