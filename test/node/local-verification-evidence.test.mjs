@@ -417,3 +417,36 @@ test('real Git commit change with unchanged contract inputs cannot yield PASS', 
   assert.equal(execFileSync('git', ['-C', root, 'status', '--porcelain=v1'],
     { encoding: 'utf8' }).trim(), '');
 });
+
+
+test('real SHA-256 Git repositories produce valid local receipts', t => {
+  const root = fixture(t);
+  writeFileSync(join(root, '.gitignore'), '.spica-evidence/\\n');
+  try {
+    execFileSync('git', ['init', '-q', '--object-format=sha256', root]);
+  } catch {
+    t.skip('Installed Git does not support SHA-256 repositories');
+    return;
+  }
+  execFileSync('git', ['-C', root, 'add', '.']);
+  execFileSync('git', ['-C', root, '-c', 'user.name=Spica test',
+    '-c', 'user.email=spica@test.invalid', 'commit', '-qm', 'SHA-256 fixture']);
+  const expectedCommit = execFileSync('git', ['-C', root, 'rev-parse', 'HEAD'],
+    { encoding: 'utf8' }).trim();
+  assert.match(expectedCommit, /^[0-9a-f]{64}$/);
+
+  const realGitEnv = { ...poisonedEnv, PATH: process.env.PATH };
+  const run = (command, args, options) => {
+    if (command === 'git') return spawnSync(command, args, options);
+    if (command === 'forge') return { status: 0, stdout: 'forge Version: 1.2.3\\n' };
+    if (command === 'bash') return { status: 0 };
+    throw new Error('Unexpected command');
+  };
+  const { record } = captureLocalVerification({
+    root, run, env: realGitEnv, now: TIME
+  });
+  assert.equal(record.gitCommit, expectedCommit);
+  assert.equal(record.gitCommit.length, 64);
+  assert.equal(record.verificationStatus, 'PASS');
+  assert.equal(record.releaseAuthorized, false);
+});
