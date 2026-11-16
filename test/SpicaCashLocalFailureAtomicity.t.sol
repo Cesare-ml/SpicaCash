@@ -23,11 +23,8 @@ contract SpicaCashLocalFailureAtomicityTest {
     uint256 private constant UNIT = 1e18;
     uint256 private constant SUPPLY = 1000 * UNIT;
 
-    function _selector(bytes memory reason) private pure returns (bytes4 value) {
-        require(reason.length >= 4, "missing revert selector");
-        assembly {
-            value := mload(add(reason, 32))
-        }
+    function _assertError(bytes memory actual, bytes memory expected) private pure {
+        require(keccak256(actual) == keccak256(expected), "wrong ERC-6093 revert payload");
     }
 
     function testDelegatedPullOverBalanceRevertsWithoutConsumingAllowance() public {
@@ -43,7 +40,7 @@ contract SpicaCashLocalFailureAtomicityTest {
         try spender.delegatedPull(token, address(bob), address(alice), 6 * UNIT) {
             revert("over-balance delegated pull succeeded");
         } catch (bytes memory reason) {
-            require(_selector(reason) == IERC20Errors.ERC20InsufficientBalance.selector, "wrong balance error");
+            _assertError(reason, abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, address(bob), 5 * UNIT, 6 * UNIT));
         }
 
         require(token.balanceOf(address(alice)) == 995 * UNIT, "alice changed");
@@ -72,7 +69,7 @@ contract SpicaCashLocalFailureAtomicityTest {
         try spender.delegatedPull(token, address(bob), address(alice), 3 * UNIT) {
             revert("over-allowance delegated pull succeeded");
         } catch (bytes memory reason) {
-            require(_selector(reason) == IERC20Errors.ERC20InsufficientAllowance.selector, "wrong allowance error");
+            _assertError(reason, abi.encodeWithSelector(IERC20Errors.ERC20InsufficientAllowance.selector, address(spender), 2 * UNIT, 3 * UNIT));
         }
 
         require(token.balanceOf(address(alice)) == 950 * UNIT, "alice changed");
@@ -96,7 +93,7 @@ contract SpicaCashLocalFailureAtomicityTest {
         try spender.delegatedPull(token, address(alice), address(0), 4 * UNIT) {
             revert("zero-recipient delegated pull succeeded");
         } catch (bytes memory reason) {
-            require(_selector(reason) == IERC20Errors.ERC20InvalidReceiver.selector, "wrong recipient error");
+            _assertError(reason, abi.encodeWithSelector(IERC20Errors.ERC20InvalidReceiver.selector, address(0)));
         }
 
         require(token.balanceOf(address(alice)) == SUPPLY, "alice changed after zero-recipient pull");
@@ -124,7 +121,7 @@ contract SpicaCashLocalFailureAtomicityTest {
         try spender.delegatedPull(token, address(bob), address(alice), 9 * UNIT) {
             revert("over-balance unlimited pull succeeded");
         } catch (bytes memory reason) {
-            require(_selector(reason) == IERC20Errors.ERC20InsufficientBalance.selector, "wrong unlimited error");
+            _assertError(reason, abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, address(bob), 8 * UNIT, 9 * UNIT));
         }
 
         require(token.balanceOf(address(alice)) == 992 * UNIT, "alice changed");
@@ -150,7 +147,7 @@ contract SpicaCashLocalFailureAtomicityTest {
         try alice.approveSpender(token, address(0), 5 * UNIT) {
             revert("zero-spender approval succeeded");
         } catch (bytes memory reason) {
-            require(_selector(reason) == IERC20Errors.ERC20InvalidSpender.selector, "wrong spender error");
+            _assertError(reason, abi.encodeWithSelector(IERC20Errors.ERC20InvalidSpender.selector, address(0)));
         }
 
         require(token.allowance(address(alice), address(bob)) == 15 * UNIT, "existing approval changed");
@@ -173,7 +170,7 @@ contract SpicaCashLocalFailureAtomicityTest {
         try bob.directSend(token, address(alice), 1 * UNIT) {
             revert("empty-wallet transfer succeeded");
         } catch (bytes memory reason) {
-            require(_selector(reason) == IERC20Errors.ERC20InsufficientBalance.selector, "wrong direct-transfer error");
+            _assertError(reason, abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, address(bob), 0, 1 * UNIT));
         }
 
         require(token.balanceOf(address(alice)) == SUPPLY, "alice changed after failure");
