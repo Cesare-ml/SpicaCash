@@ -68,9 +68,11 @@
       .offline { color: CanvasText; }
       .meter > div { background: Highlight; }
       .step-pill { background: Canvas; color: CanvasText; border: 1px solid CanvasText; }
-      .ledger li.rejected .step-pill { background: Mark; color: MarkText; }
+      .ledger li.rejected .step-pill { background: Canvas; color: CanvasText; border-color: CanvasText; }
       button.primary { background: Highlight; color: HighlightText; border-color: Highlight; }
       button:focus-visible { outline: 3px solid Highlight; outline-offset: 3px; }
+      button:disabled { color: GrayText; border-color: GrayText; opacity: 1; }
+      button:hover:not(:disabled) { filter: none; }
     }
   </style>
 </head>
