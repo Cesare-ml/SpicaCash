@@ -91,6 +91,18 @@ if grep -q 'SECRET_VALUE' "$MOCK_CAST_LOG" || grep -q 'SECRET_VALUE' "$MOCK_FORG
 fi
 pass=$((pass+1))
 
+# An almost-correct confirmation is not authorization to broadcast.
+# The helper must remain read-only unless the exact sentinel is provided.
+for invalid_confirmation in YES yes_arbitrum_sepolia_only YES_ARBITRUM_SEPOLIA_ONLY_EXTRA; do
+  export SPICA_CONFIRM_TESTNET_DEPLOY="$invalid_confirmation"
+  : > "$MOCK_CAST_LOG"; : > "$MOCK_FORGE_LOG"
+  bash "$root/scripts/deploy-arbitrum-sepolia.sh" > "$work/out" 2>&1
+  grep -q 'No transaction broadcast' "$work/out"
+  [[ ! -s "$MOCK_FORGE_LOG" ]] || { echo 'FAIL: forged confirmation triggered broadcast' >&2; exit 1; }
+  pass=$((pass+1))
+done
+export SPICA_CONFIRM_TESTNET_DEPLOY='YES_ARBITRUM_SEPOLIA_ONLY'
+
 # Constructor preflight must refuse invalid holder/supply values before
 # forge is invoked, even with explicit mock broadcast confirmation.
 assert_no_forge_on_invalid_constructor() {
