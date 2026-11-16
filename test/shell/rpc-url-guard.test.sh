@@ -108,6 +108,16 @@ for override_name in FOUNDRY_ETH_RPC_URL DAPP_RPC_URL FOUNDRY_PROFILE; do
   unset "$override_name"
 done
 
+
+# A present-but-empty override must still be refused; testing only values
+# would allow an inherited setting to slip through the environment gate.
+export FOUNDRY_PROFILE=''
+reject_override_before_rpc
+unset FOUNDRY_PROFILE
+export DAPP_RPC_URL=''
+reject_override_before_rpc
+unset DAPP_RPC_URL
+
 # Exported Bash functions can shadow command lookup after this script starts.
 reject_exported_tool_function() {
   : > "$MOCK_CAST_LOG"; : > "$MOCK_FORGE_LOG"
