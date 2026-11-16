@@ -140,6 +140,31 @@ contract SpicaCashLocalFailureAtomicityTest {
         require(token.totalSupply() == SUPPLY, "final supply");
     }
 
+    function testZeroSpenderApprovalRevertsWithoutChangingState() public {
+        AtomicityActor alice = new AtomicityActor();
+        AtomicityActor bob = new AtomicityActor();
+        SpicaCash token = new SpicaCash(address(alice), SUPPLY);
+
+        alice.approveSpender(token, address(bob), 15 * UNIT);
+
+        try alice.approveSpender(token, address(0), 5 * UNIT) {
+            revert("zero-spender approval succeeded");
+        } catch (bytes memory reason) {
+            require(_selector(reason) == IERC20Errors.ERC20InvalidSpender.selector, "wrong spender error");
+        }
+
+        require(token.allowance(address(alice), address(bob)) == 15 * UNIT, "existing approval changed");
+        require(token.allowance(address(alice), address(0)) == 0, "zero spender approved");
+        require(token.balanceOf(address(alice)) == SUPPLY, "alice balance changed");
+        require(token.balanceOf(address(bob)) == 0, "bob balance changed");
+        require(token.totalSupply() == SUPPLY, "supply changed");
+
+        // A rejected approval must not interfere with a later valid revocation.
+        alice.approveSpender(token, address(bob), 0);
+        require(token.allowance(address(alice), address(bob)) == 0, "revocation failed");
+        require(token.totalSupply() == SUPPLY, "final supply");
+    }
+
     function testFailedDirectTransferPreservesBalancesAndSubsequentTransfer() public {
         AtomicityActor alice = new AtomicityActor();
         AtomicityActor bob = new AtomicityActor();
