@@ -212,9 +212,9 @@ test('mouse controls still work after keyboard navigation and reset', () => {
 });
 
 test('viewer provides a forced-colors mode using system colors', () => {
-  const style = html.match(/<style>([\\s\\S]*?)<\\/style>/);
+  const style = html.match(/<style>([\\s\S]*?)<\/style>/);
   assert.ok(style, 'inline stylesheet exists');
-  assert.match(style[1], /@media\\s*\\(forced-colors:\\s*active\\)/);
+  assert.match(style[1], /@media\s*\(forced-colors:\s*active\)/);
   for (const systemColor of ['Canvas', 'CanvasText', 'Highlight', 'HighlightText']) {
     assert.ok(style[1].includes(systemColor), 'missing forced-colors system color: ' + systemColor);
   }
