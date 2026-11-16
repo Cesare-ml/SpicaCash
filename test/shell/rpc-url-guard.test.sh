@@ -174,6 +174,28 @@ bash "$root/scripts/deploy-arbitrum-sepolia.sh" > "$work/out" 2>&1
 pass=$((pass+1))
 export FOUNDRY_ACCOUNT='synthetic-test-account'
 
+# The next character beyond the allowed 64 must be rejected before forge.
+export FOUNDRY_ACCOUNT="$(printf 'a%.0s' {1..65})"
+: > "$MOCK_CAST_LOG"; : > "$MOCK_FORGE_LOG"
+if bash "$root/scripts/deploy-arbitrum-sepolia.sh" > "$work/out" 2>&1; then
+  echo 'FAIL: 65-character keystore alias accepted' >&2; exit 1
+fi
+grep -q 'FOUNDRY_ACCOUNT must be a simple local keystore alias' "$work/out"
+[[ ! -s "$MOCK_FORGE_LOG" ]] || { echo 'FAIL: forge ran with oversized alias' >&2; exit 1; }
+pass=$((pass+1))
+export FOUNDRY_ACCOUNT='synthetic-test-account'
+
+# Reject a malformed holder without ever invoking forge.
+export SPICA_TESTNET_HOLDER='0x1234'
+: > "$MOCK_CAST_LOG"; : > "$MOCK_FORGE_LOG"
+if bash "$root/scripts/deploy-arbitrum-sepolia.sh" > "$work/out" 2>&1; then
+  echo 'FAIL: malformed holder accepted' >&2; exit 1
+fi
+grep -q 'Invalid testnet holder address' "$work/out"
+[[ ! -s "$MOCK_FORGE_LOG" ]] || { echo 'FAIL: forge ran with malformed holder' >&2; exit 1; }
+pass=$((pass+1))
+export SPICA_TESTNET_HOLDER='0x000000000000000000000000000000000000BEEF'
+
 # Inherited Foundry/Dapp settings must be refused before cast or forge executes.
 reject_override_before_rpc() {
   : > "$MOCK_CAST_LOG"; : > "$MOCK_FORGE_LOG"
