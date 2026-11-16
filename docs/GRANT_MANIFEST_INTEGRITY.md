@@ -43,6 +43,8 @@ node scripts/check-grant-manifest.mjs path/to/manifest.json --require-proposal
 
 The checked-in draft passes the first command but **must fail** `--require-proposal`.
 
+The loader checks manifest-level review policy and **all** declared entry shapes, safe relative paths, SHA-256 digest syntax and duplicate paths **before opening any referenced batch or tokenomics file**. An invalid later descriptor cannot trigger reads of earlier entries. Valid references are still hashed before their JSON is parsed. This is a local fail-closed review constraint, not a guarantee against concurrent filesystem changes or proof of independent authorization.
+
 File paths must be relative to the manifest directory and end in `.json`. The loader refuses path traversal, absolute paths, symlink redirects, duplicated local paths and hard-linked physical batch aliases (where filesystem identity is available), malformed/unexpected fields, digest mismatches, invalid statuses and files larger than 1 MiB. Maximum: 64 batches, each subject to the existing grant validator limits. It validates hashes **before** arithmetic and cross-file PR duplicate checks.
 
 ## Optional out-of-band review fingerprint

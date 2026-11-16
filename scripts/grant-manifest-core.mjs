@@ -96,6 +96,46 @@ export function loadGrantManifest(manifestPath, options = {}) {
     failure('batches', 'expected 1 to 64 hashed batch files');
     return result;
   }
+  if (manifest.status === 'proposal' && manifest.tokenomics === null) {
+    failure('tokenomics', 'proposal requires a hashed tokenomics file');
+  }
+  // Reject malformed manifest-level policy before opening a single referenced
+  // file. An invalid document must never control filesystem reads.
+  if (errors.length > 0) return result;
+
+  // Preflight ALL descriptors before opening ANY referenced file. Otherwise a
+  // malformed later entry could make us read earlier, unreviewed local paths.
+  const descriptors = [
+    ...(manifest.tokenomics === null ? [] : [['tokenomics', manifest.tokenomics]]),
+    ...manifest.batches.map((entry, i) => ['batches[' + i + ']', entry]),
+  ];
+  const declared = new Set();
+  for (const [where, entry] of descriptors) {
+    const before = errors.length;
+    if (!exactShape(entry, ['path', 'sha256'], where, errors) ||
+        errors.length !== before) continue;
+    if (!relativeJsonPath(entry.path)) {
+      failure(where + '.path', 'must be a safe relative .json path without traversal');
+      continue;
+    }
+    if (typeof entry.sha256 !== 'string' || !HEX_SHA256.test(entry.sha256)) {
+      failure(where + '.sha256', 'expected lowercase SHA-256 digest');
+      continue;
+    }
+    const abs = resolve(base, entry.path);
+    const rel = relative(base, abs);
+    if (rel === '' || rel === '..' || rel.startsWith('..' + sep) || isAbsolute(rel)) {
+      failure(where + '.path', 'path escapes the manifest directory');
+      continue;
+    }
+    if (declared.has(abs)) {
+      failure(where + '.path', 'duplicate file in manifest');
+      continue;
+    }
+    declared.add(abs);
+  }
+  if (errors.length > 0) return result;
+
   const seen = new Set();
   const readEntry = (entry, where) => {
     if (!exactShape(entry, ['path', 'sha256'], where, errors)) return null;
@@ -149,9 +189,6 @@ export function loadGrantManifest(manifestPath, options = {}) {
       result.batches.push({ name: e.name, plan: e.value });
     }
   });
-  if (manifest.status === 'proposal' && manifest.tokenomics === null) {
-    failure('tokenomics', 'proposal requires a hashed tokenomics file');
-  }
   // Path uniqueness alone cannot catch distinct names for the same hard-linked
   // batch. Reuse the standalone review's physical-file identity guard after all
   // declared files have passed their individual digest and JSON checks.
