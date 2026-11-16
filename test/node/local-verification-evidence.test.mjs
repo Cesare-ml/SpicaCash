@@ -376,6 +376,30 @@ test('mocked HEAD drift invalidates a zero-exit verification with unchanged inpu
   assert.equal(calls.filter(x => x.command === 'bash').length, 1);
 });
 
+test('mocked HEAD drift invalidates a failed verification as well', t => {
+  const root = fixture(t);
+  const { run: normal, calls } = mockedCommands(root, { gate: 23 });
+  let headReads = 0;
+  const run = (command, args, options) => {
+    if (command === 'git' && args.join(' ') === 'rev-parse HEAD') {
+      headReads++;
+      if (headReads === 2) {
+        calls.push({ command, args, options });
+        return { status: 0, stdout: 'e'.repeat(40) };
+      }
+    }
+    return normal(command, args, options);
+  };
+  const { record } = captureLocalVerification({ root, run, env: poisonedEnv, now: TIME });
+  assert.equal(headReads, 2);
+  assert.equal(record.gitCommit, SHA);
+  assert.equal(record.verifierExitCode, 23);
+  assert.equal(record.inputsStableAfterRun, false);
+  assert.equal(record.verificationStatus, 'INVALIDATED');
+  assert.equal(record.releaseAuthorized, false);
+  assert.equal(calls.filter(x => x.command === 'bash').length, 1);
+});
+
 test('real Git commit change with unchanged contract inputs cannot yield PASS', t => {
   const root = fixture(t);
   writeFileSync(join(root, '.gitignore'), '.spica-evidence/\n');
