@@ -445,12 +445,15 @@ test('real Git commit change with unchanged contract inputs cannot yield PASS', 
 
 test('real SHA-256 Git repositories produce valid local receipts', t => {
   const root = fixture(t);
-  writeFileSync(join(root, '.gitignore'), '.spica-evidence/\\n');
-  try {
-    execFileSync('git', ['init', '-q', '--object-format=sha256', root]);
-  } catch {
-    t.skip('Installed Git does not support SHA-256 repositories');
-    return;
+  writeFileSync(join(root, '.gitignore'), '.spica-evidence/\n');
+  const initialized = spawnSync('git',
+    ['init', '-q', '--object-format=sha256', root], { encoding: 'utf8' });
+  if (initialized.status !== 0) {
+    if (/unknown option|unknown object format|unsupported.*sha.?256/i.test(initialized.stderr || '')) {
+      t.skip('Installed Git does not support SHA-256 repositories');
+      return;
+    }
+    throw new Error('Unable to initialize SHA-256 Git fixture');
   }
   execFileSync('git', ['-C', root, 'add', '.']);
   execFileSync('git', ['-C', root, '-c', 'user.name=Spica test',
@@ -462,7 +465,7 @@ test('real SHA-256 Git repositories produce valid local receipts', t => {
   const realGitEnv = { ...poisonedEnv, PATH: process.env.PATH };
   const run = (command, args, options) => {
     if (command === 'git') return spawnSync(command, args, options);
-    if (command === 'forge') return { status: 0, stdout: 'forge Version: 1.2.3\\n' };
+    if (command === 'forge') return { status: 0, stdout: 'forge Version: 1.2.3\n' };
     if (command === 'bash') return { status: 0 };
     throw new Error('Unexpected command');
   };
