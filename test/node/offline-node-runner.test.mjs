@@ -15,6 +15,8 @@ test('discovers all regular Node tests in deterministic order and includes four 
     dirent('z.test.mjs'), dirent('notes.txt'), dirent('a.test.mjs'),
   ]));
   assert.equal(plan.length, 5);
+  assert.equal(plan[0].timeoutMs, 1_800_000);
+  assert.ok(plan.slice(1).every(step => step.timeoutMs === 120_000));
   const names = [...REQUIRED_NODE_TESTS, 'a.test.mjs', 'z.test.mjs'].sort();
   assert.deepEqual(plan[0].args, ['--test', '--test-concurrency=4',
     ...names.map(name => join(root, 'test', 'node', name))]);
@@ -90,4 +92,28 @@ test('required suite list is present in the actual repository test folder', () =
   const entries = readdirSync(join(root, 'test', 'node'), { withFileTypes: true });
   assert.doesNotThrow(() => planOfflineNodeSteps(root, entries));
   assert.equal(REQUIRED_NODE_TESTS.length, 18);
+});
+
+
+test('passes an explicit timeout to every child process', () => {
+  const plan = planOfflineNodeSteps('repo', requiredEntries([dirent('core.test.mjs')]));
+  const calls = [];
+  const response = runOfflineNodeSteps('repo', plan, (bin, args, options) => {
+    calls.push(options.timeout);
+    return { status: 0 };
+  });
+  assert.deepEqual(response, { ok: true });
+  assert.deepEqual(calls, [1_800_000, 120_000, 120_000, 120_000, 120_000]);
+});
+
+test('reports an explicit timeout as a failed check instead of hanging', () => {
+  const plan = planOfflineNodeSteps('repo', requiredEntries([dirent('core.test.mjs')]));
+  let count = 0;
+  assert.throws(() => runOfflineNodeSteps('repo', plan, () => {
+    count++;
+    return count === 1
+      ? { status: null, error: Object.assign(new Error('timed out'), { code: 'ETIMEDOUT' }) }
+      : { status: 0 };
+  }), /Node offline check timed out: all Node regression tests/);
+  assert.equal(count, 1);
 });
