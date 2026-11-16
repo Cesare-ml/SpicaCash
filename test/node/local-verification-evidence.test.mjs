@@ -298,6 +298,9 @@ test('real Git rejects hidden assume-unchanged input edits that porcelain status
   execFileSync('git', ['-C', root, 'add', '.']);
   execFileSync('git', ['-C', root, '-c', 'user.name=Spica test',
     '-c', 'user.email=spica@test.invalid', 'commit', '-qm', 'initial fixture']);
+  // Real Git children need an actual executable search path. Keep hostile
+  // overrides in the fixture while preserving only this trusted PATH value.
+  const realGitEnv = { ...poisonedEnv, PATH: process.env.PATH };
   const calls = [];
   const run = (command, args, options) => {
     calls.push(command);
@@ -310,7 +313,7 @@ test('real Git rejects hidden assume-unchanged input edits that porcelain status
   // Baseline: actual Git object IDs match, so the mocked verifier can report
   // local PASS (this says nothing about Solidity execution).
   const first = captureLocalVerification({
-    root, run, env: poisonedEnv, now: TIME
+    root, run, env: realGitEnv, now: TIME
   });
   assert.equal(first.record.verificationStatus, 'PASS');
   assert.equal(first.record.releaseAuthorized, false);
@@ -326,7 +329,7 @@ test('real Git rejects hidden assume-unchanged input edits that porcelain status
 
   const forgeBefore = calls.filter(x => x === 'forge').length;
   assert.throws(() => captureLocalVerification({
-    root, run, env: poisonedEnv,
+    root, run, env: realGitEnv,
     now: new Date('2026-11-14T12:35:10Z')
   }), /Critical working files differ from committed Git blobs/);
   assert.equal(calls.filter(x => x === 'forge').length, forgeBefore);
@@ -346,4 +349,131 @@ test('mocked Git object mismatches fail before querying Forge', t => {
   assert.throws(() => captureLocalVerification({ root, run, env: poisonedEnv, now: TIME }),
     /Critical working files differ/);
   assert.equal(calls.some(x => x.command === 'forge' || x.command === 'bash'), false);
+});
+
+
+test('mocked HEAD drift invalidates a zero-exit verification with unchanged inputs', t => {
+  const root = fixture(t);
+  const { run: normal, calls } = mockedCommands(root);
+  let headReads = 0;
+  const run = (command, args, options) => {
+    if (command === 'git' && args.join(' ') === 'rev-parse HEAD') {
+      headReads++;
+      if (headReads === 2) {
+        calls.push({ command, args, options });
+        return { status: 0, stdout: 'b'.repeat(40) };
+      }
+    }
+    return normal(command, args, options);
+  };
+  const { record } = captureLocalVerification({ root, run, env: poisonedEnv, now: TIME });
+  assert.equal(headReads, 2);
+  assert.equal(record.gitCommit, SHA);
+  assert.equal(record.verifierExitCode, 0);
+  assert.equal(record.inputsStableAfterRun, false);
+  assert.equal(record.verificationStatus, 'INVALIDATED');
+  assert.equal(record.releaseAuthorized, false);
+  assert.equal(calls.filter(x => x.command === 'bash').length, 1);
+});
+
+test('mocked HEAD drift invalidates a failed verification as well', t => {
+  const root = fixture(t);
+  const { run: normal, calls } = mockedCommands(root, { gate: 23 });
+  let headReads = 0;
+  const run = (command, args, options) => {
+    if (command === 'git' && args.join(' ') === 'rev-parse HEAD') {
+      headReads++;
+      if (headReads === 2) {
+        calls.push({ command, args, options });
+        return { status: 0, stdout: 'e'.repeat(40) };
+      }
+    }
+    return normal(command, args, options);
+  };
+  const { record } = captureLocalVerification({ root, run, env: poisonedEnv, now: TIME });
+  assert.equal(headReads, 2);
+  assert.equal(record.gitCommit, SHA);
+  assert.equal(record.verifierExitCode, 23);
+  assert.equal(record.inputsStableAfterRun, false);
+  assert.equal(record.verificationStatus, 'INVALIDATED');
+  assert.equal(record.releaseAuthorized, false);
+  assert.equal(calls.filter(x => x.command === 'bash').length, 1);
+});
+
+test('real Git commit change with unchanged contract inputs cannot yield PASS', t => {
+  const root = fixture(t);
+  writeFileSync(join(root, '.gitignore'), '.spica-evidence/\n');
+  writeFileSync(join(root, 'README.md'), 'initial research notes\n');
+  execFileSync('git', ['init', '-q', root]);
+  execFileSync('git', ['-C', root, 'add', '.']);
+  execFileSync('git', ['-C', root, '-c', 'user.name=Spica test',
+    '-c', 'user.email=spica@test.invalid', 'commit', '-qm', 'initial fixture']);
+  const firstHead = execFileSync('git', ['-C', root, 'rev-parse', 'HEAD'],
+    { encoding: 'utf8' }).trim();
+  // Keep real Git discoverable while testing all other environment filters.
+  const realGitEnv = { ...poisonedEnv, PATH: process.env.PATH };
+  let verifierCalls = 0;
+  const run = (command, args, options) => {
+    if (command === 'git') return spawnSync(command, args, options);
+    if (command === 'forge') return { status: 0, stdout: 'forge Version: 1.2.3\n' };
+    if (command === 'bash') {
+      verifierCalls++;
+      // Deliberately move HEAD to a different *clean* commit while retaining
+      // every critical Solidity/config/verifier blob unchanged.
+      writeFileSync(join(root, 'README.md'), 'revised research notes\n');
+      execFileSync('git', ['-C', root, 'add', 'README.md']);
+      execFileSync('git', ['-C', root, '-c', 'user.name=Spica test',
+        '-c', 'user.email=spica@test.invalid', 'commit', '-qm', 'noncritical docs']);
+      return { status: 0 };
+    }
+    throw new Error('Unexpected command');
+  };
+  const { record } = captureLocalVerification({ root, run, env: realGitEnv, now: TIME });
+  const lastHead = execFileSync('git', ['-C', root, 'rev-parse', 'HEAD'],
+    { encoding: 'utf8' }).trim();
+  assert.notEqual(lastHead, firstHead);
+  assert.equal(record.gitCommit, firstHead);
+  assert.equal(verifierCalls, 1);
+  assert.equal(record.verifierExitCode, 0);
+  assert.equal(record.inputsStableAfterRun, false);
+  assert.equal(record.verificationStatus, 'INVALIDATED');
+  assert.equal(record.releaseAuthorized, false);
+  assert.equal(execFileSync('git', ['-C', root, 'status', '--porcelain=v1'],
+    { encoding: 'utf8' }).trim(), '');
+});
+
+
+test('real SHA-256 Git repositories produce valid local receipts', t => {
+  const root = fixture(t);
+  writeFileSync(join(root, '.gitignore'), '.spica-evidence/\n');
+  const initialized = spawnSync('git',
+    ['init', '-q', '--object-format=sha256', root], { encoding: 'utf8' });
+  if (initialized.status !== 0) {
+    if (/unknown option|unknown object format|unsupported.*sha.?256/i.test(initialized.stderr || '')) {
+      t.skip('Installed Git does not support SHA-256 repositories');
+      return;
+    }
+    throw new Error('Unable to initialize SHA-256 Git fixture');
+  }
+  execFileSync('git', ['-C', root, 'add', '.']);
+  execFileSync('git', ['-C', root, '-c', 'user.name=Spica test',
+    '-c', 'user.email=spica@test.invalid', 'commit', '-qm', 'SHA-256 fixture']);
+  const expectedCommit = execFileSync('git', ['-C', root, 'rev-parse', 'HEAD'],
+    { encoding: 'utf8' }).trim();
+  assert.match(expectedCommit, /^[0-9a-f]{64}$/);
+
+  const realGitEnv = { ...poisonedEnv, PATH: process.env.PATH };
+  const run = (command, args, options) => {
+    if (command === 'git') return spawnSync(command, args, options);
+    if (command === 'forge') return { status: 0, stdout: 'forge Version: 1.2.3\n' };
+    if (command === 'bash') return { status: 0 };
+    throw new Error('Unexpected command');
+  };
+  const { record } = captureLocalVerification({
+    root, run, env: realGitEnv, now: TIME
+  });
+  assert.equal(record.gitCommit, expectedCommit);
+  assert.equal(record.gitCommit.length, 64);
+  assert.equal(record.verificationStatus, 'PASS');
+  assert.equal(record.releaseAuthorized, false);
 });

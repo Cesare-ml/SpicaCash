@@ -111,7 +111,7 @@ export function captureLocalVerification({
   const top = resolve(checkedText(run, 'git', ['rev-parse', '--show-toplevel'], project, safeEnv));
   if (top !== project) throw new Error('Not executing in the Git checkout root');
   const commit = checkedText(run, 'git', ['rev-parse', 'HEAD'], project, safeEnv);
-  if (!/^[0-9a-f]{40}$/.test(commit)) throw new Error('Unrecognized commit hash');
+  if (!/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(commit)) throw new Error('Unrecognized commit hash');
   const dirty = checkedText(run, 'git',
     ['status', '--porcelain=v1', '--untracked-files=normal'], project, safeEnv);
   if (dirty !== '') throw new Error('Checkout is dirty; refusing evidence capture');
@@ -135,10 +135,14 @@ export function captureLocalVerification({
 
   // A successful exit code is not evidence when the checked-in inputs
   // changed while the gate was executing. Recheck even on failure.
+  const afterCommit = checkedText(run, 'git', ['rev-parse', 'HEAD'], project, safeEnv);
   const afterStatus = checkedText(run, 'git',
     ['status', '--porcelain=v1', '--untracked-files=normal'], project, safeEnv);
   const afterHashes = inputHashes(project);
-  const inputsStable = afterStatus === '' && INPUTS.every(
+  // A test hook can replace HEAD with another clean commit without changing
+  // any of the critical source files. Never attribute that run to the
+  // original commit, even when Git status and individual blobs still match.
+  const inputsStable = afterCommit === commit && afterStatus === '' && INPUTS.every(
     name => hashes[name] === afterHashes[name]
   ) && inputsMatchCommittedBlobs(project, run, safeEnv);
   const status = !inputsStable ? 'INVALIDATED'
