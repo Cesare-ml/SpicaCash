@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT
 // Check the review-approved OpenZeppelin version and published npm tarball SRI.
 // This checks metadata only; use `npm ci` to check downloaded bytes on install.
-import { readFileSync } from 'node:fs';
+import { readSmallBytes } from './read-small-file.mjs';
+import { parseReviewJson } from './parse-review-json.mjs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -149,10 +150,14 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1
     process.exitCode = 2;
   } else {
     try {
-      const manifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'));
-      const lock = JSON.parse(readFileSync(resolve(root, 'package-lock.json'), 'utf8'));
+      // npm policy inputs must obey the same bounded, unambiguous JSON rules
+      // as grant-review documents. Ordinary JSON.parse silently accepts
+      // duplicate keys, and readFileSync provides no size/symlink guard.
+      const manifest = parseReviewJson(readSmallBytes(resolve(root, 'package.json')));
+      const lock = parseReviewJson(readSmallBytes(resolve(root, 'package-lock.json')));
       const { valid, errors } = checkDependencyLock(manifest, lock);
-      if (readFileSync(resolve(root, '.npmrc'), 'utf8') !== 'ignore-scripts=true\n') {
+      if (!readSmallBytes(resolve(root, '.npmrc'))
+        .equals(Buffer.from('ignore-scripts=true\n', 'utf8'))) {
         errors.push('project .npmrc must set ignore-scripts=true');
       }
       if (!valid || errors.length !== 0) {

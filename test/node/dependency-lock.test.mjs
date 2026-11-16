@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, mkdtempSync, rmSync, existsSync, writeFileSync, mkdirSync, copyFileSync } from 'node:fs';
+import { readFileSync, mkdtempSync, rmSync, existsSync, writeFileSync, mkdirSync, copyFileSync, renameSync, symlinkSync } from 'node:fs';
 import { dirname, resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
@@ -12,6 +12,24 @@ const project = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const manifest = JSON.parse(readFileSync(resolve(project, 'package.json'), 'utf8'));
 const lock = JSON.parse(readFileSync(resolve(project, 'package-lock.json'), 'utf8'));
 const inputs = () => [structuredClone(manifest), structuredClone(lock)];
+
+// Invoke npm's JavaScript CLI with this Node runtime, avoiding npm.cmd/.bat
+// shell invocation on Windows and implicit shell execution in all fixtures.
+function runOfflineNpmFixture(args, options) {
+  const nodeBin = dirname(process.execPath);
+  const npmCli = [
+    join(nodeBin, 'node_modules', 'npm', 'bin', 'npm-cli.js'), // Windows Node MSI
+    resolve(nodeBin, '../lib/node_modules/npm/bin/npm-cli.js'), // Node/NVM
+    resolve(nodeBin, '../share/nodejs/npm/bin/npm-cli.js') // Linux distro
+  ].find(existsSync);
+  if (!npmCli && process.platform === 'win32') {
+    throw new Error('Bundled npm-cli.js unavailable; refusing implicit Windows shell execution');
+  }
+  return npmCli
+    ? spawnSync(process.execPath, [npmCli, ...args], { ...options, shell: false })
+    : spawnSync('npm', args, { ...options, shell: false });
+}
+
 const rejects = (name, mutate, message) => test(name, () => {
   const [pkg, locked] = inputs();
   mutate(pkg, locked);
@@ -51,10 +69,17 @@ rejects('reject changed tarball digest', (_p, l) => { l.packages['node_modules/@
 rejects('reject missing SHA-512 digest', (_p, l) => { delete l.packages['node_modules/@openzeppelin/contracts'].integrity; }, /SHA-512 integrity/);
 rejects('reject legacy dependency entries', (_p, l) => { l.dependencies = { random: '1.0.0' }; }, /legacy dependency/);
 rejects('reject corrupt lockfile structure', (_p, l) => { l.packages = []; }, /exactly root/);
-test('CLI checks current repository lock successfully', () => {
-  const run = spawnSync(process.execPath, [resolve(project, 'scripts/check-dependency-lock.mjs')], { encoding: 'utf8', cwd: '/tmp' });
-  assert.equal(run.status, 0, run.stderr);
-  assert.match(run.stdout, /PASS: @openzeppelin\/contracts@5\.4\.0/);
+test('CLI validates the repository from an unrelated portable directory containing spaces', () => {
+  const outside = mkdtempSync(join(tmpdir(), 'spicacash unrelated cwd '));
+  try {
+    const run = spawnSync(process.execPath, [resolve(project, 'scripts/check-dependency-lock.mjs')], {
+      encoding: 'utf8', cwd: outside
+    });
+    assert.equal(run.status, 0, run.stderr);
+    assert.match(run.stdout, /PASS: @openzeppelin\/contracts@5\.4\.0/);
+  } finally {
+    rmSync(outside, { recursive: true, force: true });
+  }
 });
 
 // npm lifecycle hooks execute during ordinary `npm ci` unless ignore-scripts is
@@ -88,7 +113,7 @@ test('npm ci --ignore-scripts suppresses local preinstall hook (offline empty fi
       name:'offline-lifecycle-fixture', version:'0.0.1', lockfileVersion:3, requires:true,
       packages: {'': {name:'offline-lifecycle-fixture', version:'0.0.1'}}
     }));
-    const cli = spawnSync('npm', ['ci', '--ignore-scripts', '--offline', '--no-audit', '--no-fund'], {
+    const cli = runOfflineNpmFixture(['ci', '--ignore-scripts', '--offline', '--no-audit', '--no-fund'], {
       encoding:'utf8', cwd:dir, timeout:15000
     });
     assert.equal(cli.status, 0, cli.stderr);
@@ -116,7 +141,7 @@ test('npm ci respects project .npmrc ignore-scripts default (offline fixture)', 
     const env = {...process.env};
     delete env.npm_config_ignore_scripts;
     delete env.NPM_CONFIG_IGNORE_SCRIPTS;
-    const result = spawnSync('npm', ['ci', '--offline', '--no-audit', '--no-fund'], {
+    const result = runOfflineNpmFixture(['ci', '--offline', '--no-audit', '--no-fund'], {
       encoding:'utf8', cwd:dir, env, timeout:15000
     });
     assert.equal(result.status, 0, result.stderr);
@@ -129,7 +154,9 @@ test('dependency lock CLI rejects tampered project npm configuration', () => {
   const scriptsDir = join(dir, 'scripts');
   try {
     mkdirSync(scriptsDir, {recursive:true});
-    copyFileSync(resolve(project,'scripts/check-dependency-lock.mjs'), join(scriptsDir,'check-dependency-lock.mjs'));
+    for (const filename of ['check-dependency-lock.mjs', 'parse-review-json.mjs', 'read-small-file.mjs']) {
+      copyFileSync(resolve(project, 'scripts', filename), join(scriptsDir, filename));
+    }
     copyFileSync(resolve(project,'package.json'), join(dir,'package.json'));
     copyFileSync(resolve(project,'package-lock.json'), join(dir,'package-lock.json'));
     writeFileSync(join(dir,'.npmrc'), 'ignore-scripts=false\n');
@@ -137,4 +164,80 @@ test('dependency lock CLI rejects tampered project npm configuration', () => {
     assert.equal(result.status, 1, result.stderr);
     assert.match(result.stderr, /project .npmrc must set ignore-scripts=true/);
   } finally { rmSync(dir,{recursive:true,force:true}); }
+});
+
+const isolatedPolicyRun = (mutate) => {
+  const dir = mkdtempSync(join(tmpdir(), 'spica-strict-npm-policy-'));
+  const scriptsDir = join(dir, 'scripts');
+  try {
+    mkdirSync(scriptsDir, { recursive: true });
+    for (const filename of ['check-dependency-lock.mjs', 'parse-review-json.mjs', 'read-small-file.mjs']) {
+      copyFileSync(resolve(project, 'scripts', filename), join(scriptsDir, filename));
+    }
+    for (const filename of ['package.json', 'package-lock.json', '.npmrc']) {
+      copyFileSync(resolve(project, filename), join(dir, filename));
+    }
+    mutate(dir);
+    return spawnSync(process.execPath, [join(scriptsDir, 'check-dependency-lock.mjs')], {
+      cwd: dir, encoding: 'utf8'
+    });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+};
+
+for (const [name, mutate] of [
+  ['duplicate manifest keys (last value matches reviewed identity)', dir => {
+    const path = join(dir, 'package.json');
+    const original = readFileSync(path, 'utf8');
+    const ambiguous = '{"name":"unreviewed-imposter",' + original.slice(1);
+    assert.equal(JSON.parse(ambiguous).name, manifest.name);
+    writeFileSync(path, ambiguous);
+  }],
+  ['duplicate nested lockfile keys', dir => {
+    const path = join(dir, 'package-lock.json');
+    const original = readFileSync(path, 'utf8');
+    const ambiguous = original.replace('"version": "5.4.0",',
+      '"version": "0.0.1", "version": "5.4.0",');
+    assert.notEqual(ambiguous, original);
+    assert.equal(JSON.parse(ambiguous).packages['node_modules/@openzeppelin/contracts'].version, '5.4.0');
+    writeFileSync(path, ambiguous);
+  }],
+  ['manifest file with UTF-8 BOM', dir => {
+    const path = join(dir, 'package.json');
+    writeFileSync(path, Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]),
+      readFileSync(path)]));
+  }],
+  ['invalid UTF-8 in lockfile', dir => {
+    const path = join(dir, 'package-lock.json');
+    writeFileSync(path, Buffer.concat([readFileSync(path), Buffer.from([0xff])]));
+  }],
+  ['oversized manifest file (more than 1 MiB)', dir => {
+    writeFileSync(join(dir, 'package.json'), Buffer.alloc(1024 * 1024 + 1, 0x20));
+  }],
+  ['oversized lockfile (more than 1 MiB)', dir => {
+    writeFileSync(join(dir, 'package-lock.json'), Buffer.alloc(1024 * 1024 + 1, 0x20));
+  }]
+]) {
+  test('CLI rejects ' + name + ' before validating npm metadata', () => {
+    const result = isolatedPolicyRun(mutate);
+    assert.equal(result.status, 1, result.stderr);
+    assert.match(result.stderr, /cannot read or parse dependency policy inputs/);
+    assert.equal(result.stdout, '');
+  });
+}
+
+test('CLI refuses symlinked npm lockfile in supported POSIX environments', (t) => {
+  if (process.platform === 'win32') {
+    t.skip('symlink creation is not consistently permitted on Windows');
+    return;
+  }
+  const result = isolatedPolicyRun(dir => {
+    const target = join(dir, 'package-lock.backup.json');
+    const active = join(dir, 'package-lock.json');
+    renameSync(active, target);
+    symlinkSync(target, active);
+  });
+  assert.equal(result.status, 1, result.stderr);
+  assert.match(result.stderr, /cannot read or parse dependency policy inputs/);
 });
