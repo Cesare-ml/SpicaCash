@@ -204,6 +204,33 @@ test('dirty or wrong checkout cannot produce misleading evidence', t => {
   assert.equal(existsSync(join(root, '.spica-evidence')), false);
 });
 
+test('rejects malformed Git commit IDs before querying Forge', t => {
+  const root = fixture(t);
+  const { run: baseline, calls } = mockedCommands(root);
+  const malformedIds = [
+    'a'.repeat(39),
+    'a'.repeat(41),
+    'b'.repeat(63),
+    'c'.repeat(65),
+    'g'.repeat(40),
+    'A'.repeat(40)
+  ];
+
+  for (const commit of malformedIds) {
+    const run = (command, args, options) => {
+      if (command === 'git' && args.join(' ') === 'rev-parse HEAD') {
+        return { status: 0, stdout: commit };
+      }
+      return baseline(command, args, options);
+    };
+    assert.throws(() => captureLocalVerification({
+      root, run, env: poisonedEnv, now: TIME
+    }), /Unrecognized commit hash/);
+  }
+
+  assert.equal(calls.some(x => x.command === 'forge' || x.command === 'bash'), false);
+});
+
 test('unexpected Git hash and malformed dates are rejected before Forge runs', t => {
   const root = fixture(t);
   const { run } = mockedCommands(root);
