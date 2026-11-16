@@ -17,6 +17,7 @@ This is a public, pre-launch crypto-asset project. **There is no official deploy
 - Never request, print, commit or expose private keys, seed phrases, API secrets or signing credentials.
 - No automated deployments and **no GitHub Actions** for this project.
 - RPC URL validation for the Sepolia helper is a local HTTPS syntax gate, **not** evidence of trustworthy endpoint identity. Do not print or commit real provider URLs, credentials, or RPC query tokens.
+- The testnet deployment helper must reject inherited `FOUNDRY_*` and `DAPP_*` overrides before any RPC call (except the validated local `FOUNDRY_ACCOUNT` alias), and reject exported Bash functions named `cast`, `forge` or `node` before command lookup. Imported functions can shadow the expected executables; mocked regressions must prove that no tool is invoked when either class of override is present.
 - Run `npm run test:rpc-url` and `npm run test:rpc-deploy-guard` when changing testnet RPC handling. All tests must remain fully mocked/offline.
 - Do not connect SpicaCash to VirgoStars AI credits, credit purchases, conversions or checkout in the initial release.
 - Prefer minimal and verifiable standard-contract components; no fee-on-transfer, hidden mint functions, owner blacklists or speculative marketing claims.
