@@ -80,6 +80,7 @@ This is a public, pre-launch crypto-asset project. **There is no official deploy
 
 - The merged grant-review tools add Node/Bash checks that have **not** been rerun end-to-end together with the ERC-20 guard suite. Do not claim `main` is release-verified until a complete clean checkout passes both offline scripts and all Foundry/Solidity tests.
 
+- `scripts/run-offline-node.mjs` must pass child processes a filtered environment that removes case-varied `NODE_OPTIONS`, `NODE_PATH` and npm Node-preload settings. Keep regression coverage for filtering and for preserving ordinary `PATH`/home/temp variables. This filters child processes only; the parent Node process may already have loaded preloads, so the user must still start it from a trusted shell with trusted binaries.
 - The portable Node verification baseline contains **19 mandatory `.test.mjs` suites**, including the hardened ERC-20 dependency, Foundry-output and RPC tests. Do not remove or rename any mandatory suite without explicit review. Refuse case-variant `.test.MJS`/`.TEST.mjs` suffixes and case-insensitive duplicate test filenames before running subprocesses; continue to discover additional canonical `.test.mjs` suites. This is only a completeness guard, not a proof that a test ran or passed.
 
 ## Pull request checklist
