@@ -23,6 +23,9 @@ test('injects an inline DOM acceptance harness after the real viewer script', ()
   assert.match(instrumented, /"reset"/);
   assert.match(instrumented, /"rejected"/);
   assert.match(instrumented, /"held-supply"/);
+  assert.match(instrumented, /Accessible phase label/);
+  assert.match(instrumented, /aria-valuetext/);
+  assert.match(instrumented, /Ledger does not trigger duplicate live announcements/);
   assert.match(instrumented, /new KeyboardEvent/);
   assert.match(instrumented, /"ArrowRight"/);
   assert.match(instrumented, /"Home"/);
@@ -44,10 +47,10 @@ test('refuses unsafe or unexpected browser source rather than claiming success',
 
 test('parses the strict real-browser success signal', () => {
   const dom = '<html><body><pre id="spica-browser-smoke-result">' +
-    JSON.stringify({ status: 'PASS', assertions: 97, failures: [] }) +
+    JSON.stringify({ status: 'PASS', assertions: 112, failures: [] }) +
     '</pre></body></html>';
   assert.deepEqual(parseSmokeOutput(dom),
-    { status: 'PASS', assertions: 97, failures: [] });
+    { status: 'PASS', assertions: 112, failures: [] });
 });
 
 test('preserves named assertion failures and refuses malformed evidence', () => {
@@ -71,19 +74,19 @@ test('preserves named assertion failures and refuses malformed evidence', () => 
   }
 });
 
-test('PASS requires exactly all 97 keyboard-enabled viewer assertions', () => {
+test('PASS requires exactly all 112 keyboard-enabled accessible-viewer assertions', () => {
   const report = (assertions) => '<pre id="spica-browser-smoke-result">' +
     JSON.stringify({ status: 'PASS', assertions, failures: [] }) + '</pre>';
   assert.deepEqual(parseSmokeOutput(report(97)),
-    { status: 'PASS', assertions: 97, failures: [] });
-  for (const count of [-1, 0, 30, 51, 61, 96, 98, 1000, 97.5, '97']) {
+    { status: 'PASS', assertions: 112, failures: [] });
+  for (const count of [-1, 0, 30, 51, 61, 96, 97, 111, 113, 1000, 112.5, '112']) {
     assert.throws(() => parseSmokeOutput(report(count)), /Malformed or incomplete/);
   }
 });
 
 test('a duplicate or pre-injected browser result cannot masquerade as PASS', () => {
   const marker = '<pre id="spica-browser-smoke-result">' +
-    JSON.stringify({ status: 'PASS', assertions: 97, failures: [] }) + '</pre>';
+    JSON.stringify({ status: 'PASS', assertions: 112, failures: [] }) + '</pre>';
   assert.throws(() => parseSmokeOutput(marker + marker), /Duplicate browser/);
   assert.throws(() => parseSmokeOutput(marker +
     '<pre id="spica-browser-smoke-result">' +
@@ -97,14 +100,14 @@ test('the parser rejects extra fields, missing keys and malformed failure detail
   const report = (value) => '<pre id="spica-browser-smoke-result">' +
     JSON.stringify(value) + '</pre>';
   for (const payload of [
-    { status: 'PASS', assertions: 97, failures: [], ignored: true },
-    { status: 'PASS', assertions: 97 },
+    { status: 'PASS', assertions: 112, failures: [], ignored: true },
+    { status: 'PASS', assertions: 112 },
     ['PASS', 97, []],
     { status: 'FAIL', assertions: 20, failures: [] },
     { status: 'FAIL', assertions: 20, failures: [''] },
     { status: 'FAIL', assertions: 20, failures: ['x'.repeat(201)] },
     { status: 'FAIL', assertions: 20, failures: Array(98).fill('failure') },
-    { status: 'PASS', assertions: 97, failures: ['hidden failure'] }
+    { status: 'PASS', assertions: 112, failures: ['hidden failure'] }
   ]) {
     assert.throws(() => parseSmokeOutput(report(payload)), /Malformed or incomplete/);
   }
