@@ -13,7 +13,7 @@ const VIEWER_PATH = join(ROOT, 'demo', 'index.html');
 const RESULT_ID = 'spica-browser-smoke-result';
 // Fixed independent acceptance threshold for the keyboard-enabled DOM harness.
 // Update only after reviewing every added or removed assertion.
-const EXPECTED_ASSERTIONS = 97;
+const EXPECTED_ASSERTIONS = 112;
 
 // Inline harness runs AFTER the viewer's own script, in an ephemeral COPY.
 // Does not change or add a script to the shipped demo/index.html.
@@ -32,6 +32,9 @@ const HARNESS = String.raw`<script id="spica-browser-smoke-harness">
       expect("Bob at stage " + stage, byId("bob-balance").textContent === b);
       expect("Allowance at stage " + stage, byId("allowance").textContent === allowance);
       expect("Step counter " + stage, byId("progress").getAttribute("aria-valuenow") === String(stage));
+      expect("Accessible phase label " + stage,
+        byId("progress").getAttribute("aria-valuetext") ===
+          "Fase " + stage + " di 6: " + byId("step-title").textContent);
       expect("Ledger count " + stage, byId("ledger").children.length === count);
       expect("Conservation at stage " + stage,
         byId("total-supply").textContent === "1.000 SPICA" &&
@@ -43,6 +46,8 @@ const HARNESS = String.raw`<script id="spica-browser-smoke-harness">
       expect("No network allowed by CSP",
         document.querySelector('meta[http-equiv="Content-Security-Policy"]')
           .content.includes("connect-src 'none'"));
+      expect("Ledger does not trigger duplicate live announcements",
+        byId("ledger").getAttribute("aria-live") === "off");
       snapshot("1.000", "0", "0", 1, 1);
       expect("Previous initially disabled", byId("previous").disabled);
       const steps = [
