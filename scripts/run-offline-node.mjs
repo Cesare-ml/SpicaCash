@@ -6,6 +6,9 @@ import { readdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+const NODE_TEST_TIMEOUT_MS = 1_800_000;
+const DRAFT_CHECK_TIMEOUT_MS = 120_000;
+
 const DRAFT_CHECKS = [
   ['tokenomics draft', 'validate-tokenomics.mjs', 'tokenomics.draft.json'],
   ['contributor grants draft', 'validate-contributor-grants.mjs', 'contributor-grants.draft.json'],
@@ -61,10 +64,12 @@ export function planOfflineNodeSteps(root, entries) {
     throw new Error('missing required Node test suites: ' + missing.join(', '));
   }
   return [
-    { label: 'all Node regression tests', args: ['--test', '--test-concurrency=4',
-      ...names.map(name => join(root, 'test', 'node', name))] },
+    { label: 'all Node regression tests', timeoutMs: NODE_TEST_TIMEOUT_MS,
+      args: ['--test', '--test-concurrency=4',
+        ...names.map(name => join(root, 'test', 'node', name))] },
     ...DRAFT_CHECKS.map(([label, script, config]) => ({
       label,
+      timeoutMs: DRAFT_CHECK_TIMEOUT_MS,
       args: [join(root, 'scripts', script), join(root, 'config', config)],
     })),
   ];
@@ -73,8 +78,13 @@ export function planOfflineNodeSteps(root, entries) {
 export function runOfflineNodeSteps(root, steps, execute = spawnSync) {
   for (const step of steps) {
     const response = execute(process.execPath, step.args,
-      { cwd: root, stdio: 'inherit', shell: false });
-    if (response?.error) throw response.error;
+      { cwd: root, stdio: 'inherit', shell: false, timeout: step.timeoutMs });
+    if (response?.error) {
+      if (response.error.code === 'ETIMEDOUT') {
+        throw new Error('Node offline check timed out: ' + step.label);
+      }
+      throw response.error;
+    }
     if (response?.status !== 0) {
       return { ok: false, failed: step.label };
     }
