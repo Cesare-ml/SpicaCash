@@ -201,6 +201,27 @@ contract SpicaCashLocalFailureAtomicityTest {
         require(token.totalSupply() == SUPPLY, "final supply");
     }
 
+    function testDirectTransferToZeroAddressPreservesSupplyAndBalance() public {
+        AtomicityActor alice = new AtomicityActor();
+        AtomicityActor bob = new AtomicityActor();
+        SpicaCash token = new SpicaCash(address(alice), SUPPLY);
+
+        try alice.directSend(token, address(0), 4 * UNIT) {
+            revert("zero-recipient direct transfer succeeded");
+        } catch (bytes memory reason) {
+            _assertError(reason, abi.encodeWithSelector(IERC20Errors.ERC20InvalidReceiver.selector, address(0)));
+        }
+
+        require(token.balanceOf(address(alice)) == SUPPLY, "alice changed");
+        require(token.balanceOf(address(0)) == 0, "zero address credited");
+        require(token.totalSupply() == SUPPLY, "supply changed");
+
+        alice.directSend(token, address(bob), 4 * UNIT);
+        require(token.balanceOf(address(alice)) == 996 * UNIT, "alice final");
+        require(token.balanceOf(address(bob)) == 4 * UNIT, "bob final");
+        require(token.totalSupply() == SUPPLY, "final supply");
+    }
+
     function testFailedDirectTransferPreservesBalancesAndSubsequentTransfer() public {
         AtomicityActor alice = new AtomicityActor();
         AtomicityActor bob = new AtomicityActor();
