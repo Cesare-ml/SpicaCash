@@ -25,7 +25,7 @@ The initial Solidity implementation, unit/fuzz test suite and guarded Arbitrum S
 
 - [Prototype and local instructions](docs/PROTOTYPE.md)
 - Contract: `src/SpicaCash.sol` (simple fixed supply, no owner or privileged minting)
-- Testing: Foundry + `@openzeppelin/contracts@5.4.0`
+- Testing: Foundry + `@openzeppelin/contracts@5.4.0`; includes isolated allowance-spender regressions in [`test/SpicaCashAllowance.t.sol`](test/SpicaCashAllowance.t.sol) (source added; execution pending a trusted Foundry run)
 - Solidity test coverage: 20 unit/fuzz tests plus 3 handler invariants and 2 smoke tests; eight unit/fuzz cases were added on 14 November 2026 and **have not yet run without Foundry**
 - License: MIT for code; VirgoStars marks and identity are not licensed for impersonation (see [NOTICE](NOTICE))
 
