@@ -174,6 +174,25 @@ test('writes only a local, gitignored, git-pinned PASS summary on success', t =>
   assert.doesNotMatch(contents, /SECRET|example\.invalid|preload\.cjs|mainnet/);
 });
 
+test('local evidence directory and receipt deny group/other access on POSIX', t => {
+  if (process.platform === 'win32') {
+    t.skip('POSIX mode-bit permissions are not available on Windows');
+    return;
+  }
+  const root = fixture(t);
+  const { run } = mockedCommands(root);
+  const { outputPath } = captureLocalVerification({
+    root, run, env: poisonedEnv, now: TIME
+  });
+  const directoryMode = statSync(join(root, '.spica-evidence')).mode & 0o777;
+  const receiptMode = statSync(outputPath).mode & 0o777;
+
+  assert.equal(directoryMode & 0o077, 0,
+    'evidence directory must not grant group/other access');
+  assert.equal(receiptMode & 0o077, 0,
+    'verification receipt must not grant group/other access');
+});
+
 test('failed verification is captured as FAIL with a nonzero status', t => {
   const root = fixture(t);
   const { run } = mockedCommands(root, { gate: 42 });
