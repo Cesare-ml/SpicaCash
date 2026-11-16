@@ -105,7 +105,7 @@ function committedFileBlobs(root, run) {
   for (const filename of FILES) {
     const committed = execute(root, 'git', ['rev-parse', '--verify', 'HEAD:' + filename], 10000, run);
     const working = execute(root, 'git', ['hash-object', '--', filename], 10000, run);
-    const validId = value => /^[a-f0-9]{40}(?:[a-f0-9]{24})?\\s*$/u.test(value);
+    const validId = value => /^[a-f0-9]{40}(?:[a-f0-9]{24})?\s*$/u.test(value);
     if (!committed.passed || !working.passed ||
         !validId(committed.stdout) || !validId(working.stdout) ||
         committed.stdout.trim() !== working.stdout.trim()) {
