@@ -108,6 +108,36 @@ reject_override_before_rpc() {
   fi
   pass=$((pass+1))
 }
+# Exported Bash functions can shadow command lookup after this script starts.
+# Reject them before any RPC/deployment helper is invoked.
+reject_exported_tool_function() {
+  : > "$MOCK_CAST_LOG"; : > "$MOCK_FORGE_LOG"
+  if bash "$root/scripts/deploy-arbitrum-sepolia.sh" > "$work/out" 2>&1; then
+    echo 'FAIL: exported tool-shadowing function was accepted' >&2
+    exit 1
+  fi
+  grep -q 'REFUSED: exported shell function overrides a required tool' "$work/out"
+  [[ ! -s "$MOCK_CAST_LOG" && ! -s "$MOCK_FORGE_LOG" ]] || {
+    echo 'FAIL: a mocked tool ran despite exported function' >&2; exit 1;
+  }
+  if grep -q 'FUNCTION_SENTINEL' "$work/out"; then
+    echo 'FAIL: exported function body was executed' >&2; exit 1;
+  fi
+  pass=$((pass+1))
+}
+forge() { printf 'FUNCTION_SENTINEL\\n' >> "$MOCK_FORGE_LOG"; }
+export -f forge
+reject_exported_tool_function
+unset -f forge
+cast() { printf 'FUNCTION_SENTINEL\\n' >> "$MOCK_CAST_LOG"; }
+export -f cast
+reject_exported_tool_function
+unset -f cast
+node() { printf 'FUNCTION_SENTINEL\\n' >> "$MOCK_FORGE_LOG"; }
+export -f node
+reject_exported_tool_function
+unset -f node
+
 for override_name in FOUNDRY_ETH_RPC_URL DAPP_RPC_URL FOUNDRY_PROFILE; do
   export "$override_name=https://unreviewed.example.test/SECRET_VALUE"
   reject_override_before_rpc
