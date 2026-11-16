@@ -110,6 +110,7 @@ The [SHA-256 manifest integrity check](docs/GRANT_MANIFEST_INTEGRITY.md) detects
 
 - [Launch readiness and open tasks](docs/LAUNCH_READINESS.md) — 17 unresolved, evidence-gated engineering, economic, testnet, legal and launch tasks. A consolidated Git history is not release verification.
 - [External security review plan](docs/SECURITY_REVIEW_PLAN.md) — independent reviewer scope, reproducibility evidence, findings format and explicit exclusions; a preparation document, not an audit.
+- [Threat model and residual-risk register](docs/THREAT_MODEL.md) — 15 concrete scenarios across contract, toolchain, evidence, custody, RPC, grants and public communications; all remain open pending evidence.
 - [Portable offline Node evidence capture](docs/OFFLINE_EVIDENCE.md) — Windows 11 / PowerShell instructions for Git-root and seven-file SHA-256 provenance, dependency preflight and portable Node suite logs. Ten local fixture regressions passed, not Foundry/browser verification or issuance permission.
 - [Local EVM demonstration (Windows/WSL2)](docs/LOCAL_DEMO.md) — sample ERC-20 deployment, balances, transfer, approval, delegated transfer and revoked approval using disposable synthetic accounts. Source prepared; real Forge execution pending.
 - [Manual WSL2 verification receipt](docs/LOCAL_VERIFICATION_EVIDENCE.md) — optional `node scripts/capture-local-verification.mjs` from a clean checkout; stores commit and input hashes plus actual verifier exit status locally, **never** an issuance approval or an independent audit.
