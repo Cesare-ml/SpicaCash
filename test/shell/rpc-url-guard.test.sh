@@ -55,6 +55,21 @@ if grep -q 'SECRET_VALUE' "$work/out"; then echo 'FAIL: secret disclosed in outp
 if grep -q 'SECRET_VALUE' "$MOCK_CAST_LOG"; then echo 'FAIL: provider token in cast arguments' >&2; exit 1; fi
 pass=$((pass+1))
 
+# An inherited generic ETH_RPC_URL must not replace the reviewed endpoint.
+# The helper overwrites it before cast, and never exposes its old value.
+export ETH_RPC_URL='https://unreviewed.example.test/SECRET_VALUE'
+: > "$MOCK_CAST_LOG"; : > "$MOCK_FORGE_LOG"
+bash "$root/scripts/deploy-arbitrum-sepolia.sh" > "$work/out" 2>&1
+[[ $(wc -l < "$MOCK_CAST_LOG") -eq 1 && ! -s "$MOCK_FORGE_LOG" ]] || {
+  echo 'FAIL: inherited ETH_RPC_URL changed preflight behavior' >&2; exit 1;
+}
+grep -q 'No transaction broadcast' "$work/out"
+if grep -q 'unreviewed.example.test' "$work/out" || grep -q 'SECRET_VALUE' "$work/out"; then
+  echo 'FAIL: inherited RPC endpoint leaked' >&2; exit 1
+fi
+unset ETH_RPC_URL
+pass=$((pass+1))
+
 # A failing provider must not leak URLs in the script's stderr output.
 export MOCK_CAST_ERROR='YES'
 : > "$MOCK_CAST_LOG"; : > "$MOCK_FORGE_LOG"
