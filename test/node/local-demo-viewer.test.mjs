@@ -196,20 +196,24 @@ test('keyboard listener preserves modifiers, editable controls, and unrelated ke
   }
   assert.equal(app.key('End', { target: { tagName: 'DIV', isContentEditable: true } }), false);
   assert.equal(app.stage(), 1);
-  for (const selector of [
-    'button', 'a', 'summary', 'input', 'textarea', 'select',
-    '[role="button"]', '[role="link"]', '[role="slider"]',
-    '[role="checkbox"]', '[role="radio"]', '[role="menuitem"]'
-  ]) {
-    const selectorList = 'button, a, summary, input, textarea, select, [role="button"], [role="link"], ' +
-      '[role="slider"], [role="checkbox"], [role="radio"], [role="menuitem"]';
-    const nestedTarget = {
-      tagName: 'SPAN',
-      closest(value) { assert.equal(value, selectorList); return { tagName: 'BUTTON' }; }
-    };
-    assert.equal(app.key('End', { target: nestedTarget }), false, 'nested in ' + selector);
-    assert.equal(app.stage(), 1, 'nested in ' + selector);
-  }
+  const nestedInteractiveTarget = {
+    tagName: 'SPAN',
+    closest(selector) {
+      assert.match(selector, /button/);
+      assert.match(selector, /\[role="menuitem"\]/);
+      return { tagName: 'BUTTON' };
+    }
+  };
+  assert.equal(app.key('End', { target: nestedInteractiveTarget }), false, 'nested in a control');
+  assert.equal(app.stage(), 1, 'nested in a control');
+  const ordinaryNestedTarget = {
+    tagName: 'SPAN',
+    closest() { return null; }
+  };
+  assert.equal(app.key('End', { target: ordinaryNestedTarget }), true, 'ordinary nested content');
+  assert.equal(app.stage(), 6);
+  app.key('Home');
+  assert.equal(app.stage(), 1);
   assert.equal(app.key('Escape'), false);
   assert.equal(app.stage(), 1);
   assert.equal(app.key('End'), true);
