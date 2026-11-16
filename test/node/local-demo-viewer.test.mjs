@@ -90,6 +90,8 @@ test('stage changes are announced to assistive technology and keyboard controls 
   assert.match(embedded[1], /event\.preventDefault\(\)/);
   assert.match(embedded[1], /event\.ctrlKey/);
   assert.match(embedded[1], /isContentEditable/);
+  assert.match(embedded[1], /BUTTON\|A\|SUMMARY/);
+  assert.match(embedded[1], /targetRole/);
 });
 
 function makeViewerElement(tagName = 'DIV') {
@@ -183,11 +185,34 @@ test('keyboard listener preserves modifiers, editable controls, and unrelated ke
     assert.equal(app.key('End', { [modifier]: true }), false, modifier);
     assert.equal(app.stage(), 1, modifier);
   }
-  for (const tagName of ['INPUT', 'TEXTAREA', 'SELECT']) {
+  for (const tagName of ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'A', 'SUMMARY']) {
     assert.equal(app.key('End', { target: { tagName } }), false, tagName);
     assert.equal(app.stage(), 1, tagName);
   }
+  for (const role of ['button', 'link', 'slider', 'checkbox', 'radio', 'menuitem']) {
+    const target = { tagName: 'DIV', getAttribute(name) { return name === 'role' ? role : null; } };
+    assert.equal(app.key('End', { target }), false, 'role=' + role);
+    assert.equal(app.stage(), 1, 'role=' + role);
+  }
   assert.equal(app.key('End', { target: { tagName: 'DIV', isContentEditable: true } }), false);
+  assert.equal(app.stage(), 1);
+  const nestedInteractiveTarget = {
+    tagName: 'SPAN',
+    closest(selector) {
+      assert.match(selector, /button/);
+      assert.match(selector, /\[role="menuitem"\]/);
+      return { tagName: 'BUTTON' };
+    }
+  };
+  assert.equal(app.key('End', { target: nestedInteractiveTarget }), false, 'nested in a control');
+  assert.equal(app.stage(), 1, 'nested in a control');
+  const ordinaryNestedTarget = {
+    tagName: 'SPAN',
+    closest() { return null; }
+  };
+  assert.equal(app.key('End', { target: ordinaryNestedTarget }), true, 'ordinary nested content');
+  assert.equal(app.stage(), 6);
+  app.key('Home');
   assert.equal(app.stage(), 1);
   assert.equal(app.key('Escape'), false);
   assert.equal(app.stage(), 1);
