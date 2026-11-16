@@ -15,6 +15,13 @@ for override_name in "${!FOUNDRY_@}" "${!DAPP_@}"; do
   fi
 done
 
+for command_name in cast forge node; do
+  if declare -F "$command_name" >/dev/null 2>&1; then
+    echo 'REFUSED: exported shell function overrides a required tool.' >&2
+    exit 1
+  fi
+done
+
 command -v cast >/dev/null || { echo "Missing Foundry 'cast'." >&2; exit 1; }
 command -v forge >/dev/null || { echo "Missing Foundry 'forge'." >&2; exit 1; }
 
