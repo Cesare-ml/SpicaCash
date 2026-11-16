@@ -90,4 +90,46 @@ if grep -q 'SECRET_VALUE' "$MOCK_CAST_LOG" || grep -q 'SECRET_VALUE' "$MOCK_FORG
   echo 'FAIL: provider token leaked to mocked CLI argv or output' >&2; exit 1
 fi
 pass=$((pass+1))
+
+# Inherited Foundry/Dapp settings must be refused before cast or forge executes.
+reject_override_before_rpc() {
+  : > "$MOCK_CAST_LOG"; : > "$MOCK_FORGE_LOG"
+  if bash "$root/scripts/deploy-arbitrum-sepolia.sh" > "$work/out" 2>&1; then
+    echo 'FAIL: unsafe inherited Foundry/Dapp override accepted' >&2; exit 1
+  fi
+  grep -q 'REFUSED: inherited Foundry/Dapp environment override' "$work/out"
+  [[ ! -s "$MOCK_CAST_LOG" && ! -s "$MOCK_FORGE_LOG" ]] || { echo 'FAIL: cast or forge ran despite inherited override' >&2; exit 1; }
+  if grep -q 'SECRET_VALUE' "$work/out"; then echo 'FAIL: override value leaked in output' >&2; exit 1; fi
+  pass=$((pass+1))
+}
+for override_name in FOUNDRY_ETH_RPC_URL DAPP_RPC_URL FOUNDRY_PROFILE; do
+  export "$override_name=https://unreviewed.example.test/SECRET_VALUE"
+  reject_override_before_rpc
+  unset "$override_name"
+done
+
+# Exported Bash functions can shadow command lookup after this script starts.
+reject_exported_tool_function() {
+  : > "$MOCK_CAST_LOG"; : > "$MOCK_FORGE_LOG"
+  if bash "$root/scripts/deploy-arbitrum-sepolia.sh" > "$work/out" 2>&1; then
+    echo 'FAIL: exported tool-shadowing function was accepted' >&2; exit 1
+  fi
+  grep -q 'REFUSED: exported shell function overrides a required tool' "$work/out"
+  [[ ! -s "$MOCK_CAST_LOG" && ! -s "$MOCK_FORGE_LOG" ]] || { echo 'FAIL: a mocked tool ran despite exported function' >&2; exit 1; }
+  if grep -q 'FUNCTION_SENTINEL' "$work/out"; then echo 'FAIL: exported function body was executed' >&2; exit 1; fi
+  pass=$((pass+1))
+}
+forge() { printf 'FUNCTION_SENTINEL\n' >> "$MOCK_FORGE_LOG"; }
+export -f forge
+reject_exported_tool_function
+unset -f forge
+cast() { printf 'FUNCTION_SENTINEL\n' >> "$MOCK_CAST_LOG"; }
+export -f cast
+reject_exported_tool_function
+unset -f cast
+node() { printf 'FUNCTION_SENTINEL\n' >> "$MOCK_FORGE_LOG"; }
+export -f node
+reject_exported_tool_function
+unset -f node
+
 printf 'PASS: %d mocked RPC safety integration scenarios\n' "$pass"
