@@ -222,6 +222,42 @@ contract SpicaCashLocalFailureAtomicityTest {
         require(token.totalSupply() == SUPPLY, "final supply");
     }
 
+    function testFuzzInsufficientAllowanceIsAtomic(uint96 rawAmount) public {
+        // Keep fuzz cases nonzero and within the synthetic supply.
+        uint256 amount = (uint256(rawAmount) % SUPPLY) + 1;
+        uint256 allowanceAmount = amount - 1;
+
+        AtomicityActor alice = new AtomicityActor();
+        AtomicityActor spender = new AtomicityActor();
+        SpicaCash token = new SpicaCash(address(alice), SUPPLY);
+
+        alice.approveSpender(token, address(spender), allowanceAmount);
+        try spender.delegatedPull(token, address(alice), address(spender), amount) {
+            revert("fuzz over-allowance pull succeeded");
+        } catch (bytes memory reason) {
+            _assertError(
+                reason,
+                abi.encodeWithSelector(
+                    IERC20Errors.ERC20InsufficientAllowance.selector,
+                    address(spender),
+                    allowanceAmount,
+                    amount
+                )
+            );
+        }
+
+        require(token.balanceOf(address(alice)) == SUPPLY, "fuzz alice changed");
+        require(token.balanceOf(address(spender)) == 0, "fuzz spender changed");
+        require(token.allowance(address(alice), address(spender)) == allowanceAmount, "fuzz allowance changed");
+        require(token.totalSupply() == SUPPLY, "fuzz supply changed");
+
+        spender.delegatedPull(token, address(alice), address(spender), allowanceAmount);
+        require(token.balanceOf(address(alice)) == SUPPLY - allowanceAmount, "fuzz alice final");
+        require(token.balanceOf(address(spender)) == allowanceAmount, "fuzz spender final");
+        require(token.allowance(address(alice), address(spender)) == 0, "fuzz allowance final");
+        require(token.totalSupply() == SUPPLY, "fuzz final supply");
+    }
+
     function testFailedDirectTransferPreservesBalancesAndSubsequentTransfer() public {
         AtomicityActor alice = new AtomicityActor();
         AtomicityActor bob = new AtomicityActor();
