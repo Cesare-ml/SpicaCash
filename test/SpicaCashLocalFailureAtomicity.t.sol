@@ -59,6 +59,30 @@ contract SpicaCashLocalFailureAtomicityTest {
         require(token.totalSupply() == SUPPLY, "final supply");
     }
 
+    function testZeroAddressRecipientRevertsWithoutSpendingAllowance() public {
+        AtomicityActor alice = new AtomicityActor();
+        AtomicityActor spender = new AtomicityActor();
+        SpicaCash token = new SpicaCash(address(alice), SUPPLY);
+
+        alice.approveSpender(token, address(spender), 12 * UNIT);
+        try spender.delegatedPull(token, address(alice), address(0), 4 * UNIT) {
+            revert("zero-recipient delegated pull succeeded");
+        } catch (bytes memory reason) {
+            require(_selector(reason) == IERC20Errors.ERC20InvalidReceiver.selector, "wrong recipient error");
+        }
+
+        require(token.balanceOf(address(alice)) == SUPPLY, "alice changed after zero-recipient pull");
+        require(token.balanceOf(address(0)) == 0, "zero recipient credited");
+        require(token.allowance(address(alice), address(spender)) == 12 * UNIT, "allowance consumed");
+        require(token.totalSupply() == SUPPLY, "supply changed");
+
+        spender.delegatedPull(token, address(alice), address(spender), 4 * UNIT);
+        require(token.balanceOf(address(alice)) == 996 * UNIT, "alice final");
+        require(token.balanceOf(address(spender)) == 4 * UNIT, "spender final");
+        require(token.allowance(address(alice), address(spender)) == 8 * UNIT, "allowance final");
+        require(token.totalSupply() == SUPPLY, "final supply");
+    }
+
     function testFailedDirectTransferPreservesBalancesAndSubsequentTransfer() public {
         AtomicityActor alice = new AtomicityActor();
         AtomicityActor bob = new AtomicityActor();
