@@ -91,6 +91,20 @@ if grep -q 'SECRET_VALUE' "$MOCK_CAST_LOG" || grep -q 'SECRET_VALUE' "$MOCK_FORG
 fi
 pass=$((pass+1))
 
+# A forged or option-like keystore alias must never reach forge, even if
+# the caller explicitly requested a testnet broadcast.
+for unsafe_account in '--private-key' '../keystore' 'alias with spaces'; do
+  export FOUNDRY_ACCOUNT="$unsafe_account"
+  : > "$MOCK_CAST_LOG"; : > "$MOCK_FORGE_LOG"
+  if bash "$root/scripts/deploy-arbitrum-sepolia.sh" > "$work/out" 2>&1; then
+    echo 'FAIL: unsafe keystore alias accepted' >&2; exit 1
+  fi
+  grep -q 'FOUNDRY_ACCOUNT must be a simple local keystore alias' "$work/out"
+  [[ ! -s "$MOCK_FORGE_LOG" ]] || { echo 'FAIL: forge ran for unsafe keystore alias' >&2; exit 1; }
+  pass=$((pass+1))
+done
+export FOUNDRY_ACCOUNT='synthetic-test-account'
+
 # Inherited Foundry/Dapp settings must be refused before cast or forge executes.
 reject_override_before_rpc() {
   : > "$MOCK_CAST_LOG"; : > "$MOCK_FORGE_LOG"
