@@ -59,6 +59,34 @@ contract SpicaCashLocalFailureAtomicityTest {
         require(token.totalSupply() == SUPPLY, "final supply");
     }
 
+    function testInsufficientAllowanceRevertsWithoutMovingFunds() public {
+        AtomicityActor alice = new AtomicityActor();
+        AtomicityActor bob = new AtomicityActor();
+        AtomicityActor spender = new AtomicityActor();
+        SpicaCash token = new SpicaCash(address(alice), SUPPLY);
+
+        alice.directSend(token, address(bob), 50 * UNIT);
+        bob.approveSpender(token, address(spender), 2 * UNIT);
+
+        // Bob has ample funds, but spender is authorized for only two tokens.
+        try spender.delegatedPull(token, address(bob), address(alice), 3 * UNIT) {
+            revert("over-allowance delegated pull succeeded");
+        } catch (bytes memory reason) {
+            require(_selector(reason) == IERC20Errors.ERC20InsufficientAllowance.selector, "wrong allowance error");
+        }
+
+        require(token.balanceOf(address(alice)) == 950 * UNIT, "alice changed");
+        require(token.balanceOf(address(bob)) == 50 * UNIT, "bob changed");
+        require(token.allowance(address(bob), address(spender)) == 2 * UNIT, "allowance changed");
+        require(token.totalSupply() == SUPPLY, "supply changed");
+
+        spender.delegatedPull(token, address(bob), address(alice), 2 * UNIT);
+        require(token.balanceOf(address(alice)) == 952 * UNIT, "alice final");
+        require(token.balanceOf(address(bob)) == 48 * UNIT, "bob final");
+        require(token.allowance(address(bob), address(spender)) == 0, "allowance final");
+        require(token.totalSupply() == SUPPLY, "final supply");
+    }
+
     function testZeroAddressRecipientRevertsWithoutSpendingAllowance() public {
         AtomicityActor alice = new AtomicityActor();
         AtomicityActor spender = new AtomicityActor();
