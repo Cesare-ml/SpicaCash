@@ -36,6 +36,12 @@ The viewer uses JavaScript `BigInt` for exact integer arithmetic in **18-decimal
 
 The accompanying Foundry scenario `test/SpicaCashLocalDemo.t.sol` exercises the *real Solidity contract* in a disposable test EVM with the same six events, but is **not called by this HTML**. Browser output is a mathematical reproduction, **not an EVM transaction trace or contract audit**. For Solidity verification, see [Local demo](LOCAL_DEMO.md).
 
+## High contrast and reduced motion
+
+The viewer includes a Windows **forced-colors** stylesheet. When system high-contrast colors are active, panels, cards, buttons, the progress indicator and keyboard focus use operating-system color tokens rather than relying on the normal dark palette. The layout remains usable without color-coded status alone. The existing reduced-motion preference also removes the progress-bar transition.
+
+This is a CSS-level accessibility accommodation, not a substitute for testing with Windows Contrast Themes, Narrator, keyboard-only navigation and browser zoom on an actual Windows device.
+
 ## Test the viewer
 
 With Node.js 20+ installed, run from the repository root:
