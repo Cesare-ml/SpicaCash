@@ -153,6 +153,27 @@ for unsafe_account in '--private-key' '../keystore' 'alias with spaces'; do
 done
 export FOUNDRY_ACCOUNT='synthetic-test-account'
 
+# Explicit confirmation is insufficient without a local keystore alias.
+# A missing alias must never fall back to an implicit Foundry account.
+unset FOUNDRY_ACCOUNT
+: > "$MOCK_CAST_LOG"; : > "$MOCK_FORGE_LOG"
+if bash "$root/scripts/deploy-arbitrum-sepolia.sh" > "$work/out" 2>&1; then
+  echo 'FAIL: deployment accepted without a keystore alias' >&2; exit 1
+fi
+[[ ! -s "$MOCK_FORGE_LOG" ]] || { echo 'FAIL: forge ran without a keystore alias' >&2; exit 1; }
+pass=$((pass+1))
+
+# The documented maximum alias length (64) remains usable with a mocked
+# command, preventing the negative tests from making all aliases invalid.
+export FOUNDRY_ACCOUNT="$(printf 'a%.0s' {1..64})"
+: > "$MOCK_CAST_LOG"; : > "$MOCK_FORGE_LOG"
+bash "$root/scripts/deploy-arbitrum-sepolia.sh" > "$work/out" 2>&1
+[[ $(wc -l < "$MOCK_FORGE_LOG") -eq 1 ]] || {
+  echo 'FAIL: valid 64-character keystore alias was rejected' >&2; exit 1;
+}
+pass=$((pass+1))
+export FOUNDRY_ACCOUNT='synthetic-test-account'
+
 # Inherited Foundry/Dapp settings must be refused before cast or forge executes.
 reject_override_before_rpc() {
   : > "$MOCK_CAST_LOG"; : > "$MOCK_FORGE_LOG"
